@@ -21,5 +21,13 @@ else
     xcodebuild -project ibrowse.xcodeproj -scheme ibrowse-mac \
         -configuration Debug -derivedDataPath build build
     pkill -f ibrowse-mac 2>/dev/null || true
-    open build/Build/Products/Debug/ibrowse-mac.app
+
+    # Dock i Finder trzymają ikonę w pamięci podręcznej i nie zauważają, że
+    # pakiet się zmienił — po zmianie ikony w Docku siedziałaby stara.
+    APP="build/Build/Products/Debug/ibrowse-mac.app"
+    touch "$APP"
+    /System/Library/Frameworks/CoreServices.framework/Frameworks/\
+LaunchServices.framework/Support/lsregister -f "$APP"
+
+    open "$APP"
 fi
