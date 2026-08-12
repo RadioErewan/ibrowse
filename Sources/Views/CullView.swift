@@ -131,10 +131,13 @@ struct CullView: View {
                 #if os(iOS)
                 // Na telefonie gest zastępuje klawiaturę: w lewo gorsze,
                 // w prawo lepsze. Przesuwa tę samą wagę, o ten sam krok.
-                SwipeCard { direction in
-                    nudge(direction)
-                    step(1)
-                } content: {
+                SwipeCard(
+                    onNudge: { direction in
+                        nudge(direction)
+                        step(1)
+                    },
+                    onStep: { step($0) }
+                ) {
                     AssetImage(asset: current, library: library)
                 }
                 #else
@@ -184,28 +187,57 @@ struct CullView: View {
         .padding(.vertical, 10)
     }
 
+    @ViewBuilder
     private var footer: some View {
+        #if os(iOS)
+        // Strzałki obok gwiazdek, bo gest w pionie trzeba najpierw odkryć —
+        // a przejście dalej bez oceny musi być widoczne od pierwszego wejścia.
+        VStack(spacing: 6) {
+            HStack(spacing: 14) {
+                stars
+                deletionMark
+                Spacer()
+                Button { step(-1) } label: { Image(systemName: "chevron.left") }
+                Button { step(1) } label: { Image(systemName: "chevron.right") }
+                counter
+            }
+            .buttonStyle(.bordered)
+            .controlSize(.small)
+
+            Text(hint)
+                .font(.caption2)
+                .foregroundStyle(.tertiary)
+        }
+        .padding(.horizontal, 14)
+        .padding(.vertical, 8)
+        #else
         HStack(spacing: 18) {
             stars
-
-            if currentReview?.markedForDeletion == true {
-                Label("do usunięcia", systemImage: "trash.fill")
-                    .font(.caption.weight(.semibold))
-                    .foregroundStyle(.red)
-            }
-
+            deletionMark
             Spacer()
-
             Text(hint)
                 .font(.caption)
                 .foregroundStyle(.tertiary)
-
-            Text("\(workingSet.isEmpty ? 0 : index + 1) / \(workingSet.count)")
-                .font(.callout.monospacedDigit())
-                .foregroundStyle(.secondary)
+            counter
         }
         .padding(.horizontal, 14)
         .padding(.vertical, 10)
+        #endif
+    }
+
+    @ViewBuilder
+    private var deletionMark: some View {
+        if currentReview?.markedForDeletion == true {
+            Label("do usunięcia", systemImage: "trash.fill")
+                .font(.caption.weight(.semibold))
+                .foregroundStyle(.red)
+        }
+    }
+
+    private var counter: some View {
+        Text("\(workingSet.isEmpty ? 0 : index + 1) / \(workingSet.count)")
+            .font(.callout.monospacedDigit())
+            .foregroundStyle(.secondary)
     }
 
     private var stars: some View {
@@ -228,7 +260,7 @@ struct CullView: View {
 
     private var hint: String {
         #if os(iOS)
-        "przesuń w lewo gorsze · w prawo lepsze"
+        "w bok ocena: lewo gorsze, prawo lepsze · w pionie dalej bez oceny"
         #else
         "1–5 ocena · −/+ przesuń · X do usunięcia · I metadane · ←/→ nawigacja"
         #endif
