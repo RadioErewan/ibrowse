@@ -1,0 +1,292 @@
+#if os(macOS)
+import Photos
+import SwiftUI
+
+/// Panel boczny w trybie oceniania — wyłącznie na macOS.
+///
+/// Na telefonie nie ma na to miejsca i nie ma po co: przy kciuku liczy się samo
+/// zdjęcie. Przy dużym ekranie odwrotnie — to tu odpowiada się na pytanie
+/// „czemu ta klatka jest miękka", a odpowiedź brzmi zwykle ISO 6400 albo 1/15 s.
+struct MetadataPanel: View {
+    let asset: PHAsset?
+    @ObservedObject var index: MetadataIndex
+
+    @State private var showingWords = false
+
+    var body: some View {
+        ScrollView {
+            VStack(alignment: .leading, spacing: 16) {
+                if let asset {
+                    identity(asset)
+                    exposure
+                    people
+                    place
+                    occasion
+                    scenes
+                    text
+                    native(asset)
+                } else {
+                    Text("Brak zdjęcia").foregroundStyle(.secondary)
+                }
+
+                if let failure = index.failure {
+                    Divider()
+                    Text(failure)
+                        .font(.caption)
+                        .foregroundStyle(.orange)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+            }
+            .padding(14)
+            .frame(maxWidth: .infinity, alignment: .leading)
+        }
+        .task(id: asset?.localIdentifier) { await index.load(asset) }
+    }
+
+    private var data: AssetMetadata { index.current ?? AssetMetadata() }
+
+    // MARK: - Sekcje
+
+    private func identity(_ asset: PHAsset) -> some View {
+        VStack(alignment: .leading, spacing: 3) {
+            Text(data.filename ?? "bez nazwy")
+                .font(.callout.weight(.semibold))
+                .textSelection(.enabled)
+                .lineLimit(2)
+            if let date = asset.creationDate {
+                Text(date.formatted(date: .long, time: .shortened))
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+        }
+    }
+
+    /// Technika idzie na górę, zaraz pod nazwą, bo przy odsiewie to ona
+    /// najczęściej tłumaczy, dlaczego zdjęcie jest nie do uratowania.
+    @ViewBuilder
+    private var exposure: some View {
+        let parts = [
+            data.focalLength.map { String(format: "%.0f mm", $0) },
+            data.aperture.map { String(format: "f/%.1f", $0) },
+            data.shutter.map(Self.shutter),
+            data.iso.map { "ISO \($0)" },
+        ].compactMap { $0 }
+
+        if !parts.isEmpty || data.camera != nil {
+            VStack(alignment: .leading, spacing: 4) {
+                if !parts.isEmpty {
+                    Text(parts.joined(separator: " · "))
+                        .font(.system(.callout, design: .monospaced))
+                }
+                if let camera = data.camera {
+                    Text(camera).font(.caption).foregroundStyle(.secondary)
+                }
+                if let lens = data.lens, lens != data.camera {
+                    Text(lens)
+                        .font(.caption)
+                        .foregroundStyle(.tertiary)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+                if data.flash == true {
+                    Label("lampa", systemImage: "bolt.fill")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+            }
+        }
+    }
+
+    @ViewBuilder
+    private var people: some View {
+        Section("Osoby", values: data.people, tint: .blue)
+        Section("Zwierzęta", values: data.pets, tint: .brown)
+    }
+
+    /// Miejsce jako jeden ciąg od punktu do kraju — tak, jak człowiek by je
+    /// wymówił, a nie jako lista równorzędnych etykiet.
+    @ViewBuilder
+    private var place: some View {
+        if !data.place.isEmpty {
+            Group {
+                heading("Miejsce")
+                Text(data.place.joined(separator: " · "))
+                    .font(.callout)
+                    .textSelection(.enabled)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+        }
+    }
+
+    @ViewBuilder
+    private var occasion: some View {
+        Section("Okoliczność", values: data.occasion, tint: .purple)
+    }
+
+    @ViewBuilder
+    private var scenes: some View {
+        Section("Co widzi system", values: data.scenes, tint: .secondary)
+    }
+
+    /// Odczytany tekst jest w indeksie rozbity na pojedyncze słowa bez
+    /// kolejności, więc pokazujemy go zwinięty — jako trop, nie jako cytat.
+    @ViewBuilder
+    private var text: some View {
+        if !data.words.isEmpty {
+            VStack(alignment: .leading, spacing: 6) {
+                Button {
+                    showingWords.toggle()
+                } label: {
+                    Label(
+                        "Tekst na zdjęciu (\(data.words.count))",
+                        systemImage: showingWords ? "chevron.down" : "chevron.right"
+                    )
+                    .font(.caption.weight(.semibold))
+                }
+                .buttonStyle(.plain)
+                .foregroundStyle(.secondary)
+
+                if showingWords {
+                    Text(data.words.joined(separator: " "))
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .textSelection(.enabled)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+            }
+        }
+    }
+
+    /// To, co PhotoKit wie sam — zawsze aktualne, niezależne od baz.
+    private func native(_ asset: PHAsset) -> some View {
+        VStack(alignment: .leading, spacing: 4) {
+            Divider()
+            HStack(spacing: 10) {
+                Text("\(asset.pixelWidth) × \(asset.pixelHeight)")
+                    .font(.caption.monospacedDigit())
+                Text(Self.megapixels(asset))
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                if asset.isFavorite {
+                    Image(systemName: "heart.fill").font(.caption).foregroundStyle(.pink)
+                }
+            }
+            let traits = Self.traits(asset)
+            if !traits.isEmpty {
+                Text(traits.joined(separator: " · "))
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+        }
+    }
+
+    // MARK: - Drobiazgi
+
+    private func heading(_ title: String) -> some View {
+        Text(title.uppercased())
+            .font(.caption2.weight(.semibold))
+            .foregroundStyle(.tertiary)
+    }
+
+    private static func shutter(_ seconds: Double) -> String {
+        guard seconds > 0 else { return "—" }
+        if seconds >= 1 { return String(format: "%.1f s", seconds) }
+        return "1/\(Int((1 / seconds).rounded()))"
+    }
+
+    private static func megapixels(_ asset: PHAsset) -> String {
+        let value = Double(asset.pixelWidth * asset.pixelHeight) / 1_000_000
+        return String(format: "%.1f Mpx", value)
+    }
+
+    private static func traits(_ asset: PHAsset) -> [String] {
+        var traits: [String] = []
+        let subtypes = asset.mediaSubtypes
+        if subtypes.contains(.photoPanorama) { traits.append("panorama") }
+        if subtypes.contains(.photoHDR) { traits.append("HDR") }
+        if subtypes.contains(.photoScreenshot) { traits.append("zrzut ekranu") }
+        if subtypes.contains(.photoLive) { traits.append("Live") }
+        if subtypes.contains(.photoDepthEffect) { traits.append("portret") }
+        if asset.representsBurst { traits.append("seria") }
+        if asset.location != nil { traits.append("z lokalizacją") }
+        return traits
+    }
+}
+
+/// Lista wartości jako zawijające się plakietki. Etykiet scen bywa
+/// kilkanaście — w kolumnie zjadłyby cały panel.
+private struct Section: View {
+    let title: String
+    let values: [String]
+    let tint: Color
+
+    init(_ title: String, values: [String], tint: Color) {
+        self.title = title
+        self.values = values
+        self.tint = tint
+    }
+
+    var body: some View {
+        if !values.isEmpty {
+            VStack(alignment: .leading, spacing: 5) {
+                Text(title.uppercased())
+                    .font(.caption2.weight(.semibold))
+                    .foregroundStyle(.tertiary)
+                FlowLayout(spacing: 4) {
+                    ForEach(values, id: \.self) { value in
+                        Text(value)
+                            .font(.caption)
+                            .padding(.horizontal, 7)
+                            .padding(.vertical, 3)
+                            .background(tint.opacity(0.15), in: Capsule())
+                            .foregroundStyle(tint)
+                    }
+                }
+            }
+        }
+    }
+}
+
+/// Układ zawijający — `HStack` nie zawija, a `LazyVGrid` wymusza równe
+/// kolumny, przez co „Sky" zajmowałoby tyle co „Aerial Photography".
+private struct FlowLayout: Layout {
+    var spacing: CGFloat = 4
+
+    func sizeThatFits(proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) -> CGSize {
+        let width = proposal.width ?? 240
+        let rows = arrange(subviews: subviews, width: width)
+        let height = rows.last.map { $0.y + $0.height } ?? 0
+        return CGSize(width: width, height: height)
+    }
+
+    func placeSubviews(
+        in bounds: CGRect, proposal: ProposedViewSize, subviews: Subviews, cache: inout ()
+    ) {
+        for row in arrange(subviews: subviews, width: bounds.width) {
+            subviews[row.index].place(
+                at: CGPoint(x: bounds.minX + row.x, y: bounds.minY + row.y),
+                proposal: .unspecified
+            )
+        }
+    }
+
+    private func arrange(
+        subviews: Subviews, width: CGFloat
+    ) -> [(index: Int, x: CGFloat, y: CGFloat, height: CGFloat)] {
+        var placed: [(Int, CGFloat, CGFloat, CGFloat)] = []
+        var x: CGFloat = 0, y: CGFloat = 0, lineHeight: CGFloat = 0
+
+        for index in subviews.indices {
+            let size = subviews[index].sizeThatFits(.unspecified)
+            if x + size.width > width && x > 0 {
+                x = 0
+                y += lineHeight + spacing
+                lineHeight = 0
+            }
+            placed.append((index, x, y, size.height))
+            x += size.width + spacing
+            lineHeight = max(lineHeight, size.height)
+        }
+        return placed
+    }
+}
+#endif

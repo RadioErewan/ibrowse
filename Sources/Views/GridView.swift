@@ -16,6 +16,15 @@ struct GridView: View {
     /// Sama przeglądarka miniatur nie służy do oceniania — kusi do
     /// przewijania, a nie do decydowania.
     var onOpen: (PHAsset) -> Void = { _ in }
+
+    /// Zdjęcie, na którym stoi praca w pozostałych trybach. Siatka przewija
+    /// się do niego przy wejściu i oznacza je ramką.
+    ///
+    /// Bez tego powrót z oceniania lądował na początku archiwum — po godzinie
+    /// pracy w 2019 roku dostawało się widok pierwszego zdjęcia z 2007
+    /// i trzeba było odnajdywać się ręcznie.
+    var focusID: String?
+
     @Query private var reviews: [Review]
 
     #if os(macOS)
@@ -49,24 +58,43 @@ struct GridView: View {
             Divider()
             #endif
 
-            ScrollView {
-                LazyVGrid(
-                    columns: [GridItem(.adaptive(minimum: thumbSize), spacing: 3)],
-                    spacing: 3
-                ) {
-                    ForEach(library.visibleAssets, id: \.localIdentifier) { asset in
-                        Thumbnail(
-                            asset: asset,
-                            library: library,
-                            monitor: monitor,
-                            side: thumbSize,
-                            rating: ratings[asset.localIdentifier] ?? 0
-                        )
-                        .onTapGesture(count: 2) { onOpen(asset) }
+            ScrollViewReader { proxy in
+                ScrollView {
+                    LazyVGrid(
+                        columns: [GridItem(.adaptive(minimum: thumbSize), spacing: 3)],
+                        spacing: 3
+                    ) {
+                        ForEach(library.visibleAssets, id: \.localIdentifier) { asset in
+                            Thumbnail(
+                                asset: asset,
+                                library: library,
+                                monitor: monitor,
+                                side: thumbSize,
+                                rating: ratings[asset.localIdentifier] ?? 0,
+                                isFocus: asset.localIdentifier == focusID
+                            )
+                            .onTapGesture(count: 2) { onOpen(asset) }
+                        }
                     }
+                    .padding(3)
                 }
-                .padding(3)
+                .task(id: focusID) { await reveal(focusID, using: proxy) }
             }
+        }
+    }
+
+    /// Przewija do zdjęcia, na którym stoi praca.
+    ///
+    /// Krótka zwłoka jest konieczna: `LazyVGrid` w chwili pojawienia się widoku
+    /// nie zna jeszcze swojej wysokości, a `scrollTo` przed ustaleniem układu
+    /// trafia w próżnię. Wyśrodkowanie zamiast dosunięcia do góry daje kontekst
+    /// — widać, co było przed i po.
+    private func reveal(_ id: String?, using proxy: ScrollViewProxy) async {
+        guard let id else { return }
+        try? await Task.sleep(for: .milliseconds(80))
+        guard !Task.isCancelled else { return }
+        withAnimation(.easeOut(duration: 0.25)) {
+            proxy.scrollTo(id, anchor: .center)
         }
     }
 }
@@ -79,6 +107,10 @@ private struct Thumbnail: View {
     let monitor: PerfMonitor
     let side: Double
     let rating: Int
+
+    /// Zdjęcie, od którego przyszliśmy z innego trybu. Samo przewinięcie nie
+    /// wystarcza — wśród setek podobnych kafelków środek ekranu nic nie znaczy.
+    let isFocus: Bool
 
     @State private var image: PlatformImage?
     @State private var request: PHImageRequestID?
@@ -109,6 +141,11 @@ private struct Thumbnail: View {
         }
         .frame(width: side, height: side)
         .clipped()
+        .overlay {
+            if isFocus {
+                Rectangle().strokeBorder(.yellow, lineWidth: 3)
+            }
+        }
         .contentShape(Rectangle())
         .onAppear { load() }
         .onDisappear { cancel() }

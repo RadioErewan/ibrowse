@@ -16,6 +16,11 @@ import SwiftUI
 struct PairView: View {
     @ObservedObject var library: PhotoLibrary
     @ObservedObject var similarity: Similarity
+
+    /// Ten sam wskaźnik, którego używa ocenianie. Z pojedynku wychodzi
+    /// **dotychczasowy lider** — to jego się broni, więc to on jest miejscem,
+    /// w którym jesteś, gdy przełączysz się na siatkę.
+    @Binding var focusID: String?
     @Environment(\.modelContext) private var context
 
     @Query private var series: [Series]
@@ -91,6 +96,7 @@ struct PairView: View {
         .onKeyPress(KeyEquivalent("n")) { reject(); return .handled }
         .task(id: "\(current?.persistentModelID.hashValue ?? 0)-\(challengerIndex)") {
             prefetchAhead()
+            focusID = champion ?? current?.members.first
         }
     }
 

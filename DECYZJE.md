@@ -108,6 +108,40 @@ Siatka służy do nawigacji (dwuklik wchodzi w ocenianie od wskazanego zdjęcia)
 i przeglądu własnej pracy. **Nie** do oceniania — kusi do przewijania zamiast
 do decydowania.
 
+**Jeden wskaźnik miejsca na całą aplikację.** Każdy tryb zapisuje, na czym
+stanął, i każdy czyta cudzy zapis: siatka przewija się tam, gdzie skończyło
+się ocenianie, ocenianie zaczyna tam, gdzie padł dwuklik, a z pojedynku
+wychodzi dotychczasowy lider. Wcześniej powrót do siatki lądował na początku
+archiwum. Kafelek dostaje żółtą ramkę, bo samo wyśrodkowanie nic nie mówi,
+gdy wokół są setki podobnych miniatur.
+
+## Metadane
+
+Panel boczny w ocenianiu, **tylko macOS** — na telefonie nie ma miejsca i nie
+ma po co. Pokazuje to, czego PhotoKit nie oddaje: nazwy miejsc, rozpoznane
+osoby i zwierzęta, etykiety scen, odczytany tekst oraz technikę zdjęcia.
+
+Źródła są dwa i to jest **świadome odstępstwo** od zasady „PhotoKit, nie
+SQLite". Zasada broni fundamentu — oceny, serie i usuwanie idą wyłącznie przez
+oficjalne API. Panel jest dodatkiem: gdy Apple przestawi kolumny, panel zgaśnie
+i nic poza nim się nie stanie.
+
+- `database/search/psi.sqlite` — etykiety, ludzie, miejsca, słowa z OCR.
+  Klucz to UUID zapisany jako **dwie liczby**: bajty 0–7 i 8–15 czytane
+  little-endian. Napisy kończy bajt zerowy, trzeba go obciąć.
+- `database/Photos.sqlite` → `ZEXTENDEDATTRIBUTES` — ISO, przysłona, czas,
+  ogniskowa, obiektyw. Tu UUID jest zwykłym napisem i jest zaindeksowany.
+
+**Baz nie kopiujemy.** `Photos.sqlite` ma gigabajt, a wolnego miejsca na dysku
+jest mniej niż samego archiwum. Otwieramy w miejscu przez `mode=ro`, a gdy to
+zawiedzie (brak pliku `-shm`, bo Zdjęcia nie działają) — przez `immutable=1`.
+
+Panel wymaga **Pełnego dostępu do dysku**: zgoda na bibliotekę zdjęć dotyczy
+PhotoKit, nie plików. Dlatego aplikacja na Macu jest podpisana prawdziwym
+certyfikatem zamiast doraźnie — TCC zapamiętuje tożsamość podpisu, a podpis
+doraźny zmienia się przy każdej kompilacji i uprawnienie trzeba by nadawać
+po każdej przebudowie.
+
 ## Co czeka
 
 - **Panel metadanych na macOS.** Most zweryfikowany: `PHAsset.localIdentifier`

@@ -74,7 +74,13 @@ struct RootView: View {
 
     @State private var mode: Mode = .grid
     @State private var showingYears = false
-    @State private var openAt: String?
+
+    /// Jedno miejsce, w którym stoi praca — wspólne dla wszystkich trybów.
+    ///
+    /// Każdy tryb je zapisuje i każdy je czyta, więc przełączanie trybów
+    /// nigdy nie gubi kontekstu: siatka przewija się tam, gdzie skończyło
+    /// się ocenianie, a ocenianie zaczyna tam, gdzie kliknąłeś w siatce.
+    @State private var focusID: String?
 
     enum Mode: String, CaseIterable, Identifiable {
         case grid = "siatka"
@@ -182,12 +188,17 @@ struct RootView: View {
     private func screen(_ mode: Mode) -> some View {
         switch mode {
         case .grid:
-            GridView(library: library, monitor: monitor) { asset in
-                openAt = asset.localIdentifier
-                self.mode = .cull
-            }
-        case .cull: CullView(library: library, startAt: openAt)
-        case .pair: PairView(library: library, similarity: similarity)
+            GridView(
+                library: library,
+                monitor: monitor,
+                onOpen: { asset in
+                    focusID = asset.localIdentifier
+                    self.mode = .cull
+                },
+                focusID: focusID
+            )
+        case .cull: CullView(library: library, focusID: $focusID)
+        case .pair: PairView(library: library, similarity: similarity, focusID: $focusID)
         }
     }
 

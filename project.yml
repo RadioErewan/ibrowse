@@ -37,10 +37,14 @@ targets:
         PRODUCT_BUNDLE_IDENTIFIER: pl.3210.ibrowse
         INFOPLIST_KEY_NSHumanReadableCopyright: ""
         ENABLE_HARDENED_RUNTIME: "NO"
-        # Na Macu uruchamiamy lokalnie, więc podpis doraźny wystarczy.
-        CODE_SIGN_IDENTITY: "-"
-        CODE_SIGNING_REQUIRED: "NO"
-        CODE_SIGNING_ALLOWED: "NO"
+        # Podpisujemy prawdziwym certyfikatem, choć aplikacja nie opuszcza tego
+        # komputera. Powód jest jeden: **Pełny dostęp do dysku**. Zgoda TCC
+        # zapamiętuje tożsamość podpisu, a podpis doraźny zmienia się przy każdej
+        # kompilacji — trzeba by nadawać uprawnienie po każdej przebudowie.
+        CODE_SIGN_STYLE: Manual
+        CODE_SIGN_IDENTITY: "Apple Development"
+        DEVELOPMENT_TEAM: $(IBROWSE_TEAM_ID)
+        PROVISIONING_PROFILE_SPECIFIER: ""
 
   ibrowse-ios:
     type: application

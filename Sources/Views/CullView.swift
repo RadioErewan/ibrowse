@@ -9,8 +9,12 @@ import SwiftUI
 struct CullView: View {
     @ObservedObject var library: PhotoLibrary
 
-    /// Zdjęcie, od którego zacząć — ustawiane dwuklikiem w siatce.
-    var startAt: String?
+    /// Wspólny wskaźnik „gdzie jestem w archiwum", jeden na całą aplikację.
+    ///
+    /// Działa w obie strony: dwuklik w siatce ustawia go i wchodzi tutaj,
+    /// a każdy krok strzałką zapisuje go z powrotem, więc powrót do siatki
+    /// trafia w to samo miejsce zamiast na początek biblioteki.
+    @Binding var focusID: String?
     @Environment(\.modelContext) private var context
     @Query private var reviews: [Review]
 
@@ -18,6 +22,13 @@ struct CullView: View {
     @State private var index = 0
     @State private var filter: Filter = .all
     @State private var showingDeletions = false
+
+    #if os(macOS)
+    @StateObject private var metadata = MetadataIndex()
+    /// Domyślnie otwarty — po to powstał. Zapamiętany, bo przy szybkim
+    /// odsiewie panel bywa zbędny i nie chcę go zamykać przy każdym wejściu.
+    @AppStorage("cull.showingMetadata") private var showingMetadata = true
+    #endif
 
     enum Filter: String, CaseIterable, Identifiable {
         case all = "wszystkie"
@@ -68,28 +79,15 @@ struct CullView: View {
             header
             Divider()
 
-            ZStack {
-                Color.black
-                if let current {
-                    #if os(iOS)
-                    // Na telefonie gest zastępuje klawiaturę: w lewo gorsze,
-                    // w prawo lepsze. Przesuwa tę samą wagę, o ten sam krok.
-                    SwipeCard { direction in
-                        nudge(direction)
-                        step(1)
-                    } content: {
-                        AssetImage(asset: current, library: library)
-                    }
-                    #else
-                    AssetImage(asset: current, library: library)
-                    #endif
-                } else {
-                    ContentUnavailableView(
-                        "Pusto",
-                        systemImage: "photo",
-                        description: Text("Żadne zdjęcie nie pasuje do filtru: \(filter.rawValue)")
-                    )
+            HStack(spacing: 0) {
+                stage
+                #if os(macOS)
+                if showingMetadata {
+                    Divider()
+                    MetadataPanel(asset: current, index: metadata)
+                        .frame(width: 260)
                 }
+                #endif
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
 
@@ -108,17 +106,49 @@ struct CullView: View {
         .onKeyPress(.space) { step(1); return .handled }
         .onKeyPress { press in handle(press.characters) }
         .onChange(of: filter) { _, _ in index = 0 }
-        .task(id: startAt) {
+        // Skacze tylko wtedy, gdy wskaźnik przyszedł z zewnątrz. Bez tego
+        // warunku widok reagowałby na własne zapisy i pętla by się zapętliła.
+        .task(id: focusID) {
             focused = true
-            guard let startAt,
-                  let position = workingSet.firstIndex(where: { $0.localIdentifier == startAt })
+            guard let focusID, focusID != current?.localIdentifier,
+                  let position = workingSet.firstIndex(where: { $0.localIdentifier == focusID })
             else { return }
             index = position
         }
         .sheet(isPresented: $showingDeletions) {
             DeletionReview(library: library, reviews: reviews.filter(\.markedForDeletion))
         }
-        .task(id: index) { prefetchNeighbours() }
+        .task(id: index) {
+            prefetchNeighbours()
+            focusID = current?.localIdentifier
+        }
+    }
+
+    private var stage: some View {
+        ZStack {
+            Color.black
+            if let current {
+                #if os(iOS)
+                // Na telefonie gest zastępuje klawiaturę: w lewo gorsze,
+                // w prawo lepsze. Przesuwa tę samą wagę, o ten sam krok.
+                SwipeCard { direction in
+                    nudge(direction)
+                    step(1)
+                } content: {
+                    AssetImage(asset: current, library: library)
+                }
+                #else
+                AssetImage(asset: current, library: library)
+                #endif
+            } else {
+                ContentUnavailableView(
+                    "Pusto",
+                    systemImage: "photo",
+                    description: Text("Żadne zdjęcie nie pasuje do filtru: \(filter.rawValue)")
+                )
+            }
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
 
     private var header: some View {
@@ -131,6 +161,14 @@ struct CullView: View {
             .frame(maxWidth: 380)
 
             Spacer()
+
+            #if os(macOS)
+            Toggle(isOn: $showingMetadata) {
+                Label("metadane", systemImage: "info.circle")
+            }
+            .toggleStyle(.button)
+            .help("Panel metadanych (klawisz I)")
+            #endif
 
             if markedCount > 0 {
                 Button {
@@ -192,7 +230,7 @@ struct CullView: View {
         #if os(iOS)
         "przesuń w lewo gorsze · w prawo lepsze"
         #else
-        "1–5 ocena · −/+ przesuń · X do usunięcia · ←/→ nawigacja"
+        "1–5 ocena · −/+ przesuń · X do usunięcia · I metadane · ←/→ nawigacja"
         #endif
     }
 
@@ -213,6 +251,11 @@ struct CullView: View {
         case "x", "X":
             toggleDeletion()
             return .handled
+        #if os(macOS)
+        case "i", "I":
+            showingMetadata.toggle()
+            return .handled
+        #endif
         default:
             return .ignored
         }
