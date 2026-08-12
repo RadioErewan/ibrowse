@@ -9,9 +9,11 @@
 // wypełniona do krawędzi, bo maskę zaokrąglenia nakłada system. Ten sam plik
 // wrzucony w oba miejsca daje albo ikonę w ramce, albo ikonę przyciętą.
 //
-// „udział" to część szerokości zajmowana przez sam kafelek (domyślnie 0.86).
-// Stąd bierze się kadr dla iOS. Jeśli ikona na telefonie ma za dużo białego
-// marginesu — podnieś; jeśli obcina narożniki — obniż.
+// „udział" to część szerokości źródła zajmowana przez sam kafelek — stąd
+// bierze się kadr dla iOS. Uwaga na kierunek: **większy udział to szerszy
+// kadr, czyli mniejszy kafelek**. Za dużo białego marginesu na telefonie —
+// obniż; obcięte narożniki — podnieś. Domyślne 0.835 zmierzone na rysunku
+// z sierpnia 2026.
 
 import AppKit
 import CoreGraphics
@@ -19,7 +21,7 @@ import Foundation
 
 let arguments = CommandLine.arguments
 let sourcePath = arguments.count >= 2 ? arguments[1] : "Resources/icon-source.png"
-let tileShare = arguments.count >= 3 ? Double(arguments[2]) ?? 0.86 : 0.86
+let tileShare = arguments.count >= 3 ? Double(arguments[2]) ?? 0.835 : 0.835
 
 guard FileManager.default.fileExists(atPath: sourcePath) else {
     print("""

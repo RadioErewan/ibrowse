@@ -5,3 +5,5 @@ Local.xcconfig
 *.xcodeproj/
 Generated/
 .DS_Store
+# Affinity zostawia plik blokady, kiedy dokument jest otwarty
+*~lock~
