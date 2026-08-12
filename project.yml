@@ -1,0 +1,74 @@
+name: ibrowse
+configFiles:
+  Debug: Local.xcconfig
+  Release: Local.xcconfig
+
+options:
+  bundleIdPrefix: pl.3210
+  deploymentTarget:
+    macOS: "14.0"
+    iOS: "17.0"
+  createIntermediateGroups: true
+
+settings:
+  base:
+    SWIFT_VERSION: "5.0"
+    SWIFT_STRICT_CONCURRENCY: minimal
+    MARKETING_VERSION: "0.1"
+    CURRENT_PROJECT_VERSION: "1"
+
+targets:
+  ibrowse-mac:
+    type: application
+    platform: macOS
+    sources: [Sources]
+    info:
+      path: Generated/Info-mac.plist
+      properties:
+        CFBundleDisplayName: ibrowse
+        LSMinimumSystemVersion: "14.0"
+        NSHumanReadableCopyright: ""
+        # Bez tego klucza system nie pokaże pytania o dostęp do biblioteki.
+        NSPhotoLibraryUsageDescription: >-
+          ibrowse czyta bibliotekę zdjęć, żeby pozwolić Ci je przeglądać,
+          oceniać i usuwać. Nic nie jest wysyłane poza ten komputer.
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: pl.3210.ibrowse
+        INFOPLIST_KEY_NSHumanReadableCopyright: ""
+        ENABLE_HARDENED_RUNTIME: "NO"
+        # Na Macu uruchamiamy lokalnie, więc podpis doraźny wystarczy.
+        CODE_SIGN_IDENTITY: "-"
+        CODE_SIGNING_REQUIRED: "NO"
+        CODE_SIGNING_ALLOWED: "NO"
+
+  ibrowse-ios:
+    type: application
+    platform: iOS
+    sources: [Sources]
+    info:
+      path: Generated/Info-ios.plist
+      properties:
+        CFBundleDisplayName: ibrowse
+        UILaunchScreen: {}
+        UISupportedInterfaceOrientations:
+          - UIInterfaceOrientationPortrait
+          - UIInterfaceOrientationLandscapeLeft
+          - UIInterfaceOrientationLandscapeRight
+        NSPhotoLibraryUsageDescription: >-
+          ibrowse czyta bibliotekę zdjęć, żeby pozwolić Ci je przeglądać,
+          oceniać i usuwać. Nic nie jest wysyłane poza to urządzenie.
+    settings:
+      base:
+        # Identyfikator musi być unikalny w skali Apple — przy darmowym koncie
+        # kolizja z cudzą aplikacją objawia się odmową rejestracji App ID.
+        PRODUCT_BUNDLE_IDENTIFIER: pl.3210.ibrowse
+        TARGETED_DEVICE_FAMILY: "1,2"
+        # Podpisywanie automatyczne: Xcode sam wyrobi profil dla Personal Team.
+        CODE_SIGN_STYLE: Automatic
+        DEVELOPMENT_TEAM: $(IBROWSE_TEAM_ID)
+        # Podpis jest potrzebny tylko do wejścia na fizyczny telefon.
+        # Symulator ma działać zawsze, także zanim skonfigurujesz Apple ID.
+        "CODE_SIGN_IDENTITY[sdk=iphoneos*]": "Apple Development"
+        "CODE_SIGNING_ALLOWED[sdk=iphonesimulator*]": "NO"
+        "CODE_SIGNING_REQUIRED[sdk=iphonesimulator*]": "NO"

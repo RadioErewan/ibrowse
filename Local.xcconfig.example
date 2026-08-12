@@ -1,0 +1,10 @@
+// Skopiuj do Local.xcconfig i wpisz swój identyfikator zespołu.
+//
+// Gdzie go znaleźć: Xcode → Settings → Accounts → zaznacz swoje Apple ID →
+// kolumna Team pokaże "<Twoje imię> (Personal Team)". Identyfikator to ciąg
+// dziesięciu znaków widoczny po kliknięciu Manage Certificates albo w
+// ~/Library/MobileDevice/Provisioning Profiles po pierwszej instalacji.
+//
+// Na macOS ten plik nie jest potrzebny — tam podpisujemy doraźnie.
+
+IBROWSE_TEAM_ID = XXXXXXXXXX
