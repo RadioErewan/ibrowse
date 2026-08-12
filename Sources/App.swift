@@ -152,7 +152,23 @@ struct RootView: View {
                         .navigationTitle(item.rawValue)
                         .navigationBarTitleDisplayMode(.inline)
                         .toolbar {
+                            // Zakres lat ma własny przycisk, a nie pozycję
+                            // w menu: arkusz otwierany z wnętrza menu mrugał
+                            // i nie pokazywał się, bo dotknięcie zamyka menu
+                            // razem z kotwicą, do której jest przypięty.
+                            ToolbarItem(placement: .topBarLeading) {
+                                if !library.years.isEmpty {
+                                    Button { showingYears = true } label: {
+                                        Label(yearLabel, systemImage: "calendar")
+                                            .labelStyle(.titleAndIcon)
+                                            .font(.caption)
+                                    }
+                                }
+                            }
                             ToolbarItem(placement: .topBarTrailing) { actionsMenu }
+                        }
+                        .sheet(isPresented: $showingYears) {
+                            YearFilter(library: library)
                         }
                 }
                 .tabItem { Label(item.rawValue, systemImage: item.icon) }
@@ -225,9 +241,6 @@ struct RootView: View {
                     }
                 } label: { Label("synchronizuj", systemImage: "arrow.triangle.2.circlepath") }
 
-                Divider()
-                yearRange
-
                 if !similarity.groups.isEmpty {
                     Section("\(similarity.groups.count) serii") { EmptyView() }
                 }
@@ -287,7 +300,8 @@ struct RootView: View {
 }
 
 extension RootView {
-    /// Przycisk otwierający okienko z zakresem lat.
+    /// Przycisk otwierający okienko z zakresem lat. Tylko na Macu — na
+    /// telefonie ten sam wybór żyje jako arkusz przypięty do ekranu.
     @ViewBuilder
     fileprivate var yearRange: some View {
         if !library.years.isEmpty {
