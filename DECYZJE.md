@@ -115,6 +115,20 @@ wychodzi dotychczasowy lider. Wcześniej powrót do siatki lądował na początk
 archiwum. Kafelek dostaje żółtą ramkę, bo samo wyśrodkowanie nic nie mówi,
 gdy wokół są setki podobnych miniatur.
 
+**Pominięcie musi kosztować tyle co ocena.** Na telefonie poziomą oś zabrała
+waga i nie było jak przejść dalej — pierwsze wątpliwe zdjęcie albo zatrzymywało
+pracę, albo dostawało ocenę wymuszoną brakiem wyjścia. Takie oceny zatruwają
+skalę tam, gdzie jest najwrażliwsza. Pion przechodzi dalej i wstecz, a oś
+rozstrzyga **przewaga** jednego kierunku nad drugim, nie sam próg: palec nigdy
+nie idzie prosto i ukośny ruch potrafiłby ocenić i przeskoczyć naraz.
+
+**Nic nie chowa się wewnątrz `Menu` na iOS.** Dotknięcie zamyka menu, a razem
+z nim znika kotwica, do której przypięty jest popover czy arkusz — okienko
+mrugało i nie pokazywało się wcale. Ten sam błąd trafił nas dwa razy, raz
+z `Pickerem`, raz piętro wyżej z filtrem lat. Filtr ma teraz własny przycisk
+na pasku i arkusz przypięty do ekranu, a lata idą pełną listą, bo dwadzieścia
+pozycji w rozwijanym menu ucinało się w połowie.
+
 ## Metadane
 
 Panel boczny w ocenianiu, **tylko macOS** — na telefonie nie ma miejsca i nie
@@ -142,14 +156,34 @@ certyfikatem zamiast doraźnie — TCC zapamiętuje tożsamość podpisu, a podp
 doraźny zmienia się przy każdej kompilacji i uprawnienie trzeba by nadawać
 po każdej przebudowie.
 
+## Ikona
+
+Jeden rysunek, **dwa kadry** — bo platformy chcą czegoś przeciwnego. Na Macu
+ikona sama nosi zaokrąglony kształt i margines wokół niego, bo system niczego
+nie przycina. Na iOS kanwa musi być wypełniona do krawędzi, bo maskę nakłada
+system; ten sam plik dałby tam zaokrąglony kwadracik w białej ramce.
+
+`tools/make-icon.swift` robi komplet z `Resources/icon-source.png`. Uwaga na
+kierunek parametru: **większy udział to szerszy kadr, czyli mniejszy kafelek**.
+Dla tego rysunku wyszło 0,835.
+
+Na Macu pełen komplet od 16 px, nie samo 1024 — małe kafelki widuje się
+częściej niż duże, a skalowane w locie rozmywają się w plamę. Alfę spłaszczamy
+na biało, bo iOS odrzuca ikony z przezroczystością.
+
+Dock i Finder trzymają ikonę w pamięci podręcznej i nie zauważają zmiany
+w pakiecie, więc `install.sh` przerejestrowuje aplikację w LaunchServices.
+
 ## Co czeka
 
-- **Panel metadanych na macOS.** Most zweryfikowany: `PHAsset.localIdentifier`
-  → UUID → `struct.unpack("<qq")` → `assets.rowid` → `ga` → `groups`
-  w `psi.sqlite`. Trafność 38/40. Otwiera 835 920 etykiet, pełny OCR,
-  geolokację i własne słowa kluczowe.
 - **Krok malejący albo Elo** — przy serii 20+ lider wygrywa kilkanaście razy
-  i wychodzi na sufit skali.
+  i wychodzi na sufit skali. Najbliższa realna wada, widoczna od razu przy
+  większych seriach.
+- **Wyszukiwarka po OCR i etykietach.** Indeks jest już otwarty i czytany,
+  brakuje tylko zapytania w drugą stronę: od słowa do zdjęć. Uwaga na skalę
+  — tekst jest zaindeksowany tylko dla 1 756 zdjęć, nie dla całego archiwum.
+- **Metadane w pojedynku** — przy dwóch podobnych klatkach ISO i czas
+  rozstrzygają szybciej niż oko.
 - **Synchronizacja odcisków i stanu serii** — dziś każde urządzenie liczy
   osobno i nie widzi rozstrzygnięć drugiego.
 - **Pasek narzędzi na macOS** — „policz odciski" ucina się do „p…".
