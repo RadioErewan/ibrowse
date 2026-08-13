@@ -1,20 +1,31 @@
 import SwiftUI
 
-/// Ocenianie gestem: w lewo gorsze, w prawo lepsze.
+/// Gesty w trybie oceniania: **w bok przewijasz, w pionie oceniasz**.
 ///
-/// To nie jest sito „zostaw / do kosza", tylko **przesuwanie wagi**. Nigdy nie
-/// odpowiadasz na pytanie „ile to jest warte", tylko „w górę czy w dół względem
-/// tego, co przed chwilą widziałem" — pytanie nieporównywalnie tańsze poznawczo.
-/// Przez wiele podejść archiwum układa się samo, a ocena zawsze jest względem
-/// dzisiejszego gustu, nie tego sprzed sześciu lat.
+/// Pierwsza wersja miała to odwrotnie, z apek randkowych: w lewo gorsze,
+/// w prawo lepsze. Sprawdziło się źle i to nie kwestia gustu — Radek chciał
+/// przewinąć zdjęcie i wystawił mu ocenę. Błąd idzie tu w kosztowną stronę,
+/// bo zostawia w skali wpis, którego nikt nie zamierzał. Pomyłka odwrotna
+/// (chcę ocenić, przewinąłem) nie kosztuje nic.
+///
+/// Trzy powody, dla których ten podział jest właściwy:
+///
+/// - **Częstotliwość.** Przez zdjęcia przechodzi się stale, ocenia rzadziej.
+///   Najczęstsza czynność zasługuje na najbardziej odruchowy gest.
+/// - **Konwencja.** Poziomy swipe to przewijanie w każdej galerii. Apki
+///   randkowe są wyjątkiem, w którym ruch w bok *też* znaczy „następna" —
+///   werdykt jest doklejony do przejścia, nie zastępuje go.
+/// - **Semantyka.** Pion pasuje do wartości: w górę więcej, w dół mniej.
+///   Poziom to oś kolejności.
+///
+/// **Ocena przechodzi dalej za jednym zamachem** — bez tego odsiew kosztowałby
+/// dwa ruchy zamiast jednego i cała szybkość by wyparowała. Zostaje więc
+/// jeden gest na ocenę, a odruchowy ruch w bok jest nieszkodliwy.
 ///
 /// Gest pisze do tej samej `weight`, co klawisze na Macu. Jeden skład, dwa
 /// sposoby wprowadzania.
-///
-/// **W pionie przechodzi się dalej bez oceny.** Pominięcie musi być równie
-/// tanie jak ocena, inaczej pierwsze wątpliwe zdjęcie zatrzymuje całą pracę
-/// albo — gorzej — dostaje ocenę wymuszoną brakiem wyjścia.
 struct SwipeCard<Content: View>: View {
+    /// +1 lepsze, −1 gorsze. Wywołujący sam decyduje, czy przechodzi dalej.
     let onNudge: (Double) -> Void
     /// +1 następne, −1 poprzednie. Bez zapisywania czegokolwiek.
     var onStep: (Int) -> Void = { _ in }
@@ -39,10 +50,8 @@ struct SwipeCard<Content: View>: View {
         content
             .offset(
                 x: isVertical ? 0 : offset.width,
-                y: isVertical ? offset.height : offset.height / 4
+                y: isVertical ? offset.height : 0
             )
-            // Lekki obrót — ruch czytelny kątem oka, bez patrzenia na etykietę.
-            .rotationEffect(.degrees(isVertical ? 0 : offset.width / 28), anchor: .bottom)
             .overlay { verdict }
             .animation(.interactiveSpring(duration: 0.25), value: offset)
             .gesture(
@@ -53,12 +62,13 @@ struct SwipeCard<Content: View>: View {
                         let travelled = vertical ? value.translation.height : value.translation.width
 
                         if abs(travelled) >= commitDistance {
+                            // W obu osiach ruch „do przodu" idzie w stronę
+                            // ujemną: w lewo następne zdjęcie, w górę wyższa
+                            // ocena. Treść jedzie za palcem.
                             if vertical {
-                                // W górę dalej, w dół wstecz — tak jak przewija
-                                // się listę: treść jedzie w stronę ruchu palca.
-                                onStep(travelled < 0 ? 1 : -1)
+                                onNudge(travelled < 0 ? 1 : -1)
                             } else {
-                                onNudge(travelled > 0 ? 1 : -1)
+                                onStep(travelled < 0 ? 1 : -1)
                             }
                         }
                         offset = .zero
@@ -67,16 +77,17 @@ struct SwipeCard<Content: View>: View {
     }
 
     /// Znak i siła zamiaru, zanim puścisz palec — żeby dało się wycofać ruch
-    /// bez konsekwencji.
+    /// bez konsekwencji. Strzałka wskazuje teraz tam, gdzie idzie palec;
+    /// w poprzedniej wersji ruch w prawo pokazywał strzałkę w górę.
     @ViewBuilder
     private var verdict: some View {
         if progress > 0.15 {
             Image(systemName: symbol)
                 .font(.system(size: 64, weight: .semibold))
                 .foregroundStyle(tint)
-                // Pominięcie jest bledsze od oceny celowo: to ruch bez skutku
-                // i nie ma udawać decyzji.
-                .opacity(progress * (isVertical ? 0.7 : 1))
+                // Przewijanie jest bledsze od oceny celowo: to ruch bez
+                // skutku i nie ma udawać decyzji.
+                .opacity(progress * (isVertical ? 1 : 0.7))
                 .scaleEffect(0.7 + 0.3 * progress)
                 .allowsHitTesting(false)
         }
@@ -84,13 +95,13 @@ struct SwipeCard<Content: View>: View {
 
     private var symbol: String {
         if isVertical {
-            return offset.height < 0 ? "chevron.up.circle.fill" : "chevron.down.circle.fill"
+            return offset.height < 0 ? "arrow.up.circle.fill" : "arrow.down.circle.fill"
         }
-        return offset.width > 0 ? "arrow.up.circle.fill" : "arrow.down.circle.fill"
+        return offset.width < 0 ? "chevron.right.circle.fill" : "chevron.left.circle.fill"
     }
 
     private var tint: Color {
-        if isVertical { return .white }
-        return offset.width > 0 ? .green : .orange
+        guard isVertical else { return .white }
+        return offset.height < 0 ? .green : .orange
     }
 }

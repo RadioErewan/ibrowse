@@ -113,8 +113,9 @@ struct CullView: View {
             Color.black
             if let current {
                 #if os(iOS)
-                // Na telefonie gest zastępuje klawiaturę: w lewo gorsze,
-                // w prawo lepsze. Przesuwa tę samą wagę, o ten sam krok.
+                // Na telefonie gest zastępuje klawiaturę: w pionie ocena,
+                // w bok przewijanie. Ocena przesuwa tę samą wagę, o ten sam
+                // krok co `−`/`+` na Macu, i od razu przechodzi dalej.
                 SwipeCard(
                     onNudge: { direction in
                         nudge(direction)
@@ -247,7 +248,7 @@ struct CullView: View {
 
     private var hint: String {
         #if os(iOS)
-        "w bok ocena: lewo gorsze, prawo lepsze · w pionie dalej bez oceny"
+        "w bok przewijasz · w górę lepsze, w dół gorsze"
         #else
         "1–5 ocena · −/+ przesuń · X do usunięcia · I metadane · ←/→ nawigacja"
         #endif

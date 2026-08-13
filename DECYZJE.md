@@ -124,12 +124,24 @@ wychodzi dotychczasowy lider. Wcześniej powrót do siatki lądował na początk
 archiwum. Kafelek dostaje żółtą ramkę, bo samo wyśrodkowanie nic nie mówi,
 gdy wokół są setki podobnych miniatur.
 
-**Pominięcie musi kosztować tyle co ocena.** Na telefonie poziomą oś zabrała
-waga i nie było jak przejść dalej — pierwsze wątpliwe zdjęcie albo zatrzymywało
-pracę, albo dostawało ocenę wymuszoną brakiem wyjścia. Takie oceny zatruwają
-skalę tam, gdzie jest najwrażliwsza. Pion przechodzi dalej i wstecz, a oś
-rozstrzyga **przewaga** jednego kierunku nad drugim, nie sam próg: palec nigdy
-nie idzie prosto i ukośny ruch potrafiłby ocenić i przeskoczyć naraz.
+**W bok przewijasz, w pionie oceniasz.** Pierwsza wersja miała to odwrotnie,
+z apek randkowych — i sprawdziła się źle. Radek chciał przewinąć zdjęcie
+i wystawił mu ocenę. To nie kwestia gustu: **błąd idzie tu w kosztowną
+stronę**, bo zostawia w skali wpis, którego nikt nie zamierzał, a pomyłka
+odwrotna nie kosztuje nic.
+
+Trzy powody, dla których ten podział jest właściwy. **Częstotliwość** —
+przez zdjęcia przechodzi się stale, ocenia rzadziej, więc najczęstsza
+czynność zasługuje na najbardziej odruchowy gest. **Konwencja** — poziomy
+swipe to przewijanie w każdej galerii; apki randkowe są wyjątkiem, w którym
+ruch w bok *też* znaczy „następna", tylko z doklejonym werdyktem.
+**Semantyka** — pion pasuje do wartości (w górę więcej), poziom do kolejności.
+
+Ocena **przechodzi dalej za jednym zamachem**. Bez tego odsiew kosztowałby
+dwa ruchy zamiast jednego i cała szybkość by wyparowała.
+
+Oś rozstrzyga **przewaga** jednego kierunku nad drugim, nie sam próg: palec
+nigdy nie idzie prosto i ukośny ruch potrafiłby ocenić i przeskoczyć naraz.
 
 **Nic nie chowa się wewnątrz `Menu` na iOS.** Dotknięcie zamyka menu, a razem
 z nim znika kotwica, do której przypięty jest popover czy arkusz — okienko
