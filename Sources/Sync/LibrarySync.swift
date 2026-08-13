@@ -158,9 +158,13 @@ final class LibrarySync: ObservableObject {
 
         return others.enumerated()
             .compactMap { position, url in
+                // „czytam", nie „pobieram": pobranie to co najwyżej pierwszy
+                // raz, a rozpakowanie 50 MB odcisków trwa za każdym. Etykieta
+                // sugerująca sieć kazała szukać winy w chmurze, gdy plik od
+                // dawna leżał na dysku.
                 let size = (try? url.resourceValues(forKeys: [.fileSizeKey]).fileSize) ?? 0
                 report(
-                    "pobieram plik \(position + 1) z \(others.count)"
+                    "czytam plik \(position + 1) z \(others.count)"
                     + (size > 0 ? " (\(size / 1_048_576) MB)" : "") + "…"
                 )
                 var payload: SyncFile.Payload?
