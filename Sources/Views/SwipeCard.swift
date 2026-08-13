@@ -74,6 +74,24 @@ struct SwipeCard<Content: View>: View {
         return sign * min(abs(offset.height) * 0.45, 120)
     }
 
+    /// Czy w tę stronę jest jeszcze co pokazywać. Ruch w prawo sięga po
+    /// poprzednie zdjęcie, ruch w lewo po następne.
+    private func atEdge(_ travel: CGFloat) -> Bool {
+        (travel > 0 && previous == nil) || (travel < 0 && next == nil)
+    }
+
+    /// Na krańcach zbioru kadr **idzie na gumce**.
+    ///
+    /// Wcześniej jechał jeden do jednego w czarną pustkę i wracał — wyglądało
+    /// to jak zacięcie, a nie jak koniec. Opór jest tu jedynym uczciwym
+    /// komunikatem: dalej nic nie ma i nie chodzi o siłę gestu.
+    private var horizontalTravel: CGFloat {
+        guard !isCommitting else { return offset.width }
+        guard atEdge(offset.width) else { return offset.width }
+        let sign: CGFloat = offset.width < 0 ? -1 : 1
+        return sign * min(abs(offset.width) * 0.28, 56)
+    }
+
     private var target: Double {
         min(max((weight ?? 2.5) + (offset.height < 0 ? stepValue : -stepValue), 0), 5)
     }
@@ -88,7 +106,7 @@ struct SwipeCard<Content: View>: View {
                 neighbour(next, width: geometry.size.width)
             }
             .offset(
-                x: -step + (isVertical ? 0 : offset.width),
+                x: -step + (isVertical ? 0 : horizontalTravel),
                 y: isVertical ? verticalTravel : 0
             )
             .overlay { verdict }
@@ -126,7 +144,9 @@ struct SwipeCard<Content: View>: View {
                 let vertical = abs(value.translation.height) > abs(value.translation.width)
                 let travelled = vertical ? value.translation.height : value.translation.width
 
-                guard abs(travelled) >= commitDistance else {
+                // Na krańcu nie ma czego zatwierdzać — samo odbicie.
+                guard abs(travelled) >= commitDistance,
+                      vertical || !atEdge(travelled) else {
                     withAnimation(.spring(duration: 0.25)) { offset = .zero }
                     return
                 }
