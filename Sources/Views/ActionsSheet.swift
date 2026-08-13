@@ -45,9 +45,14 @@ struct ActionsSheet: View {
                     }
                     Button {
                         Task {
+                            // Plik **przed** albumami, i to nie jest obojętne.
+                            // Album niesie samą gwiazdkę i przy zasiewie
+                            // stempluje ocenę bieżącym czasem — czyli zawsze
+                            // nowszym niż dokładna waga z pliku. Odwrotna
+                            // kolejność podmieniała 3,75 na okrągłe 4.
+                            await sync.synchronise(context: context, similarity: similarity)
                             _ = albums.pull(into: context)
                             await albums.push(from: context)
-                            await sync.synchronise(context: context, similarity: similarity)
                             folderName = SyncFolder.displayName
                         }
                     } label: {
@@ -55,8 +60,18 @@ struct ActionsSheet: View {
                     }
                     .disabled(folderName == nil || busy)
 
-                    if let note = sync.summary {
-                        Text(note).font(.caption).foregroundStyle(.secondary)
+                    if sync.isWorking {
+                        HStack(spacing: 8) {
+                            ProgressView().controlSize(.small)
+                            Text(sync.stage ?? "pracuję…")
+                                .font(.callout)
+                                .foregroundStyle(.secondary)
+                        }
+                    } else if let note = sync.summary {
+                        Text(note)
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                            .fixedSize(horizontal: false, vertical: true)
                     }
                     Text("Wskaż ten sam folder co na drugim urządzeniu — najlepiej w iCloud Drive. Odciski i oceny przyjadą stamtąd, więc telefon nie musi ich liczyć.")
                         .font(.caption)

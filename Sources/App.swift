@@ -198,7 +198,12 @@ struct RootView: View {
         // na to prawdziwy toolbar, który sam dba o odstępy, przezroczystość
         // przy przewijaniu i zwijanie nadmiaru pozycji. Mniej własnego kodu
         // i mniej obcego wyglądu naraz.
-        screen(mode)
+        VStack(spacing: 0) {
+            screen(mode)
+            StatusStrip(similarity: similarity, sync: sync, albums: albums)
+        }
+        .animation(.easeInOut(duration: 0.2), value: similarity.isWorking)
+        .animation(.easeInOut(duration: 0.2), value: sync.isWorking)
             .toolbar {
                 ToolbarItem(placement: .navigation) {
                     Picker("", selection: $mode) {
@@ -345,9 +350,12 @@ extension RootView {
             Menu {
                 Button {
                     Task {
+                        // Plik przed albumami: album niesie samą gwiazdkę
+                        // i stempluje ją bieżącym czasem, więc puszczony
+                        // pierwszy wygrywałby z dokładną wagą z pliku.
+                        await sync.synchronise(context: context, similarity: similarity)
                         _ = albums.pull(into: context)
                         await albums.push(from: context)
-                        await sync.synchronise(context: context, similarity: similarity)
                     }
                 } label: {
                     Label("synchronizuj teraz", systemImage: "arrow.triangle.2.circlepath")

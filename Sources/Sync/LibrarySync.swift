@@ -25,6 +25,11 @@ final class LibrarySync: ObservableObject {
     @Published private(set) var isWorking = false
     @Published private(set) var summary: String?
 
+    /// Co się właśnie dzieje. Sam kręciołek nie mówi nic, a te etapy trwają
+    /// zauważalnie: pobranie 50 MB z chmury, przeliczenie serii i zapis to
+    /// trzy różne oczekiwania, których nie da się od siebie odróżnić bez nazwy.
+    @Published private(set) var stage: String?
+
     /// Kolejność ma znaczenie i jest tu jedyną nieoczywistą rzeczą.
     ///
     /// Odciski muszą wejść **przed** przeliczeniem serii, a werdykty **po** —
@@ -40,26 +45,34 @@ final class LibrarySync: ObservableObject {
         defer { folder.release() }
 
         isWorking = true
-        defer { isWorking = false }
+        defer { isWorking = false; stage = nil }
 
         // Czytanie idzie poza główny wątek: plik z drugiego urządzenia potrafi
         // mieć 50 MB i przy pierwszym razie musi się dopiero ściągnąć z chmury.
         // Na głównym wątku zamroziłoby to okno na cały ten czas.
         let source = folder.url
         let mine = SyncFolder.fileName
+        let report: @Sendable (String) -> Void = { [weak self] text in
+            Task { @MainActor in self?.stage = text }
+        }
+
+        stage = "szukam plików…"
         let incoming = await Task.detached {
-            Self.readOthers(in: source, excluding: mine)
+            Self.readOthers(in: source, excluding: mine, report: report)
         }.value
+
         var ratings = 0
         var prints = 0
         var verdicts = 0
 
+        stage = "scalam oceny i odciski…"
         for payload in incoming {
             ratings += mergeRatings(payload.ratings, into: context)
             prints += mergePrints(payload.prints, into: context)
         }
 
         if prints > 0 {
+            stage = "przeliczam serie…"
             // Nowe odciski unieważniają cache serii przez `SeriesStamp`,
             // więc to wywołanie faktycznie przelicza grupy, a nie tylko je
             // wczytuje.
@@ -73,15 +86,34 @@ final class LibrarySync: ObservableObject {
         try? context.save()
 
         do {
+            stage = "zapisuję swój plik…"
             try await export(context: context, to: folder.url)
         } catch {
             summary = error.localizedDescription
             return
         }
 
-        summary = incoming.isEmpty
-            ? "Zapisano stan. Nie znalazłem plików z innych urządzeń."
-            : "Wczytano: \(ratings) ocen, \(prints) odcisków, \(verdicts) serii."
+        // Raport pokazuje **obie strony**, nie tylko przyrost. „Wczytano 0"
+        // nie odróżnia „nie znalazłem pliku" od „znalazłem, ale wszystko już
+        // mam" — a to są zupełnie różne sytuacje i tylko jedna jest błędem.
+        if incoming.isEmpty {
+            summary = "Nie znalazłem plików z innych urządzeń. Zapisałem swój."
+        } else {
+            let offered = incoming.reduce(into: (0, 0, 0)) { total, payload in
+                total.0 += payload.ratings.count
+                total.1 += payload.prints.count
+                total.2 += payload.verdicts.count
+            }
+            let names = incoming.map(\.deviceName).joined(separator: ", ")
+            let localPrints = ((try? context.fetch(FetchDescriptor<Fingerprint>())) ?? []).count
+
+            summary = """
+                Z \(incoming.count) pliku (\(names)): \(offered.0) ocen, \
+                \(offered.1) odcisków, \(offered.2) serii.
+                Nowe u mnie: \(ratings) ocen, \(prints) odcisków, \(verdicts) serii.
+                Mam łącznie \(localPrints) odcisków.
+                """
+        }
     }
 
     // MARK: - Czytanie
@@ -96,15 +128,22 @@ final class LibrarySync: ObservableObject {
     /// wyłącznie z iCloud. Koordynator rozmawia z **dowolnym** dostawcą, więc
     /// folder wymiany może równie dobrze leżeć na Google Drive czy OneDrive.
     nonisolated private static func readOthers(
-        in folder: URL, excluding mine: String
+        in folder: URL, excluding mine: String, report: @Sendable (String) -> Void
     ) -> [SyncFile.Payload] {
         let contents = (try? FileManager.default.contentsOfDirectory(
             at: folder, includingPropertiesForKeys: nil
         )) ?? []
 
-        return contents
+        let others = contents
             .filter { $0.pathExtension == SyncFile.fileExtension && $0.lastPathComponent != mine }
-            .compactMap { url in
+
+        return others.enumerated()
+            .compactMap { position, url in
+                let size = (try? url.resourceValues(forKeys: [.fileSizeKey]).fileSize) ?? 0
+                report(
+                    "pobieram plik \(position + 1) z \(others.count)"
+                    + (size > 0 ? " (\(size / 1_048_576) MB)" : "") + "…"
+                )
                 var payload: SyncFile.Payload?
                 var failure: NSError?
                 NSFileCoordinator().coordinate(
