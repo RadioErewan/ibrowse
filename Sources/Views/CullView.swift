@@ -8,6 +8,7 @@ import SwiftUI
 /// archiwum siatka kusi do przewijania, a nie do decydowania.
 struct CullView: View {
     @ObservedObject var library: PhotoLibrary
+    @ObservedObject var filters: Filters
 
     /// Wspólny wskaźnik „gdzie jestem w archiwum", jeden na całą aplikację.
     ///
@@ -20,7 +21,6 @@ struct CullView: View {
 
     @FocusState private var focused: Bool
     @State private var index = 0
-    @State private var filter: Filter = .all
     @State private var showingDeletions = false
 
     #if os(macOS)
@@ -30,33 +30,13 @@ struct CullView: View {
     @AppStorage("cull.showingMetadata") private var showingMetadata = true
     #endif
 
-    enum Filter: String, CaseIterable, Identifiable {
-        case all = "wszystkie"
-        case unrated = "nieocenione"
-        case rated = "ocenione"
-        case marked = "do usunięcia"
-        var id: String { rawValue }
-    }
-
     // MARK: - Zbiór roboczy
 
     private var byID: [String: Review] {
         Dictionary(reviews.map { ($0.assetID, $0) }, uniquingKeysWith: { a, _ in a })
     }
 
-    private var workingSet: [PHAsset] {
-        let index = byID
-        switch filter {
-        case .all:
-            return library.visibleAssets
-        case .unrated:
-            return library.visibleAssets.filter { index[$0.localIdentifier]?.isRated != true }
-        case .rated:
-            return library.visibleAssets.filter { index[$0.localIdentifier]?.isRated == true }
-        case .marked:
-            return library.visibleAssets.filter { index[$0.localIdentifier]?.markedForDeletion == true }
-        }
-    }
+    private var workingSet: [PHAsset] { filters.apply(byID) }
 
     private var current: PHAsset? {
         let set = workingSet
@@ -105,7 +85,11 @@ struct CullView: View {
         .onKeyPress(.rightArrow) { step(1); return .handled }
         .onKeyPress(.space) { step(1); return .handled }
         .onKeyPress { press in handle(press.characters) }
-        .onChange(of: filter) { _, _ in index = 0 }
+        // Zmiana warunków przestawia zbiór pod nogami, więc indeks musi wrócić
+        // na początek — inaczej po zawężeniu lądujesz w przypadkowym miejscu
+        // albo poza zakresem.
+        .onChange(of: filters.standing) { _, _ in index = 0 }
+        .onChange(of: filters.base.count) { _, _ in index = 0 }
         // Skacze tylko wtedy, gdy wskaźnik przyszedł z zewnątrz. Bez tego
         // warunku widok reagowałby na własne zapisy i pętla by się zapętliła.
         .task(id: focusID) {
@@ -146,8 +130,8 @@ struct CullView: View {
             } else {
                 ContentUnavailableView(
                     "Pusto",
-                    systemImage: "photo",
-                    description: Text("Żadne zdjęcie nie pasuje do filtru: \(filter.rawValue)")
+                    systemImage: "line.3.horizontal.decrease.circle",
+                    description: Text("Żadne zdjęcie nie spełnia warunków filtru.")
                 )
             }
         }
@@ -156,8 +140,11 @@ struct CullView: View {
 
     private var header: some View {
         HStack(spacing: 16) {
-            Picker("", selection: $filter) {
-                ForEach(Filter.allCases) { Text($0.rawValue).tag($0) }
+            // Stan oceny zostaje pod ręką, mimo że mieszka teraz w filtrze:
+            // to jedyny warunek, który przestawia się w trakcie pracy, a nie
+            // przed nią. Reszta warunków siedzi w panelu i tam się nie spieszy.
+            Picker("", selection: $filters.standing) {
+                ForEach(Filters.Standing.allCases) { Text($0.rawValue).tag($0) }
             }
             .pickerStyle(.segmented)
             .labelsHidden()

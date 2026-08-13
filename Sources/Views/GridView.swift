@@ -10,6 +10,7 @@ import SwiftUI
 struct GridView: View {
     @ObservedObject var library: PhotoLibrary
     @ObservedObject var monitor: PerfMonitor
+    @ObservedObject var filters: Filters
 
     /// Dwuklik na kafelku wchodzi w ocenianie od tego zdjęcia. To jedyne
     /// zadanie siatki: nawigacja po archiwum i wejście w wybranym miejscu.
@@ -35,12 +36,15 @@ struct GridView: View {
     private let thumbSize: Double = 92
     #endif
 
-    private var ratings: [String: Int] {
-        Dictionary(reviews.map { ($0.assetID, $0.stars) }, uniquingKeysWith: { a, _ in a })
+    private var byID: [String: Review] {
+        Dictionary(reviews.map { ($0.assetID, $0) }, uniquingKeysWith: { a, _ in a })
     }
 
     var body: some View {
-        VStack(spacing: 0) {
+        let reviewIndex = byID
+        let shown = filters.apply(reviewIndex)
+
+        return VStack(spacing: 0) {
             // Pasek pomiarowy i suwak rozmiaru to narzędzia pracy przy
             // dużym ekranie. Na telefonie zabierają jedną trzecią widoku
             // i nie dają nic w zamian — zdjęcia mają zajmować ekran.
@@ -50,7 +54,7 @@ struct GridView: View {
                 Slider(value: $thumbSize, in: 80...280) { Text("rozmiar") }
                     .frame(width: 180)
                 Spacer()
-                PerfOverlay(monitor: monitor, total: library.visibleAssets.count)
+                PerfOverlay(monitor: monitor, total: shown.count)
             }
             .padding(.horizontal, 14)
             .padding(.vertical, 8)
@@ -64,19 +68,28 @@ struct GridView: View {
                         columns: [GridItem(.adaptive(minimum: thumbSize), spacing: 3)],
                         spacing: 3
                     ) {
-                        ForEach(library.visibleAssets, id: \.localIdentifier) { asset in
+                        ForEach(shown, id: \.localIdentifier) { asset in
                             Thumbnail(
                                 asset: asset,
                                 library: library,
                                 monitor: monitor,
                                 side: thumbSize,
-                                rating: ratings[asset.localIdentifier] ?? 0,
+                                rating: reviewIndex[asset.localIdentifier]?.stars ?? 0,
                                 isFocus: asset.localIdentifier == focusID
                             )
                             .onTapGesture(count: 2) { onOpen(asset) }
                         }
                     }
                     .padding(3)
+                }
+                .overlay {
+                    if shown.isEmpty {
+                        ContentUnavailableView(
+                            "Nic nie pasuje",
+                            systemImage: "line.3.horizontal.decrease.circle",
+                            description: Text("Żadne zdjęcie nie spełnia warunków filtru.")
+                        )
+                    }
                 }
                 .task(id: focusID) { await reveal(focusID, using: proxy) }
             }

@@ -18,25 +18,11 @@ final class PhotoLibrary: ObservableObject {
     @Published private(set) var authorization: PHAuthorizationStatus = .notDetermined
     @Published private(set) var assets: [PHAsset] = []
 
-    /// Zakres lat, w którym pracujesz.
-    ///
-    /// Archiwum bywa przefiltrowane nierównomiernie — pierwsze lata są już
-    /// przebrane, a cała robota siedzi w środku puli. Bez tego filtru każde
-    /// wejście zaczyna od najstarszych zdjęć, czyli od materiału zamkniętego.
-    ///
-    /// Filtr dotyczy wyłącznie przeglądania. Odciski liczymy zawsze dla całej
-    /// biblioteki, żeby serie nie urywały się na granicy zakresu.
-    @Published var fromYear: Int = UserDefaults.standard.object(forKey: "library.fromYear") as? Int ?? 0 {
-        didSet { UserDefaults.standard.set(fromYear, forKey: "library.fromYear"); applyFilter() }
-    }
-    @Published var toYear: Int = UserDefaults.standard.object(forKey: "library.toYear") as? Int ?? 9999 {
-        didSet { UserDefaults.standard.set(toYear, forKey: "library.toYear"); applyFilter() }
-    }
-
-    /// Zdjęcia po nałożeniu zakresu lat — to na nich pracują siatka i ocenianie.
-    @Published private(set) var visibleAssets: [PHAsset] = []
-
     /// Lata, w których cokolwiek jest, wraz z liczbą zdjęć.
+    ///
+    /// Sam warunek zawężania mieszka w `Filters` — biblioteka tylko dostarcza
+    /// materiał. Odciski liczymy zawsze dla całości, żeby serie nie urywały
+    /// się na granicy zakresu.
     @Published private(set) var years: [(year: Int, count: Int)] = []
 
     /// Skorowidz po `localIdentifier`. Bez niego każde wyszukanie assetu to
@@ -83,18 +69,6 @@ final class PhotoLibrary: ObservableObject {
             tally[calendar.component(.year, from: date), default: 0] += 1
         }
         years = tally.map { (year: $0.key, count: $0.value) }.sorted { $0.year < $1.year }
-
-        applyFilter()
-    }
-
-    private func applyFilter() {
-        guard fromYear > 0 || toYear < 9999 else { visibleAssets = assets; return }
-        let calendar = Calendar.current
-        visibleAssets = assets.filter { asset in
-            guard let date = asset.creationDate else { return false }
-            let year = calendar.component(.year, from: date)
-            return year >= fromYear && year <= toYear
-        }
     }
 
     /// Najlepszy wariant dostępny **bez sieci**, oddany natychmiast.

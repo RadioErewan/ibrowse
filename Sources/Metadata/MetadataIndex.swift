@@ -45,6 +45,11 @@ struct AssetMetadata: Sendable {
 /// `mode=ro`; jeśli to nie przejdzie (bywa, gdy Zdjęcia nie działają i nie ma
 /// pliku `-shm`), schodzimy na `immutable=1`, który czyta sam plik główny.
 actor MetadataStore {
+    /// Jedno połączenie na aplikację. Panel metadanych i szukanie sięgają do
+    /// tych samych plików, a każde otwarcie to osobny uchwyt do gigabajtowej
+    /// bazy — nie ma powodu trzymać dwóch.
+    static let shared = MetadataStore()
+
     private var search: OpaquePointer?
     private var library: OpaquePointer?
     private var cache: [String: AssetMetadata] = [:]
@@ -75,6 +80,63 @@ actor MetadataStore {
     func currentFailure() -> String? {
         openIfNeeded()
         return failure
+    }
+
+    /// Szukanie w drugą stronę: od słowa do zdjęć.
+    ///
+    /// Przeszukujemy `normalized_string`, bo indeks trzyma tam wersję bez
+    /// znaków diakrytycznych i wielkich liter — „Wąsy" i „wasy" trafiają w to
+    /// samo. Zapytanie składa ten sam zabieg po naszej stronie.
+    ///
+    /// Zwykłe `LIKE` zamiast indeksu pełnotekstowego, który tu leży: 56 tysięcy
+    /// wierszy przelatuje w ćwierć sekundy, a `LIKE '%x%'` znajduje też środek
+    /// słowa, czego indeks przedrostkowy nie potrafi.
+    func search(_ text: String) -> Set<String> {
+        openIfNeeded()
+        guard let search, text.count >= 2 else { return [] }
+
+        let needle = "%" + text.folding(
+            options: [.diacriticInsensitive, .caseInsensitive], locale: nil
+        ) + "%"
+
+        let sql = """
+            SELECT a.uuid_0, a.uuid_1 FROM assets a WHERE a.rowid IN (
+                SELECT ga.assetid FROM groups g JOIN ga ON ga.groupid = g.rowid
+                WHERE g.normalized_string LIKE ?
+            )
+            """
+        var statement: OpaquePointer?
+        guard sqlite3_prepare_v2(search, sql, -1, &statement, nil) == SQLITE_OK else { return [] }
+        defer { sqlite3_finalize(statement) }
+
+        sqlite3_bind_text(
+            statement, 1, needle, -1, unsafeBitCast(-1, to: sqlite3_destructor_type.self)
+        )
+
+        var found = Set<String>()
+        while sqlite3_step(statement) == SQLITE_ROW {
+            found.insert(Self.compose(
+                sqlite3_column_int64(statement, 0), sqlite3_column_int64(statement, 1)
+            ))
+        }
+        return found
+    }
+
+    /// Odwrotność `split`: dwie liczby z powrotem w napis UUID.
+    private static func compose(_ low: Int64, _ high: Int64) -> String {
+        var bytes = [UInt8](repeating: 0, count: 16)
+        var lower = UInt64(bitPattern: low)
+        var upper = UInt64(bitPattern: high)
+        for index in 0..<8 {
+            bytes[index] = UInt8(lower & 0xFF)
+            lower >>= 8
+            bytes[index + 8] = UInt8(upper & 0xFF)
+            upper >>= 8
+        }
+        let hex = bytes.map { String(format: "%02X", $0) }
+        return [hex[0..<4], hex[4..<6], hex[6..<8], hex[8..<10], hex[10..<16]]
+            .map { $0.joined() }
+            .joined(separator: "-")
     }
 
     // MARK: - Otwieranie
@@ -273,7 +335,7 @@ final class MetadataIndex: ObservableObject {
     @Published private(set) var current: AssetMetadata?
     @Published private(set) var failure: String?
 
-    private let store = MetadataStore()
+    private let store = MetadataStore.shared
 
     func load(_ asset: PHAsset?) async {
         guard let asset else { current = nil; return }

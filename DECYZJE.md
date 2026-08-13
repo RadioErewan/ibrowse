@@ -129,6 +129,40 @@ z `Pickerem`, raz piętro wyżej z filtrem lat. Filtr ma teraz własny przycisk
 na pasku i arkusz przypięty do ekranu, a lata idą pełną listą, bo dwadzieścia
 pozycji w rozwijanym menu ucinało się w połowie.
 
+## Filtrowanie
+
+**Jeden zestaw warunków na całą aplikację**, jak wskaźnik miejsca. Wcześniej
+rok siedział w `PhotoLibrary`, a stan oceny w `CullView` — siatka i ocenianie
+pokazywały co innego i przejście między nimi gubiło kontekst.
+
+Warunki idą w dwóch etapach i to jest decyzja o wydajności, nie o porządku.
+**Rok i szukanie** zmieniają się rzadko, więc ich wynik trzymamy policzony.
+**Ocena** zmienia się przy każdym naciśnięciu klawisza, więc jest predykatem
+nakładanym w widoku — przeliczanie 25 tysięcy pozycji po każdej ocenie byłoby
+marnotrawstwem, a zajrzenie do słownika kosztuje tyle co nic.
+
+Szukanie idzie po `normalized_string` w `psi.sqlite`, gdzie Apple trzyma wersję
+bez znaków diakrytycznych i wielkich liter. Zwykłe `LIKE` zamiast leżącego obok
+indeksu pełnotekstowego: 56 tysięcy wierszy przelatuje w ćwierć sekundy,
+a `LIKE '%x%'` znajduje też środek słowa, czego indeks przedrostkowy nie umie.
+Zwłoka 300 ms, żeby nie odpytywać bazy przy każdej literze.
+
+`nil` w zbiorze trafień znaczy „nie szukamy", pusty zbiór — „szukaliśmy i nic
+nie ma". Bez tego rozróżnienia puste pole wyszukiwania kasowałoby cały widok.
+
+**Szukanie po treści działa tylko na Macu.** Indeks leży w pakiecie biblioteki
+na dysku; telefon go nie ma, a przepisywanie 285 tysięcy przypisań przez albumy
+byłoby lekarstwem gorszym od choroby.
+
+Etykieta przycisku wypisuje nałożone warunki (`★4–5 · 2019–2021`), bo filtr
+założony wczoraj i zapomniany wygląda jak zniknięte archiwum.
+
+Licznik liczy na żywo, w otwartym panelu. Bez tego zawężanie zakresu to
+strzelanie w ciemno i zamykanie okna po każdej zmianie, żeby sprawdzić wynik.
+
+**Parowanie filtra nie respektuje** — serie liczone są dla całego archiwum
+i przycięcie ich zakresem rozrywałoby je w połowie.
+
 ## Metadane
 
 Panel boczny w ocenianiu, **tylko macOS** — na telefonie nie ma miejsca i nie

@@ -70,10 +70,11 @@ struct RootView: View {
     @StateObject private var monitor = PerfMonitor()
     @StateObject private var similarity = Similarity()
     @StateObject private var albums = AlbumSync()
+    @StateObject private var filters = Filters()
     @Environment(\.modelContext) private var context
 
     @State private var mode: Mode = .grid
-    @State private var showingYears = false
+    @State private var showingFilters = false
 
     /// Jedno miejsce, w którym stoi praca — wspólne dla wszystkich trybów.
     ///
@@ -122,6 +123,7 @@ struct RootView: View {
             }
         }
         .task { await library.start() }
+        .task(id: library.assets.count) { filters.adopt(library.assets) }
         // Przy zmianie trybu zwalniamy podgrzane renditiony — inaczej
         // przejście z siatki do parowania trzyma w pamięci dwa komplety.
         .onChange(of: mode) { _, _ in library.releaseCache() }
@@ -156,19 +158,11 @@ struct RootView: View {
                             // w menu: arkusz otwierany z wnętrza menu mrugał
                             // i nie pokazywał się, bo dotknięcie zamyka menu
                             // razem z kotwicą, do której jest przypięty.
-                            ToolbarItem(placement: .topBarLeading) {
-                                if !library.years.isEmpty {
-                                    Button { showingYears = true } label: {
-                                        Label(yearLabel, systemImage: "calendar")
-                                            .labelStyle(.titleAndIcon)
-                                            .font(.caption)
-                                    }
-                                }
-                            }
+                            ToolbarItem(placement: .topBarLeading) { filterButton }
                             ToolbarItem(placement: .topBarTrailing) { actionsMenu }
                         }
-                        .sheet(isPresented: $showingYears) {
-                            YearFilter(library: library)
+                        .sheet(isPresented: $showingFilters) {
+                            FilterPanel(library: library, filters: filters)
                         }
                 }
                 .tabItem { Label(item.rawValue, systemImage: item.icon) }
@@ -187,7 +181,7 @@ struct RootView: View {
 
                 fingerprintControl
                 Spacer()
-                yearRange
+                filterButton
                 syncControl
             }
             .padding(.vertical, 8)
@@ -207,13 +201,14 @@ struct RootView: View {
             GridView(
                 library: library,
                 monitor: monitor,
+                filters: filters,
                 onOpen: { asset in
                     focusID = asset.localIdentifier
                     self.mode = .cull
                 },
                 focusID: focusID
             )
-        case .cull: CullView(library: library, focusID: $focusID)
+        case .cull: CullView(library: library, filters: filters, focusID: $focusID)
         case .pair: PairView(library: library, similarity: similarity, focusID: $focusID)
         }
     }
@@ -300,26 +295,47 @@ struct RootView: View {
 }
 
 extension RootView {
-    /// Przycisk otwierający okienko z zakresem lat. Tylko na Macu — na
-    /// telefonie ten sam wybór żyje jako arkusz przypięty do ekranu.
+    /// Jedno wejście do wszystkich warunków. Etykieta mówi, co jest nałożone,
+    /// bo filtr założony wczoraj i zapomniany wygląda jak zniknięte archiwum.
     @ViewBuilder
-    fileprivate var yearRange: some View {
-        if !library.years.isEmpty {
-            Button { showingYears = true } label: {
-                Label(yearLabel, systemImage: "calendar")
-            }
-            .popover(isPresented: $showingYears) {
-                YearFilter(library: library)
-            }
+    fileprivate var filterButton: some View {
+        Button { showingFilters = true } label: {
+            Label(filterLabel, systemImage: filters.isActive
+                  ? "line.3.horizontal.decrease.circle.fill"
+                  : "line.3.horizontal.decrease.circle")
+            #if os(iOS)
+                .font(.caption)
+            #endif
         }
+        #if os(macOS)
+        .popover(isPresented: $showingFilters) {
+            FilterPanel(library: library, filters: filters)
+        }
+        #endif
     }
 
-    fileprivate var yearLabel: String {
-        let from = library.fromYear, to = library.toYear
-        if from <= 0 && to >= 9999 { return "wszystkie lata" }
-        if from > 0 && to >= 9999 { return "od \(String(from))" }
-        if from <= 0 { return "do \(String(to))" }
-        return from == to ? String(from) : "\(String(from))–\(String(to))"
+    fileprivate var filterLabel: String {
+        var parts: [String] = []
+
+        if !filters.query.isEmpty { parts.append("„\(filters.query)”") }
+
+        switch filters.standing {
+        case .all: break
+        case .rated:
+            parts.append(filters.minStars == filters.maxStars
+                         ? "★\(filters.minStars)"
+                         : "★\(filters.minStars)–\(filters.maxStars)")
+        default: parts.append(filters.standing.rawValue)
+        }
+
+        let from = filters.fromYear, to = filters.toYear
+        if from > 0 || to < 9999 {
+            if from > 0 && to >= 9999 { parts.append("od \(String(from))") }
+            else if from <= 0 { parts.append("do \(String(to))") }
+            else { parts.append(from == to ? String(from) : "\(String(from))–\(String(to))") }
+        }
+
+        return parts.isEmpty ? "filtr" : parts.joined(separator: " · ")
     }
 
     /// Synchronizacja jest ręczna i wsadowa. Zapis przez PhotoKit jest wolny,
