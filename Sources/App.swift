@@ -83,6 +83,8 @@ struct RootView: View {
     @StateObject private var similarity = Similarity()
     @StateObject private var albums = AlbumSync()
     @StateObject private var filters = Filters()
+    @StateObject private var sync = LibrarySync()
+    @State private var choosingFolder = false
     @Environment(\.modelContext) private var context
 
     @State private var mode: Mode = .grid
@@ -343,24 +345,75 @@ extension RootView {
 
     /// Synchronizacja jest ręczna i wsadowa. Zapis przez PhotoKit jest wolny,
     /// więc wołanie go po każdej ocenie zabiłoby tempo pracy.
+    ///
+    /// Dwa transporty obok siebie, bo robią co innego. **Albumy** pokazują
+    /// gwiazdki w systemowych Zdjęciach — to jedyny sposób, żeby ocena była
+    /// widoczna poza tą aplikacją. **Plik wymiany** przenosi całą resztę:
+    /// dokładną wagę, liczbę ocen, odciski i stan turniejów.
     @ViewBuilder
     fileprivate var syncControl: some View {
-        if albums.isSyncing {
+        if albums.isSyncing || sync.isWorking {
             ProgressView().controlSize(.small)
         } else {
-            Button {
-                Task {
-                    let seeded = albums.pull(into: context)
-                    await albums.push(from: context)
-                    if seeded > 0 {
-                        print("zasiano \(seeded) ocen z albumów")
+            Menu {
+                Button {
+                    Task {
+                        _ = albums.pull(into: context)
+                        await albums.push(from: context)
+                        await sync.synchronise(context: context, similarity: similarity)
                     }
+                } label: {
+                    Label("synchronizuj teraz", systemImage: "arrow.triangle.2.circlepath")
+                }
+                .disabled(!SyncFolder.isChosen)
+
+                Divider()
+
+                Button {
+                    chooseFolder()
+                } label: {
+                    Label(
+                        SyncFolder.isChosen ? "zmień folder wymiany…" : "wybierz folder wymiany…",
+                        systemImage: "folder"
+                    )
+                }
+
+                if let name = SyncFolder.displayName {
+                    Text("folder: \(name)")
+                }
+                if let note = sync.summary {
+                    Divider()
+                    Text(note)
                 }
             } label: {
                 Label("synchronizuj", systemImage: "arrow.triangle.2.circlepath")
             }
-            .help("Zapisuje oceny do albumów Photos i wczytuje te z innych urządzeń")
+            #if os(iOS)
+            .fileImporter(
+                isPresented: $choosingFolder, allowedContentTypes: [.folder]
+            ) { result in
+                if case .success(let url) = result { try? SyncFolder.remember(url) }
+            }
+            #endif
         }
+    }
+
+    /// Folder wskazuje użytkownik, bo to jego iCloud Drive i jego dane —
+    /// aplikacja nie ma prawa zakładać, gdzie mają leżeć.
+    fileprivate func chooseFolder() {
+        #if os(macOS)
+        let panel = NSOpenPanel()
+        panel.canChooseDirectories = true
+        panel.canChooseFiles = false
+        panel.allowsMultipleSelection = false
+        panel.prompt = "Wybierz"
+        panel.message = "Folder wymiany — najlepiej w iCloud Drive, żeby jeździł między urządzeniami."
+        if panel.runModal() == .OK, let url = panel.url {
+            try? SyncFolder.remember(url)
+        }
+        #else
+        choosingFolder = true
+        #endif
     }
 }
 

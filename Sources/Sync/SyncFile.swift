@@ -105,49 +105,47 @@ struct SyncFile {
         insertMeta(db, "writtenAt", String(payload.writtenAt.timeIntervalSince1970))
         insertMeta(db, "device", payload.deviceName)
 
-        for rating in payload.ratings {
-            let sql = "INSERT OR REPLACE INTO rating VALUES(?,?,?,?,?,?)"
-            withStatement(db, sql) { statement in
-                bind(statement, 1, rating.assetID)
-                sqlite3_bind_double(statement, 2, rating.weight)
-                sqlite3_bind_int(statement, 3, rating.isRated ? 1 : 0)
-                sqlite3_bind_int(statement, 4, Int32(rating.judgements))
-                sqlite3_bind_int(statement, 5, rating.markedForDeletion ? 1 : 0)
-                sqlite3_bind_double(statement, 6, rating.updatedAt.timeIntervalSince1970)
-            }
+        // Zapytanie kompilujemy **raz na tabelę**, nie raz na wiersz.
+        // Pierwsza wersja przygotowywała je w pętli i zapis 25 tysięcy
+        // odcisków trwał pół minuty — to nie dysk był wąskim gardłem, tylko
+        // dwadzieścia pięć tysięcy kompilacji tego samego SQL-a.
+        repeating(db, "INSERT OR REPLACE INTO rating VALUES(?,?,?,?,?,?)", payload.ratings) {
+            statement, rating in
+            bind(statement, 1, rating.assetID)
+            sqlite3_bind_double(statement, 2, rating.weight)
+            sqlite3_bind_int(statement, 3, rating.isRated ? 1 : 0)
+            sqlite3_bind_int(statement, 4, Int32(rating.judgements))
+            sqlite3_bind_int(statement, 5, rating.markedForDeletion ? 1 : 0)
+            sqlite3_bind_double(statement, 6, rating.updatedAt.timeIntervalSince1970)
         }
 
-        for print in payload.prints {
-            let sql = "INSERT OR REPLACE INTO print VALUES(?,?,?)"
-            withStatement(db, sql) { statement in
-                bind(statement, 1, print.assetID)
-                _ = print.vector.withUnsafeBytes { raw in
-                    sqlite3_bind_blob(
-                        statement, 2, raw.baseAddress, Int32(print.vector.count),
-                        unsafeBitCast(-1, to: sqlite3_destructor_type.self)
-                    )
-                }
-                sqlite3_bind_double(statement, 3, print.takenAt.timeIntervalSince1970)
+        repeating(db, "INSERT OR REPLACE INTO print VALUES(?,?,?)", payload.prints) {
+            statement, print in
+            bind(statement, 1, print.assetID)
+            _ = print.vector.withUnsafeBytes { raw in
+                sqlite3_bind_blob(
+                    statement, 2, raw.baseAddress, Int32(print.vector.count),
+                    unsafeBitCast(-1, to: sqlite3_destructor_type.self)
+                )
             }
+            sqlite3_bind_double(statement, 3, print.takenAt.timeIntervalSince1970)
         }
 
-        for verdict in payload.verdicts {
-            let sql = "INSERT OR REPLACE INTO verdict VALUES(?,?,?,?,?)"
-            withStatement(db, sql) { statement in
-                bind(statement, 1, verdict.key)
-                if let resolved = verdict.resolvedAt {
-                    sqlite3_bind_double(statement, 2, resolved.timeIntervalSince1970)
-                } else {
-                    sqlite3_bind_null(statement, 2)
-                }
-                sqlite3_bind_int(statement, 3, verdict.wasRejected ? 1 : 0)
-                if let champion = verdict.championID {
-                    bind(statement, 4, champion)
-                } else {
-                    sqlite3_bind_null(statement, 4)
-                }
-                sqlite3_bind_int(statement, 5, Int32(verdict.challengerIndex))
+        repeating(db, "INSERT OR REPLACE INTO verdict VALUES(?,?,?,?,?)", payload.verdicts) {
+            statement, verdict in
+            bind(statement, 1, verdict.key)
+            if let resolved = verdict.resolvedAt {
+                sqlite3_bind_double(statement, 2, resolved.timeIntervalSince1970)
+            } else {
+                sqlite3_bind_null(statement, 2)
             }
+            sqlite3_bind_int(statement, 3, verdict.wasRejected ? 1 : 0)
+            if let champion = verdict.championID {
+                bind(statement, 4, champion)
+            } else {
+                sqlite3_bind_null(statement, 4)
+            }
+            sqlite3_bind_int(statement, 5, Int32(verdict.challengerIndex))
         }
         exec(db, "COMMIT")
         sqlite3_close(db)
@@ -218,6 +216,24 @@ struct SyncFile {
         sqlite3_bind_text(
             statement, index, value, -1, unsafeBitCast(-1, to: sqlite3_destructor_type.self)
         )
+    }
+
+    /// Jedna kompilacja zapytania, wiele wykonań. `sqlite3_reset` czyści stan
+    /// po kroku, a powiązania i tak nadpisujemy przy następnym wierszu.
+    private static func repeating<Row>(
+        _ db: OpaquePointer?, _ sql: String, _ rows: [Row],
+        _ bindRow: (OpaquePointer?, Row) -> Void
+    ) {
+        guard !rows.isEmpty else { return }
+        var statement: OpaquePointer?
+        guard sqlite3_prepare_v2(db, sql, -1, &statement, nil) == SQLITE_OK else { return }
+        defer { sqlite3_finalize(statement) }
+
+        for row in rows {
+            bindRow(statement, row)
+            sqlite3_step(statement)
+            sqlite3_reset(statement)
+        }
     }
 
     private static func withStatement(
