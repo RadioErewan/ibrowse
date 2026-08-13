@@ -212,6 +212,68 @@ strzelanie w ciemno i zamykanie okna po każdej zmianie, żeby sprawdzić wynik.
 **Parowanie filtra nie respektuje** — serie liczone są dla całego archiwum
 i przycięcie ich zakresem rozrywałoby je w połowie.
 
+## Synchronizacja
+
+Transportem jest **plik w folderze wskazanym przez użytkownika**, zwykle
+w iCloud Drive. CloudKit i własny kontener iCloud wymagają płatnego konta.
+Zwykły folder synchronizuje się sam, nic nie kosztuje i jest widoczny — można
+tam zajrzeć, skopiować, usunąć. Odczyt idzie przez `NSFileCoordinator`, więc
+działa też z Google Drive i OneDrive, nie tylko z iCloud.
+
+**Jeden plik na urządzenie, nigdy wspólny.** Do wspólnego pisałyby oba naraz,
+a chmura rozstrzyga takie zapisy kopiami konfliktowymi. Przy podziale per
+urządzenie konflikt nie ma jak powstać; scalanie dzieje się przy czytaniu.
+
+Format to SQLite: 25 tysięcy wektorów to 39 MB danych binarnych, które w JSON
+urosłyby o jedną trzecią. Zapytania kompilujemy raz na tabelę — wersja
+z kompilacją per wiersz zapisywała plik pół minuty.
+
+### `localIdentifier` nie jest wspólny między urządzeniami
+
+To był najdroższy błąd tego projektu i wyszedł tylko dlatego, że raport
+pokazywał liczby: telefon zgłosił **32 819 odcisków przy 24 984 zdjęciach**.
+7 835 własnych plus 24 984 z Maca, bez ani jednego trafienia we wspólne
+zdjęcie.
+
+`PHAsset.localIdentifier` jest lokalny — nazwa nie kłamie. To samo zdjęcie
+z tej samej biblioteki iCloud ma inny identyfikator na Macu i na telefonie.
+**`PHCloudIdentifier`** jest tym, czym `localIdentifier` nie jest, i Apple
+dodało go dokładnie do tego zadania. Plik wymiany nosi wyłącznie takie
+identyfikatory; każde urządzenie tłumaczy je na swoje przy zapisie i odczycie,
+jednym mapowaniem odwracanym w pamięci.
+
+Dotyczy to również **kluczy serii**: klucz to skład grupy, czyli identyfikatory
+zdjęć — a więc dokładnie ta rzecz, która się różni. Ta sama pułapka, drugi raz,
+piętro wyżej.
+
+### Reguły scalania
+
+- **Odciski** — bierzemy brakujące. Vision jest deterministyczny, więc cudzy
+  wektor jest tak samo dobry jak własny. To największy zysk: telefon nie mieli
+  25 tysięcy zdjęć, skoro Mac już to zrobił.
+- **Oceny** — wygrywa nowsza. Przy przepisywaniu cudzej decyzji zapisujemy
+  wprost, nie przez `set()`, bo tamto policzyłoby cudzą pracę jako własną.
+- **Serie** — po składzie grupy. Zmiana czułości sama unieważnia stare werdykty.
+
+**Plik przed albumami, nie po.** Album niesie samą gwiazdkę i stempluje ją
+bieżącym czasem, więc puszczony pierwszy wygrywa z dokładną wagą z pliku
+i podmienia 3,75 na okrągłe 4.
+
+**Rozstrzygnięcia serii muszą przeżyć przeliczenie grup.** Przebudowa kasowała
+serie razem z całą pracą turniejową, a dzieje się przy każdym nowym odcisku
+i każdym ruchu suwakiem czułości — wystarczyło zsynchronizować urządzenia, żeby
+stracić wszystkie pojedynki. Werdykt przenosimy po kluczu składu.
+
+**Sprzątanie sierot** przy każdej synchronizacji: odciski i serie wskazujące
+na nieistniejące zdjęcia. Powstają zwyczajnie po skasowaniu zdjęcia,
+a nadzwyczajnie — po błędzie takim jak ten powyżej.
+
+### Raport pokazuje obie strony
+
+„Wczytano 0" nie odróżnia „nie znalazłem pliku" od „znalazłem, ale wszystko już
+mam". Raport podaje, ile plik oferował, ile z tego było nowe i ile jest łącznie
+— i to właśnie ta trzecia liczba ujawniła błąd z identyfikatorami.
+
 ## Metadane
 
 Panel boczny w ocenianiu, **tylko macOS** — na telefonie nie ma miejsca i nie
@@ -299,9 +361,6 @@ To osobne narzędzie z tej samej rodziny. Zapisane jako pomysł, nie zaczęte.
 
 ## Co czeka
 
-- **Synchronizacja odcisków i stanu serii** — priorytet. Oceny jeżdżą przez
-  albumy, ale odciski i rozstrzygnięcia serii nie: każde urządzenie liczy
-  osobno i nie widzi pracy drugiego.
 - **Metadane w pojedynku** — przy dwóch podobnych klatkach ISO i czas
   rozstrzygają szybciej niż oko.
 - **Konwersja do HEIC przed importem** — osobne narzędzie, opisane wyżej.
