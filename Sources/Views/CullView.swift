@@ -67,24 +67,50 @@ struct CullView: View {
 
     var body: some View {
         VStack(spacing: 0) {
+            #if os(iOS)
             header
             Divider()
+            #endif
 
-            HStack(spacing: 0) {
-                stage
-                #if os(macOS)
-                if showingMetadata {
-                    Divider()
-                    MetadataPanel(asset: current, index: metadata)
-                        .frame(width: 260)
-                }
-                #endif
-            }
-            .frame(maxWidth: .infinity, maxHeight: .infinity)
-
-            Divider()
+            stage
             footer
         }
+        #if os(macOS)
+        // Natywny inspektor zamiast własnej kolumny z kreską: sam rysuje
+        // przegrodę, pamięta szerokość, daje się przeciągać i chowa się tak
+        // samo jak w każdej innej aplikacji systemu.
+        .inspector(isPresented: $showingMetadata) {
+            MetadataPanel(asset: current, index: metadata)
+                .inspectorColumnWidth(min: 220, ideal: 280, max: 420)
+        }
+        .toolbar {
+            ToolbarItemGroup(placement: .principal) {
+                Picker("", selection: $filters.standing) {
+                    ForEach(Filters.Standing.allCases) { Text($0.rawValue).tag($0) }
+                }
+                .pickerStyle(.segmented)
+                .labelsHidden()
+                .frame(width: 340)
+
+                if markedCount > 0 {
+                    Button {
+                        showingDeletions = true
+                    } label: {
+                        Label("\(markedCount) do usunięcia", systemImage: "trash")
+                    }
+                    .tint(.red)
+                }
+            }
+            ToolbarItem(placement: .primaryAction) {
+                Button {
+                    showingMetadata.toggle()
+                } label: {
+                    Label("metadane", systemImage: "sidebar.trailing")
+                }
+                .help("Panel metadanych (klawisz I)")
+            }
+        }
+        #endif
         .focusable()
         .focusEffectDisabled()
         // `.focusable()` pozwala przyjąć focus, ale go nie nadaje. Przy
@@ -162,6 +188,10 @@ struct CullView: View {
         .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
 
+    /// Nagłówek istnieje tylko na telefonie. Na Macu te same przełączniki
+    /// siedzą w belce tytułowej, gdzie należą — własny pasek pod tytułem był
+    /// wzorcem z Windows i to on najmocniej zdradzał obce pochodzenie okna.
+    #if os(iOS)
     private var header: some View {
         HStack(spacing: 16) {
             // Stan oceny zostaje pod ręką, mimo że mieszka teraz w filtrze:
@@ -176,14 +206,6 @@ struct CullView: View {
 
             Spacer()
 
-            #if os(macOS)
-            Toggle(isOn: $showingMetadata) {
-                Label("metadane", systemImage: "info.circle")
-            }
-            .toggleStyle(.button)
-            .help("Panel metadanych (klawisz I)")
-            #endif
-
             if markedCount > 0 {
                 Button {
                     showingDeletions = true
@@ -197,6 +219,7 @@ struct CullView: View {
         .padding(.horizontal, 14)
         .padding(.vertical, 10)
     }
+    #endif
 
     @ViewBuilder
     private var footer: some View {
@@ -237,6 +260,10 @@ struct CullView: View {
         }
         .padding(.horizontal, 14)
         .padding(.vertical, 10)
+        // Materiał paska zamiast kreski. Systemowe aplikacje oddzielają
+        // dolny pasek tłem, nie linią — kreska nad stopką to kolejny
+        // drobiazg, który czytało się jako obcy.
+        .background(.bar)
         #endif
     }
 

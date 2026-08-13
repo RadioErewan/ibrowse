@@ -8,10 +8,22 @@ struct IbrowseApp: App {
     var body: some Scene {
         WindowGroup {
             RootView()
+                // Ciemno **zawsze**, nie za systemem.
+                //
+                // To nie jest kwestia gustu: jasne otoczenie sprawia, że
+                // zdjęcie wydaje się ciemniejsze i mniej kontrastowe, niż
+                // jest naprawdę. Aplikacja do oceniania zdjęć w jasnym
+                // interfejsie kłamie o materiale, na podstawie którego
+                // podejmujesz decyzje. Lightroom, Capture One i Bridge są
+                // ciemne z tego samego powodu.
+                .preferredColorScheme(.dark)
         }
         .modelContainer(container)
         #if os(macOS)
-        .windowStyle(.hiddenTitleBar)
+        // Belka tytułowa zostaje widoczna, bo teraz **coś w niej jest**.
+        // Przy ukrytej toolbar nie ma się w co wpiąć i sterowanie znów
+        // wylądowałoby we własnym pasku pod spodem.
+        .windowToolbarStyle(.unified(showsTitle: false))
         #endif
     }
 
@@ -170,27 +182,34 @@ struct RootView: View {
             }
         }
         #else
-        VStack(spacing: 0) {
-            HStack(spacing: 14) {
-                Picker("", selection: $mode) {
-                    ForEach(Mode.allCases) { Text($0.rawValue).tag($0) }
+        // Sterowanie idzie do **belki tytułowej**, nie pod nią.
+        //
+        // Wcześniej był tu własny poziomy pasek z `HStack` i kreską pod
+        // spodem — wzorzec z Windows i GTK, przyklejony pod tytułem. macOS ma
+        // na to prawdziwy toolbar, który sam dba o odstępy, przezroczystość
+        // przy przewijaniu i zwijanie nadmiaru pozycji. Mniej własnego kodu
+        // i mniej obcego wyglądu naraz.
+        screen(mode)
+            .toolbar {
+                ToolbarItem(placement: .navigation) {
+                    Picker("", selection: $mode) {
+                        ForEach(Mode.allCases) { Text($0.rawValue).tag($0) }
+                    }
+                    .pickerStyle(.segmented)
+                    .labelsHidden()
+                    .frame(width: 260)
                 }
-                .pickerStyle(.segmented)
-                .labelsHidden()
-                .frame(maxWidth: 300)
-
-                fingerprintControl
-                Spacer()
-                filterButton
-                syncControl
+                ToolbarItemGroup(placement: .primaryAction) {
+                    fingerprintControl
+                    filterButton
+                    syncControl
+                }
             }
-            .padding(.vertical, 8)
-            .padding(.horizontal, 14)
-
-            Divider()
-
-            screen(mode)
-        }
+            // Nieprzezroczysta belka. Domyślnie treść przenika pod toolbar,
+            // co przy zwykłym widoku wygląda dobrze, ale przy inspektorze
+            // dawało kaszę: pierwsze wiersze metadanych mieszały się
+            // z przyciskami.
+            .toolbarBackground(.visible, for: .windowToolbar)
         #endif
     }
 
@@ -247,49 +266,33 @@ struct RootView: View {
 
     /// Liczenie odcisków jest jawną, jednorazową operacją — nie chcę, żeby
     /// aplikacja po cichu mieliła całe archiwum przy pierwszym starcie.
+    ///
+    /// W belce zostaje **sama akcja**. Czułość grupowania i liczba serii to
+    /// ustawienia jednego trybu, nie polecenia — wisiały tu przez cały czas,
+    /// także w siatce, gdzie nie znaczą nic. Belka robiła się od tego wysoka
+    /// i zatłoczona, a inspektor wjeżdżał pod ten gąszcz.
     @ViewBuilder
     private var fingerprintControl: some View {
         if similarity.isWorking {
             HStack(spacing: 8) {
                 ProgressView(value: Double(similarity.progress),
                              total: Double(max(similarity.total, 1)))
-                    .frame(width: 130)
+                    .frame(width: 110)
                 Text("\(similarity.progress) / \(similarity.total)")
                     .font(.caption.monospacedDigit())
                     .foregroundStyle(.secondary)
             }
         } else {
-            HStack(spacing: 10) {
-                Button {
-                    Task {
-                        await similarity.computeFingerprints(
-                            for: library.assets, library: library, context: context
-                        )
-                    }
-                } label: {
-                    Label("policz odciski", systemImage: "wand.and.stars")
+            Button {
+                Task {
+                    await similarity.computeFingerprints(
+                        for: library.assets, library: library, context: context
+                    )
                 }
-
-                if !similarity.groups.isEmpty {
-                    Divider().frame(height: 16)
-
-                    // Próg pod ręką, bo dobra wartość zależy od tego, co się
-                    // fotografuje — serie startów samolotu rozjeżdżają się
-                    // znacznie bardziej niż kilka ujęć tego samego drzewa.
-                    Text("czułość")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                    Slider(value: $similarity.threshold, in: 0.25...0.75, step: 0.01)
-                        .frame(width: 120)
-                    Text(String(format: "%.2f", similarity.threshold))
-                        .font(.caption.monospacedDigit())
-                        .foregroundStyle(.secondary)
-                    Text("· \(similarity.groups.count) serii")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                    RejectionRate()
-                }
+            } label: {
+                Label("policz odciski", systemImage: "wand.and.stars")
             }
+            .help("Liczy odciski wizualne dla całej biblioteki")
         }
     }
 }
@@ -361,23 +364,6 @@ extension RootView {
     }
 }
 
-/// Ile serii odrzuciłeś jako przypadkowe. Wysoki odsetek znaczy, że czułość
-/// jest za wysoka i algorytm skleja rzeczy, które nie mają ze sobą nic wspólnego.
-private struct RejectionRate: View {
-    @Query private var series: [Series]
-
-    var body: some View {
-        let judged = series.filter { $0.resolvedAt != nil }
-        let rejected = judged.filter(\.wasRejected).count
-        if judged.count >= 5 {
-            let ratio = Double(rejected) / Double(judged.count)
-            Text("· \(rejected)/\(judged.count) odrzuconych")
-                .font(.caption)
-                .foregroundStyle(ratio > 0.3 ? .orange : .secondary)
-                .help(ratio > 0.3 ? "Wysoki odsetek — spróbuj obniżyć czułość" : "")
-        }
-    }
-}
 
 private struct Permission: View {
     let title: String

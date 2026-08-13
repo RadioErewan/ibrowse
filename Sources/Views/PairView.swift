@@ -173,6 +173,23 @@ struct PairView: View {
 
             Spacer()
 
+            // Czułość grupowania mieszka tutaj, a nie w belce okna: dotyczy
+            // wyłącznie tego trybu, a wisząc globalnie zaśmiecała widok także
+            // w siatce, gdzie nie znaczy nic. Dobra wartość zależy od tego, co
+            // się fotografuje — serie startów samolotu rozjeżdżają się znacznie
+            // bardziej niż kilka ujęć tego samego drzewa.
+            Text("czułość")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+            Slider(value: $similarity.threshold, in: 0.25...0.75, step: 0.01)
+                .frame(width: 110)
+            Text(String(format: "%.2f", similarity.threshold))
+                .font(.caption.monospacedDigit())
+                .foregroundStyle(.secondary)
+            RejectionRate()
+
+            Divider().frame(height: 14)
+
             Stepper(value: $minimumSize, in: 2...12) {
                 Text("od \(minimumSize) zdjęć")
                     .font(.caption)
@@ -287,5 +304,23 @@ struct PairView: View {
             upcoming.compactMap { library.asset(id: $0) },
             targetSize: Self.imageSize
         )
+    }
+}
+
+/// Ile serii odrzuciłeś jako przypadkowe. Wysoki odsetek znaczy, że czułość
+/// jest za wysoka i algorytm skleja rzeczy, które nie mają ze sobą nic wspólnego.
+struct RejectionRate: View {
+    @Query private var series: [Series]
+
+    var body: some View {
+        let judged = series.filter { $0.resolvedAt != nil }
+        let rejected = judged.filter(\.wasRejected).count
+        if judged.count >= 5 {
+            let ratio = Double(rejected) / Double(judged.count)
+            Text("· \(rejected)/\(judged.count) odrzuconych")
+                .font(.caption)
+                .foregroundStyle(ratio > 0.3 ? .orange : .secondary)
+                .help(ratio > 0.3 ? "Wysoki odsetek — spróbuj obniżyć czułość" : "")
+        }
     }
 }
