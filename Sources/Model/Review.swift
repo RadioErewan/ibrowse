@@ -58,6 +58,58 @@ extension Review {
     }
 }
 
+// MARK: - Pojedynek
+
+extension Review {
+
+    /// Różnica wag, przy której faworyt wygrywa mniej więcej trzy razy na
+    /// cztery. Jeden punkt na skali 0–5 to wyraźnie inna liga, ale nie
+    /// pewniak — i tak to właśnie ma znaczyć.
+    static let duelScale: Double = 1.0
+
+    /// Największa możliwa zmiana z jednego pojedynku, przy zdjęciu jeszcze
+    /// nieoglądanym i przeciwniku o tej samej wadze.
+    static let duelStep: Double = 0.5
+
+    /// Malejący krok: zdjęcie oglądane dwadzieścia razy ma już ustaloną
+    /// pozycję i nie powinno skakać po jednym pojedynku. Zwykły malejący
+    /// współczynnik uczenia — im więcej wiadomo, tym ostrożniejsza poprawka.
+    ///
+    /// Swipe świadomie **tego nie używa**: tam decydujesz wprost i chcesz,
+    /// żeby ruch był ruchem, a nie negocjacją z historią.
+    private var learningRate: Double {
+        Self.duelStep / (1 + Double(judgements) / 10)
+    }
+
+    /// Rozstrzyga pojedynek, przesuwając obie wagi wedle **zaskoczenia**.
+    ///
+    /// Stały krok psuł się przy dużych seriach na dwa sposoby naraz.
+    /// Zwycięzca w serii 22 zdjęć wygrywał 21 razy po 0,25 i wychodził na
+    /// sufit skali. A przegrany tracił zawsze tyle samo, więc „przegrało
+    /// z najlepszym w serii" i „przegrało z byle czym" trafiały do składu
+    /// jako ta sama liczba — cichszy błąd i groźniejszy, bo niewidoczny.
+    ///
+    /// Tutaj wygrana z równym sobie daje pełny krok, a z wyraźnie słabszym
+    /// prawie nic: od faworyta oczekuje się wygranej, więc niczego nowego
+    /// nie wnosi. Lider przestaje zarabiać w miarę wzrostu, więc **sufit
+    /// znika sam** — bez sztucznego ograniczania. Symetrycznie przegrana
+    /// z liderem kosztuje grosze, a z równym boli.
+    static func settleDuel(winner: Review, loser: Review) {
+        let gap = (loser.weight - winner.weight) / duelScale
+        let expected = 1 / (1 + pow(10, gap))
+        let surprise = 1 - expected
+
+        // Stopy uczenia są różne dla obu zdjęć, więc pojedynek nie jest grą
+        // o sumie zerowej. I dobrze: to nie zawody, tylko szacowanie — każda
+        // strona poprawia własne oszacowanie na miarę tego, ile już wie.
+        let up = winner.weight + winner.learningRate * surprise
+        let down = loser.weight - loser.learningRate * surprise
+
+        winner.set(up)
+        loser.set(down)
+    }
+}
+
 extension Review {
     /// Znajduje ocenę albo tworzy pustą. Jedno miejsce zapisu, żeby widoki
     /// nie musiały wiedzieć, czy rekord już istnieje.
@@ -131,6 +183,15 @@ final class Series {
     /// czułości mówi wprost, czy próg jest źle ustawiony. Bez tego rozróżnienia
     /// nie ma z czego wnioskować.
     var wasRejected: Bool = false
+
+    /// Postęp turnieju: kto dotąd wygrywa i który pretendent jest następny.
+    ///
+    /// Wcześniej to były `@State` w widoku, więc wyjście z pojedynku w połowie
+    /// serii kasowało całą pracę. Przy seriach trzyelementowych niewidoczne,
+    /// przy dwudziestu — kosztowne, a to właśnie duże serie są powodem, dla
+    /// którego ten tryb istnieje.
+    var championID: String?
+    var challengerIndex: Int = 1
 
     init(members: [String]) {
         self.members = members

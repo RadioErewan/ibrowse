@@ -70,6 +70,34 @@ zdjęć kosztuje N−1 decyzji zamiast N²/2.
 Widok zawsze podaje **pierwszą nierozstrzygniętą serię** — nie ma indeksu do
 zapamiętywania, wracasz po tygodniu i trafiasz tam, gdzie skończyłeś.
 
+**Wynik pojedynku zależy od zaskoczenia, nie od samego zwycięstwa.**
+Stały krok 0,25 psuł się przy dużych seriach na dwa sposoby naraz. Zwycięzca
+serii 22-elementowej wygrywał 21 razy i wychodził na sufit skali — zmierzone:
+przy stałym kroku każda seria od 12 zdjęć w górę kończy się piątką. Drugi błąd
+był cichszy i groźniejszy: **przegrany tracił zawsze tyle samo**, więc
+„przegrało z najlepszym w serii" i „przegrało z byle czym" trafiały do składu
+jako ta sama liczba.
+
+Wygrana z równym sobie daje pełny krok, z wyraźnie słabszym prawie nic — od
+faworyta oczekuje się wygranej, więc nic nowego się nie dowiadujemy. Lider
+przestaje zarabiać w miarę wzrostu, więc sufit znika sam, bez sztucznego
+ograniczania. Po zmianie: seria 5 → 3,12, seria 22 → 3,60, seria 40 → 3,75.
+
+Do tego **malejący krok od liczby ocen** (`0,5 / (1 + judgements/10)`):
+zdjęcie oglądane dwadzieścia razy ma ustaloną pozycję i nie powinno skakać po
+jednym pojedynku. Swipe świadomie tego nie używa — tam decydujesz wprost
+i ruch ma być ruchem, a nie negocjacją z historią.
+
+Odrzucona alternatywa: przeliczanie serii na miejsca po jej zakończeniu
+(pierwszy dostaje 5, ostatni 1). Niszczy porównywalność między seriami —
+piąte miejsce wśród świetnych zdjęć dostałoby tyle samo, co piąte wśród
+nieudanych.
+
+**Postęp turnieju mieszka w składzie, nie w widoku.** Wcześniej lider
+i numer pretendenta były `@State`, więc wyjście w połowie serii kasowało całą
+pracę. Przy trzech zdjęciach niewidoczne, przy dwudziestu kosztowne — a duże
+serie są powodem, dla którego ten tryb istnieje.
+
 **Odrzucenie serii jest osobne od pominięcia.** Pominięcie znaczy „nie teraz",
 odrzucenie — „algorytm się pomylił". Odsetek odrzuceń mówi wprost, czy próg
 czułości jest źle ustawiony.

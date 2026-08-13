@@ -26,8 +26,6 @@ struct PairView: View {
     @Query private var series: [Series]
 
     @FocusState private var focused: Bool
-    @State private var challengerIndex = 1
-    @State private var champion: String?
 
     /// Od ilu zdjęć seria trafia do parowania.
     ///
@@ -60,10 +58,10 @@ struct PairView: View {
                     description: Text("Policz najpierw odciski wizualne.")
                 )
             } else if let current,
-                      let championID = champion ?? current.members.first,
+                      let championID = current.championID ?? current.members.first,
                       let left = library.asset(id: championID),
-                      current.members.indices.contains(challengerIndex),
-                      let right = library.asset(id: current.members[challengerIndex]) {
+                      current.members.indices.contains(current.challengerIndex),
+                      let right = library.asset(id: current.members[current.challengerIndex]) {
                 comparison(left: left, right: right, series: current)
             } else {
                 ContentUnavailableView(
@@ -94,9 +92,9 @@ struct PairView: View {
         .onKeyPress(.rightArrow) { pick(left: false); return .handled }
         .onKeyPress(.space) { resolveCurrent(); return .handled }
         .onKeyPress(KeyEquivalent("n")) { reject(); return .handled }
-        .task(id: "\(current?.persistentModelID.hashValue ?? 0)-\(challengerIndex)") {
+        .task(id: "\(current?.persistentModelID.hashValue ?? 0)-\(current?.challengerIndex ?? 0)") {
             prefetchAhead()
-            focusID = champion ?? current?.members.first
+            focusID = current?.championID ?? current?.members.first
         }
     }
 
@@ -132,7 +130,7 @@ struct PairView: View {
             HStack(spacing: 8) {
                 Text("\(current.members.count) zdjęć")
                     .font(.subheadline.weight(.semibold))
-                Text("· \(challengerIndex) z \(current.members.count - 1)")
+                Text("· \(current.challengerIndex) z \(current.members.count - 1)")
                     .font(.subheadline)
                     .foregroundStyle(.secondary)
                 Spacer()
@@ -161,7 +159,7 @@ struct PairView: View {
         HStack(spacing: 12) {
             Text("\(current.members.count) zdjęć")
                 .font(.callout.weight(.semibold))
-            Text("pojedynek \(challengerIndex) z \(current.members.count - 1)")
+            Text("pojedynek \(current.challengerIndex) z \(current.members.count - 1)")
                 .font(.callout)
                 .foregroundStyle(.secondary)
 
@@ -237,19 +235,27 @@ struct PairView: View {
 
     private func pick(left: Bool) {
         guard let current,
-              let championID = champion ?? current.members.first,
-              current.members.indices.contains(challengerIndex) else { return }
-        let challengerID = current.members[challengerIndex]
+              let championID = current.championID ?? current.members.first,
+              current.members.indices.contains(current.challengerIndex) else { return }
+        let challengerID = current.members[current.challengerIndex]
 
-        let winner = left ? championID : challengerID
-        let loser = left ? challengerID : championID
+        let winnerID = left ? championID : challengerID
+        let loserID = left ? challengerID : championID
 
-        Review.upsert(assetID: winner, in: context) { $0.nudge(+1) }
-        Review.upsert(assetID: loser, in: context) { $0.nudge(-1) }
+        // Obie oceny muszą istnieć **zanim** policzymy zaskoczenie, bo wynik
+        // pojedynku zależy od obecnych wag. Dwa osobne `nudge` nie dałyby się
+        // tak zestawić.
+        let winner = Review.upsert(assetID: winnerID, in: context) { _ in }
+        let loser = Review.upsert(assetID: loserID, in: context) { _ in }
+        Review.settleDuel(winner: winner, loser: loser)
 
-        champion = winner
-        challengerIndex += 1
-        if challengerIndex >= current.members.count { resolveCurrent() }
+        current.championID = winnerID
+        current.challengerIndex += 1
+        if current.challengerIndex >= current.members.count {
+            resolveCurrent()
+        } else {
+            try? context.save()
+        }
     }
 
     /// Odrzuca zestawienie jako błędne. Zapis idzie do `wasRejected`, dzięki
@@ -259,8 +265,6 @@ struct PairView: View {
         current.wasRejected = true
         current.resolvedAt = .now
         try? context.save()
-        challengerIndex = 1
-        champion = nil
     }
 
     /// Zamyka bieżącą serię — po przejściu turnieju albo na żądanie. Zapis jest
@@ -269,8 +273,6 @@ struct PairView: View {
         guard let current else { return }
         current.resolvedAt = .now
         try? context.save()
-        challengerIndex = 1
-        champion = nil
     }
 
     /// Ściąga z wyprzedzeniem kolejnych pretendentów i początek następnej serii.
@@ -278,7 +280,7 @@ struct PairView: View {
     /// czekania na iCloud.
     private func prefetchAhead() {
         guard let current else { return }
-        var upcoming = Array(current.members.dropFirst(challengerIndex).prefix(4))
+        var upcoming = Array(current.members.dropFirst(current.challengerIndex).prefix(4))
         if pending.count > 1 { upcoming += pending[1].members.prefix(2) }
 
         library.prefetch(
