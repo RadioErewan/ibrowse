@@ -36,6 +36,12 @@ struct SwipeCard<Content: View>: View {
     var previous: PHAsset?
     var next: PHAsset?
 
+    /// Bieżąca waga zdjęcia i krok oceny — po to, żeby w trakcie gestu
+    /// pokazać **konkretny wynik**, a nie samą strzałkę. `nil` znaczy, że
+    /// zdjęcie jest jeszcze nieocenione.
+    var weight: Double?
+    var stepValue: Double = 0.25
+
     @ViewBuilder var content: Content
 
     @State private var offset: CGSize = .zero
@@ -57,6 +63,21 @@ struct SwipeCard<Content: View>: View {
         min(abs(isVertical ? offset.height : offset.width) / commitDistance, 1)
     }
 
+    /// Pion **stawia opór**: zdjęcie daje się pociągnąć, ale nie odjeżdża.
+    ///
+    /// Bez tego oba gesty wyglądały tak samo — kadr wędrował za palcem
+    /// i ruch w górę czytało się jak przewijanie, którym nie jest. Poziom
+    /// zostaje jeden do jednego, bo tam kadr faktycznie ma odjechać.
+    private var verticalTravel: CGFloat {
+        guard !isCommitting else { return offset.height }
+        let sign: CGFloat = offset.height < 0 ? -1 : 1
+        return sign * min(abs(offset.height) * 0.45, 120)
+    }
+
+    private var target: Double {
+        min(max((weight ?? 2.5) + (offset.height < 0 ? stepValue : -stepValue), 0), 5)
+    }
+
     var body: some View {
         GeometryReader { geometry in
             let step = geometry.size.width + gap
@@ -68,7 +89,7 @@ struct SwipeCard<Content: View>: View {
             }
             .offset(
                 x: -step + (isVertical ? 0 : offset.width),
-                y: isVertical ? offset.height : 0
+                y: isVertical ? verticalTravel : 0
             )
             .overlay { verdict }
             .contentShape(Rectangle())
@@ -154,18 +175,49 @@ struct SwipeCard<Content: View>: View {
         }
     }
 
-    /// Znak i siła zamiaru, zanim puścisz palec — żeby dało się wycofać ruch
-    /// bez konsekwencji. Przy ruchu w bok nie ma żadnego znaku: tam mówi sam
-    /// sąsiad wjeżdżający zza krawędzi.
+    /// Zamiar pokazany **konkretną liczbą**, zanim puścisz palec.
+    ///
+    /// Sama strzałka mówiła tylko „w górę", co równie dobrze mogło znaczyć
+    /// przewijanie. Plus i minus mówią „ocena", a docelowa waga mówi ile —
+    /// przy kroku 0,25 to jedyny sposób, żeby wiedzieć, gdzie się właśnie
+    /// wylądowało bez patrzenia w stopkę po fakcie.
+    ///
+    /// Przy ruchu w bok nie ma żadnego znaku: tam mówi sam sąsiad wjeżdżający
+    /// zza krawędzi.
     @ViewBuilder
     private var verdict: some View {
-        if isVertical && progress > 0.15 {
-            Image(systemName: offset.height < 0 ? "arrow.up.circle.fill" : "arrow.down.circle.fill")
-                .font(.system(size: 64, weight: .semibold))
-                .foregroundStyle(offset.height < 0 ? .green : .orange)
-                .opacity(progress)
-                .scaleEffect(0.7 + 0.3 * progress)
-                .allowsHitTesting(false)
+        if isVertical && progress > 0.2 {
+            let better = offset.height < 0
+            let tint: Color = better ? .green : .orange
+            let armed = progress >= 1
+
+            VStack(spacing: 8) {
+                Image(systemName: better ? "plus.circle.fill" : "minus.circle.fill")
+                    .font(.system(size: 52, weight: .semibold))
+
+                Text(weight == nil
+                     ? "pierwsza ocena · \(Self.number(target))"
+                     : "\(Self.number(weight ?? 0)) → \(Self.number(target))")
+                    .font(.callout.weight(.semibold).monospacedDigit())
+            }
+            .foregroundStyle(tint)
+            .padding(.horizontal, 18)
+            .padding(.vertical, 14)
+            .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 18))
+            // Obwódka zapala się dopiero po przekroczeniu progu — to znaczy
+            // „puść, a zapiszę". Poniżej progu gest jeszcze nic nie robi.
+            .overlay {
+                RoundedRectangle(cornerRadius: 18)
+                    .strokeBorder(tint, lineWidth: armed ? 3 : 0)
+            }
+            .opacity(0.55 + 0.45 * progress)
+            .scaleEffect(0.9 + 0.1 * progress)
+            .allowsHitTesting(false)
         }
+    }
+
+    /// Przecinek, nie kropka — to jest liczba czytana po polsku.
+    private static func number(_ value: Double) -> String {
+        String(format: "%.2f", value).replacingOccurrences(of: ".", with: ",")
     }
 }

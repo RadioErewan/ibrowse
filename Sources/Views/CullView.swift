@@ -142,7 +142,9 @@ struct CullView: View {
                     onStep: { step($0) },
                     library: library,
                     previous: neighbour(-1),
-                    next: neighbour(+1)
+                    next: neighbour(+1),
+                    weight: currentReview?.isRated == true ? currentReview?.weight : nil,
+                    stepValue: Review.step
                 ) {
                     AssetImage(asset: current, library: library)
                 }
