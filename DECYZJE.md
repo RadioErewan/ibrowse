@@ -102,16 +102,6 @@ serie są powodem, dla którego ten tryb istnieje.
 odrzucenie — „algorytm się pomylił". Odsetek odrzuceń mówi wprost, czy próg
 czułości jest źle ustawiony.
 
-## Synchronizacja
-
-**Albumy Photos `ibrowse ★1`…`★5`**, nie CloudKit — ten wymaga płatnego konta
-dewelopera. Nie słowa kluczowe, bo PhotoKit ich nie zna.
-
-Przez albumy jeździ **gwiazdka, nie pełna waga**; dwadzieścia albumów po 0,25
-zaśmieciłoby bibliotekę. Wczytywanie **nie nadpisuje** istniejących ocen —
-nie znamy czasu oceny na drugim urządzeniu, więc rozstrzyganie konfliktów
-byłoby zgadywaniem.
-
 ## Miejsce na dysku
 
 PhotoKit **nie ma API do usuwania lokalnych oryginałów**. Sterować można
@@ -213,6 +203,15 @@ strzelanie w ciemno i zamykanie okna po każdej zmianie, żeby sprawdzić wynik.
 i przycięcie ich zakresem rozrywałoby je w połowie.
 
 ## Synchronizacja
+
+Dwa transporty obok siebie, bo robią co innego. **Albumy Photos
+`ibrowse ★1`…`★5`** pokazują gwiazdki w systemowych Zdjęciach — to jedyny
+sposób, żeby ocena była widoczna poza tą aplikacją. Jedzie przez nie
+**gwiazdka, nie pełna waga**: dwadzieścia albumów po 0,25 zaśmieciłoby
+bibliotekę. Słowa kluczowe odpadają, bo PhotoKit ich nie zna.
+
+**Plik wymiany** przenosi całą resztę: dokładną wagę, liczbę ocen, odciski
+i stan turniejów.
 
 Transportem jest **plik w folderze wskazanym przez użytkownika**, zwykle
 w iCloud Drive. CloudKit i własny kontener iCloud wymagają płatnego konta.
