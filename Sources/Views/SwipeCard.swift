@@ -100,16 +100,22 @@ struct SwipeCard<Content: View>: View {
         GeometryReader { geometry in
             let step = geometry.size.width + gap
 
-            HStack(spacing: gap) {
-                neighbour(previous, width: geometry.size.width)
-                content.frame(width: geometry.size.width)
-                neighbour(next, width: geometry.size.width)
+            // Wskaźnik leży **obok** taśmy, nie na niej. Nałożony na taśmę
+            // trzymał się jej układu — a ta jest trzy ekrany szeroka, więc
+            // środek wypadał poza ekranem i nie było go widać.
+            ZStack {
+                HStack(spacing: gap) {
+                    neighbour(previous, width: geometry.size.width)
+                    content.frame(width: geometry.size.width)
+                    neighbour(next, width: geometry.size.width)
+                }
+                .offset(
+                    x: -step + (isVertical ? 0 : horizontalTravel),
+                    y: isVertical ? verticalTravel : 0
+                )
+
+                verdict
             }
-            .offset(
-                x: -step + (isVertical ? 0 : horizontalTravel),
-                y: isVertical ? verticalTravel : 0
-            )
-            .overlay { verdict }
             .contentShape(Rectangle())
             .gesture(drag(step: step, height: geometry.size.height))
         }
