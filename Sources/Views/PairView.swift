@@ -71,16 +71,6 @@ struct PairView: View {
                 )
             }
         }
-        #if os(iOS)
-        .toolbar {
-            ToolbarItem(placement: .bottomBar) {
-                Stepper(value: $minimumSize, in: 2...12) {
-                    Text("serie od \(minimumSize) zdjęć")
-                        .font(.caption)
-                }
-            }
-        }
-        #endif
         .focusable()
         .focusEffectDisabled()
         // `.focusable()` pozwala przyjąć focus, ale go nie nadaje. Przy
@@ -150,6 +140,17 @@ struct PairView: View {
                     .buttonStyle(.bordered)
                     .tint(.orange)
                 Spacer()
+
+                // Próg wielkości serii mieszkał na dolnym pasku systemowym
+                // i chował się pod pływającym paskiem zakładek. To miejsce
+                // należy do systemu, nie do nas — więc kontrolka wraca tam,
+                // gdzie jest używana, do nagłówka parowania.
+                Stepper(value: $minimumSize, in: 2...12) {
+                    Text("od \(minimumSize)")
+                        .font(.caption.monospacedDigit())
+                        .foregroundStyle(.secondary)
+                }
+                .fixedSize()
             }
             .controlSize(.small)
         }
