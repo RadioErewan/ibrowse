@@ -98,26 +98,32 @@ struct SwipeCard<Content: View>: View {
 
     var body: some View {
         GeometryReader { geometry in
-            let step = geometry.size.width + gap
+            let width = geometry.size.width
 
-            // Wskaźnik leży **obok** taśmy, nie na niej. Nałożony na taśmę
-            // trzymał się jej układu — a ta jest trzy ekrany szeroka, więc
-            // środek wypadał poza ekranem i nie było go widać.
-            ZStack {
-                HStack(spacing: gap) {
-                    neighbour(previous, width: geometry.size.width)
-                    content.frame(width: geometry.size.width)
-                    neighbour(next, width: geometry.size.width)
+            // Kolejność jest tu istotna. Taśma z sąsiadami jest **trzy ekrany
+            // szeroka** i dwa razy już narzuciła swój rozmiar temu, co miało
+            // się trzymać ekranu — najpierw nakładce, potem obejmującemu ją
+            // stosowi. Za każdym razem wskaźnik oceny lądował poza widokiem.
+            //
+            // Teraz rozmiar dyktuje tło wielkości ekranu, a taśma jest jego
+            // nakładką: wyśrodkowana, czyli bieżące zdjęcie samo staje na
+            // środku, bez żadnego przesunięcia w spoczynku.
+            Color.black
+                .overlay {
+                    HStack(spacing: gap) {
+                        neighbour(previous, width: width)
+                        content.frame(width: width)
+                        neighbour(next, width: width)
+                    }
+                    .offset(
+                        x: isVertical ? 0 : horizontalTravel,
+                        y: isVertical ? verticalTravel : 0
+                    )
                 }
-                .offset(
-                    x: -step + (isVertical ? 0 : horizontalTravel),
-                    y: isVertical ? verticalTravel : 0
-                )
-
-                verdict
-            }
-            .contentShape(Rectangle())
-            .gesture(drag(step: step, height: geometry.size.height))
+                .clipped()
+                .overlay { verdict }
+                .contentShape(Rectangle())
+                .gesture(drag(step: width + gap, height: geometry.size.height))
         }
     }
 
