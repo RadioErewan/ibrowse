@@ -353,7 +353,7 @@ extension RootView {
                         // Plik przed albumami: album niesie samą gwiazdkę
                         // i stempluje ją bieżącym czasem, więc puszczony
                         // pierwszy wygrywałby z dokładną wagą z pliku.
-                        await sync.synchronise(context: context, similarity: similarity)
+                        await sync.synchronise(context: context, similarity: similarity, library: library)
                         _ = albums.pull(into: context)
                         await albums.push(from: context)
                     }

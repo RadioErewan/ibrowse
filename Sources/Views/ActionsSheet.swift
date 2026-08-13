@@ -50,7 +50,7 @@ struct ActionsSheet: View {
                             // stempluje ocenę bieżącym czasem — czyli zawsze
                             // nowszym niż dokładna waga z pliku. Odwrotna
                             // kolejność podmieniała 3,75 na okrągłe 4.
-                            await sync.synchronise(context: context, similarity: similarity)
+                            await sync.synchronise(context: context, similarity: similarity, library: library)
                             _ = albums.pull(into: context)
                             await albums.push(from: context)
                             folderName = SyncFolder.displayName

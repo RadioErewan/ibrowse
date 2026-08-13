@@ -36,7 +36,9 @@ final class LibrarySync: ObservableObject {
     /// bo kluczem werdyktu jest skład serii, a ten powstaje dopiero przy
     /// przeliczeniu. Zastosowane w złej kolejności trafiłyby w grupy, których
     /// jeszcze nie ma, i cicho przepadły.
-    func synchronise(context: ModelContext, similarity: Similarity) async {
+    func synchronise(
+        context: ModelContext, similarity: Similarity, library: PhotoLibrary
+    ) async {
         guard !isWorking else { return }
         guard let folder = SyncFolder.resolve() else {
             summary = "Wskaż najpierw folder wymiany."
@@ -56,6 +58,9 @@ final class LibrarySync: ObservableObject {
             Task { @MainActor in self?.stage = text }
         }
 
+        stage = "sprzątam sieroty…"
+        let orphans = discardOrphans(context: context, library: library)
+
         stage = "szukam plików…"
         let incoming = await Task.detached {
             Self.readOthers(in: source, excluding: mine, report: report)
@@ -65,10 +70,20 @@ final class LibrarySync: ObservableObject {
         var prints = 0
         var verdicts = 0
 
+        // Identyfikatory w pliku są chmurowe i trzeba je przetłumaczyć na
+        // lokalne **tego** urządzenia. Bez tego wpisy wyglądają jak dotyczące
+        // nieznanych zdjęć i dokładają się obok istniejących, zamiast się
+        // z nimi zejść.
+        stage = "dopasowuję zdjęcia…"
+        let cloudIDs = Set(incoming.flatMap { payload in
+            payload.ratings.map(\.assetID) + payload.prints.map(\.assetID)
+        })
+        let toLocal = CloudIdentity.localIDs(for: Array(cloudIDs))
+
         stage = "scalam oceny i odciski…"
         for payload in incoming {
-            ratings += mergeRatings(payload.ratings, into: context)
-            prints += mergePrints(payload.prints, into: context)
+            ratings += mergeRatings(payload.ratings, translating: toLocal, into: context)
+            prints += mergePrints(payload.prints, translating: toLocal, into: context)
         }
 
         if prints > 0 {
@@ -111,7 +126,7 @@ final class LibrarySync: ObservableObject {
                 Z \(incoming.count) pliku (\(names)): \(offered.0) ocen, \
                 \(offered.1) odcisków, \(offered.2) serii.
                 Nowe u mnie: \(ratings) ocen, \(prints) odcisków, \(verdicts) serii.
-                Mam łącznie \(localPrints) odcisków.
+                Mam łącznie \(localPrints) odcisków\(orphans > 0 ? ", usunąłem \(orphans) sierot" : "").
                 """
         }
     }
@@ -155,15 +170,50 @@ final class LibrarySync: ObservableObject {
             }
     }
 
+    /// Usuwa odciski i serie wskazujące na zdjęcia, których w bibliotece nie ma.
+    ///
+    /// Powstają na dwa sposoby. Zwyczajnie — gdy skasujesz zdjęcie, a wpis po
+    /// nim zostaje. I nadzwyczajnie: pierwsza wersja synchronizacji wciągnęła
+    /// identyfikatory z drugiego urządzenia, które tutaj nie znaczą nic. Bez
+    /// sprzątania takie serie trafiają do parowania i pokazują pustkę.
+    private func discardOrphans(context: ModelContext, library: PhotoLibrary) -> Int {
+        let known = Set(library.assets.map(\.localIdentifier))
+        guard !known.isEmpty else { return 0 }
+        var removed = 0
+
+        for print in (try? context.fetch(FetchDescriptor<Fingerprint>())) ?? []
+        where !known.contains(print.assetID) {
+            context.delete(print)
+            removed += 1
+        }
+
+        // Serię kasujemy, gdy **którykolwiek** członek zniknął: jej skład był
+        // podstawą porównania i niepełna grupa to już inna grupa.
+        for series in (try? context.fetch(FetchDescriptor<Series>())) ?? []
+        where !series.members.allSatisfy(known.contains) {
+            context.delete(series)
+        }
+
+        if removed > 0 { try? context.save() }
+        return removed
+    }
+
     // MARK: - Scalanie
 
-    private func mergeRatings(_ remote: [SyncFile.Rating], into context: ModelContext) -> Int {
+    private func mergeRatings(
+        _ remote: [SyncFile.Rating], translating toLocal: [String: String],
+        into context: ModelContext
+    ) -> Int {
         let local = ((try? context.fetch(FetchDescriptor<Review>())) ?? [])
         var index = Dictionary(local.map { ($0.assetID, $0) }, uniquingKeysWith: { a, _ in a })
         var changed = 0
 
         for entry in remote {
-            if let existing = index[entry.assetID] {
+            // Brak tłumaczenia znaczy, że tego zdjęcia tu nie ma — nie jest to
+            // błąd, tylko inny stan biblioteki. Pomijamy w ciszy.
+            guard let assetID = toLocal[entry.assetID] else { continue }
+
+            if let existing = index[assetID] {
                 guard entry.updatedAt > existing.updatedAt else { continue }
                 // Przypisujemy wprost, a nie przez `set()`: tamto podbiłoby
                 // licznik ocen i datę, czyli policzyłoby przepisanie cudzej
@@ -174,27 +224,31 @@ final class LibrarySync: ObservableObject {
                 existing.markedForDeletion = entry.markedForDeletion
                 existing.updatedAt = entry.updatedAt
             } else {
-                let fresh = Review(assetID: entry.assetID)
+                let fresh = Review(assetID: assetID)
                 fresh.weight = entry.weight
                 fresh.isRated = entry.isRated
                 fresh.judgements = entry.judgements
                 fresh.markedForDeletion = entry.markedForDeletion
                 fresh.updatedAt = entry.updatedAt
                 context.insert(fresh)
-                index[entry.assetID] = fresh
+                index[assetID] = fresh
             }
             changed += 1
         }
         return changed
     }
 
-    private func mergePrints(_ remote: [SyncFile.Print], into context: ModelContext) -> Int {
+    private func mergePrints(
+        _ remote: [SyncFile.Print], translating toLocal: [String: String],
+        into context: ModelContext
+    ) -> Int {
         let known = Set(((try? context.fetch(FetchDescriptor<Fingerprint>())) ?? [])
             .map(\.assetID))
         var added = 0
 
-        for entry in remote where !known.contains(entry.assetID) {
-            let fresh = Fingerprint(assetID: entry.assetID, values: [], takenAt: entry.takenAt)
+        for entry in remote {
+            guard let assetID = toLocal[entry.assetID], !known.contains(assetID) else { continue }
+            let fresh = Fingerprint(assetID: assetID, values: [], takenAt: entry.takenAt)
             fresh.vector = entry.vector
             context.insert(fresh)
             added += 1
@@ -245,18 +299,30 @@ final class LibrarySync: ObservableObject {
         var payload = SyncFile.Payload()
         payload.deviceName = SyncFolder.deviceName
 
-        payload.ratings = ((try? context.fetch(FetchDescriptor<Review>())) ?? [])
+        let reviews = ((try? context.fetch(FetchDescriptor<Review>())) ?? [])
             .filter { $0.isRated || $0.markedForDeletion }
-            .map {
-                SyncFile.Rating(
-                    assetID: $0.assetID, weight: $0.weight, isRated: $0.isRated,
-                    judgements: $0.judgements, markedForDeletion: $0.markedForDeletion,
-                    updatedAt: $0.updatedAt
-                )
-            }
+        let fingerprints = (try? context.fetch(FetchDescriptor<Fingerprint>())) ?? []
 
-        payload.prints = ((try? context.fetch(FetchDescriptor<Fingerprint>())) ?? [])
-            .map { SyncFile.Print(assetID: $0.assetID, vector: $0.vector, takenAt: $0.takenAt) }
+        // Jedno tłumaczenie na cały zapis. Wpisy bez odpowiednika w chmurze
+        // pomijamy — dotyczą zdjęć, których inne urządzenia i tak nie znajdą.
+        stage = "tłumaczę identyfikatory…"
+        let toCloud = CloudIdentity.cloudIDs(
+            for: Array(Set(reviews.map(\.assetID) + fingerprints.map(\.assetID)))
+        )
+
+        payload.ratings = reviews.compactMap { review in
+            guard let cloud = toCloud[review.assetID] else { return nil }
+            return SyncFile.Rating(
+                assetID: cloud, weight: review.weight, isRated: review.isRated,
+                judgements: review.judgements, markedForDeletion: review.markedForDeletion,
+                updatedAt: review.updatedAt
+            )
+        }
+
+        payload.prints = fingerprints.compactMap { print in
+            guard let cloud = toCloud[print.assetID] else { return nil }
+            return SyncFile.Print(assetID: cloud, vector: print.vector, takenAt: print.takenAt)
+        }
 
         payload.verdicts = ((try? context.fetch(FetchDescriptor<Series>())) ?? [])
             .filter { $0.resolvedAt != nil || $0.challengerIndex > 1 }

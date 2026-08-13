@@ -16,6 +16,10 @@ final class Similarity: ObservableObject {
     @Published private(set) var seriesIDs: [PersistentIdentifier] = []
     @Published private(set) var isGrouping = false
 
+    /// Wynik ostatniego liczenia, pokazywany przez chwilę po zakończeniu.
+    @Published private(set) var note: String?
+    private var noteTimer: Task<Void, Never>?
+
     /// Zdjęcia dalej od siebie w czasie niż to okno nigdy nie trafią do
     /// jednej grupy — nawet jeśli wyglądają identycznie. Las z 2014 podobny
     /// do lasu z 2023 to nie jest seria i nie chcesz ich zestawiać.
@@ -71,6 +75,15 @@ final class Similarity: ObservableObject {
         total = todo.count
         progress = 0
 
+        // Nic do roboty to **wynik**, a nie brak wyniku. Bez tego kliknięcie
+        // przy komplecie odcisków dawało błysk „0 / 0" i zniknięcie paska,
+        // czyli obraz nieodróżnialny od awarii.
+        guard !todo.isEmpty else {
+            note = "Wszystkie odciski są już policzone (\(existing.count))."
+            forgetNoteLater()
+            return
+        }
+
         for asset in todo {
             if let image = await thumbnail(for: asset, library: library),
                let values = Self.featurePrint(image) {
@@ -89,7 +102,25 @@ final class Similarity: ObservableObject {
             if progress % 200 == 0 { try? context.save() }
         }
         try? context.save()
+
+        // Przeliczamy serie tylko wtedy, gdy faktycznie coś doszło. Wcześniej
+        // szło to bezwarunkowo, więc kliknięcie przy komplecie odcisków
+        // składało od nowa pięć tysięcy grup bez powodu.
         await rebuildGroups(context: context)
+
+        note = "Policzono \(todo.count) odcisków. Serii: \(groups.count)."
+        forgetNoteLater()
+    }
+
+    /// Komunikat znika sam. Zostawiony na stałe zamieniłby się w element
+    /// interfejsu, a to jest wiadomość o zdarzeniu, nie stan.
+    private func forgetNoteLater() {
+        noteTimer?.cancel()
+        noteTimer = Task { [weak self] in
+            try? await Task.sleep(for: .seconds(8))
+            guard !Task.isCancelled else { return }
+            self?.note = nil
+        }
     }
 
     private func thumbnail(for asset: PHAsset, library: PhotoLibrary) async -> PlatformImage? {

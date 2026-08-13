@@ -26,7 +26,27 @@ struct StatusStrip: View {
             strip(title: sync.stage ?? "synchronizuję", detail: nil, fraction: nil)
         } else if albums.isSyncing {
             strip(title: "zapisuję oceny do albumów", detail: nil, fraction: nil)
+        } else if let note = similarity.note {
+            done(note)
         }
+    }
+
+    /// Zakończenie też jest wiadomością. Bez tego operacja, która nie miała
+    /// nic do zrobienia, kończyła się zniknięciem paska — obrazem
+    /// nieodróżnialnym od awarii.
+    private func done(_ text: String) -> some View {
+        VStack(spacing: 0) {
+            Divider()
+            HStack(spacing: 8) {
+                Image(systemName: "checkmark.circle.fill").foregroundStyle(.green)
+                Text(text).font(.callout)
+                Spacer()
+            }
+            .padding(.horizontal, 14)
+            .padding(.vertical, 8)
+            .background(.bar)
+        }
+        .transition(.move(edge: .bottom).combined(with: .opacity))
     }
 
     /// Postęp określony pokazujemy paskiem, nieokreślony — kręciołkiem.

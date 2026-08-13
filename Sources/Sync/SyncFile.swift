@@ -16,14 +16,22 @@ import SQLite3
 /// i wymagało wczytania całości do pamięci przed pierwszym odczytem.
 ///
 /// Świadome ograniczenie: **nie wymieniamy samych zdjęć**. Plik zakłada, że oba
-/// urządzenia widzą tę samą bibliotekę iCloud i posługują się tymi samymi
-/// `localIdentifier`. Bez tego nie ma czego dopasowywać.
+/// urządzenia widzą tę samą bibliotekę iCloud.
+///
+/// Wszystkie identyfikatory w pliku są **chmurowe** (`PHCloudIdentifier`),
+/// nigdy lokalne. `localIdentifier` jest lokalny — nazwa nie kłamie — i to samo
+/// zdjęcie ma inny na Macu niż na telefonie. Pierwsza wersja tego nie
+/// uwzględniała i skutek był podręcznikowy: odciski z Maca dosiadły się obok
+/// tych z telefonu, nie trafiając w ani jedno wspólne zdjęcie.
 struct SyncFile {
 
     /// Wersja formatu. Gdy się zmieni, starsze pliki są pomijane przy czytaniu
     /// zamiast wczytywane błędnie — cudzy plik z przyszłości to jedyny scenariusz,
     /// w którym cicha porażka byłaby gorsza od głośnej.
-    static let schema = 1
+    /// Wersja 2: identyfikatory są **chmurowe**, nie lokalne. Pliki w wersji 1
+    /// są cicho pomijane, i słusznie — wpisy w nich wskazują na identyfikatory
+    /// obcego urządzenia, więc wczytane wyrządziłyby szkodę zamiast pożytku.
+    static let schema = 2
     static let fileExtension = "ibsync"
 
     // MARK: - Przenoszone dane
