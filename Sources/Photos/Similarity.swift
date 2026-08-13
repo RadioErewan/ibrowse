@@ -169,6 +169,13 @@ final class Similarity: ObservableObject {
     }
 
     /// Składa serie od zera i zapisuje wynik do składu.
+    /// Ten sam klucz co w pliku wymiany — skład grupy, nie identyfikator.
+    /// Dzięki temu werdykt przetrwa zarówno przeliczenie u siebie, jak
+    /// i podróż na drugie urządzenie.
+    static func key(for members: [String]) -> String {
+        SyncFile.key(for: members)
+    }
+
     func rebuildGroups(context: ModelContext) async {
         isGrouping = true
         defer { isGrouping = false }
@@ -192,18 +199,41 @@ final class Similarity: ObservableObject {
                                 maxSpan: span, threshold: cutoff, lookback: depth)
         }.value
 
+        // Rozstrzygnięcia przeżywają przeliczenie, jeśli skład grupy się nie
+        // zmienił.
+        //
+        // Wcześniej przebudowa kasowała serie razem z całą pracą turniejową —
+        // a przebudowa dzieje się przy każdym nowym odcisku i przy każdym
+        // ruchu suwakiem czułości. Wystarczyło zsynchronizować urządzenia,
+        // żeby stracić wszystkie pojedynki. Kluczem jest skład grupy: gdy
+        // ten sam, werdykt dalej obowiązuje; gdy inny — to już inna grupa
+        // i słusznie wraca do kolejki.
+        var verdicts: [String: (Date?, Bool, String?, Int)] = [:]
         for old in (try? context.fetch(FetchDescriptor<Series>())) ?? [] {
+            if old.resolvedAt != nil || old.challengerIndex > 1 {
+                verdicts[Self.key(for: old.members)] =
+                    (old.resolvedAt, old.wasRejected, old.championID, old.challengerIndex)
+            }
             context.delete(old)
         }
         for old in (try? context.fetch(FetchDescriptor<SeriesStamp>())) ?? [] {
             context.delete(old)
         }
         var created: [Series] = []
+        var restored = 0
         for members in result {
             let series = Series(members: members)
+            if let saved = verdicts[Self.key(for: members)] {
+                series.resolvedAt = saved.0
+                series.wasRejected = saved.1
+                series.championID = saved.2
+                series.challengerIndex = saved.3
+                restored += 1
+            }
             context.insert(series)
             created.append(series)
         }
+        if restored > 0 { print("przywrócono \(restored) rozstrzygnięć serii") }
         context.insert(
             SeriesStamp(fingerprintCount: prints.count,
                         threshold: Double(cutoff), timeWindow: window)

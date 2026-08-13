@@ -74,11 +74,15 @@ final class LibrarySync: ObservableObject {
         // lokalne **tego** urządzenia. Bez tego wpisy wyglądają jak dotyczące
         // nieznanych zdjęć i dokładają się obok istniejących, zamiast się
         // z nimi zejść.
+        //
+        // Jedno mapowanie na całą synchronizację, w obie strony. Odwrócenie
+        // słownika jest darmowe, a drugie odpytanie systemu kosztowałoby tyle
+        // samo co pierwsze — przy 25 tysiącach zdjęć to nie jest drobiazg.
         stage = "dopasowuję zdjęcia…"
-        let cloudIDs = Set(incoming.flatMap { payload in
-            payload.ratings.map(\.assetID) + payload.prints.map(\.assetID)
-        })
-        let toLocal = CloudIdentity.localIDs(for: Array(cloudIDs))
+        let toCloud = CloudIdentity.cloudIDs(for: library.assets.map(\.localIdentifier))
+        var toLocal: [String: String] = [:]
+        toLocal.reserveCapacity(toCloud.count)
+        for (local, cloud) in toCloud { toLocal[cloud] = local }
 
         stage = "scalam oceny i odciski…"
         for payload in incoming {
@@ -95,14 +99,14 @@ final class LibrarySync: ObservableObject {
         }
 
         for payload in incoming {
-            verdicts += mergeVerdicts(payload.verdicts, into: context)
+            verdicts += mergeVerdicts(payload.verdicts, translating: toCloud, into: context)
         }
 
         try? context.save()
 
         do {
             stage = "zapisuję swój plik…"
-            try await export(context: context, to: folder.url)
+            try await export(context: context, to: folder.url, translating: toCloud)
         } catch {
             summary = error.localizedDescription
             return
@@ -198,6 +202,15 @@ final class LibrarySync: ObservableObject {
         return removed
     }
 
+    /// Klucz serii liczony z identyfikatorów chmurowych. `nil`, gdy choć
+    /// jedno zdjęcie nie ma odpowiednika — niepełny skład to inna grupa
+    /// i lepiej jej nie dopasowywać, niż dopasować błędnie.
+    private static func cloudKey(for members: [String], using toCloud: [String: String]) -> String? {
+        let translated = members.compactMap { toCloud[$0] }
+        guard translated.count == members.count else { return nil }
+        return SyncFile.key(for: translated)
+    }
+
     // MARK: - Scalanie
 
     private func mergeRatings(
@@ -256,10 +269,22 @@ final class LibrarySync: ObservableObject {
         return added
     }
 
-    private func mergeVerdicts(_ remote: [SyncFile.Verdict], into context: ModelContext) -> Int {
+    /// Werdykty też muszą przejść przez identyfikatory chmurowe.
+    ///
+    /// Kluczem werdyktu jest skład serii, a skład to identyfikatory zdjęć —
+    /// czyli dokładnie ta rzecz, która różni się między urządzeniami. Klucz
+    /// liczony z identyfikatorów lokalnych nigdy nie trafiłby w cudzy.
+    private func mergeVerdicts(
+        _ remote: [SyncFile.Verdict], translating toCloud: [String: String],
+        into context: ModelContext
+    ) -> Int {
         let series = (try? context.fetch(FetchDescriptor<Series>())) ?? []
         let byKey = Dictionary(
-            series.map { (SyncFile.key(for: $0.members), $0) }, uniquingKeysWith: { a, _ in a }
+            series.compactMap { item -> (String, Series)? in
+                guard let key = Self.cloudKey(for: item.members, using: toCloud) else { return nil }
+                return (key, item)
+            },
+            uniquingKeysWith: { a, _ in a }
         )
         var applied = 0
 
@@ -295,7 +320,9 @@ final class LibrarySync: ObservableObject {
     /// zgubienie jednego przyrostu psułoby wszystkie następne. Odciski to
     /// około 39 MB przy 25 tysiącach zdjęć; zapis trwa moment, a upraszcza
     /// całą resztę.
-    private func export(context: ModelContext, to folder: URL) async throws {
+    private func export(
+        context: ModelContext, to folder: URL, translating toCloud: [String: String]
+    ) async throws {
         var payload = SyncFile.Payload()
         payload.deviceName = SyncFolder.deviceName
 
@@ -305,11 +332,6 @@ final class LibrarySync: ObservableObject {
 
         // Jedno tłumaczenie na cały zapis. Wpisy bez odpowiednika w chmurze
         // pomijamy — dotyczą zdjęć, których inne urządzenia i tak nie znajdą.
-        stage = "tłumaczę identyfikatory…"
-        let toCloud = CloudIdentity.cloudIDs(
-            for: Array(Set(reviews.map(\.assetID) + fingerprints.map(\.assetID)))
-        )
-
         payload.ratings = reviews.compactMap { review in
             guard let cloud = toCloud[review.assetID] else { return nil }
             return SyncFile.Rating(
@@ -326,11 +348,12 @@ final class LibrarySync: ObservableObject {
 
         payload.verdicts = ((try? context.fetch(FetchDescriptor<Series>())) ?? [])
             .filter { $0.resolvedAt != nil || $0.challengerIndex > 1 }
-            .map {
-                SyncFile.Verdict(
-                    key: SyncFile.key(for: $0.members), resolvedAt: $0.resolvedAt,
-                    wasRejected: $0.wasRejected, championID: $0.championID,
-                    challengerIndex: $0.challengerIndex
+            .compactMap { item in
+                guard let key = Self.cloudKey(for: item.members, using: toCloud) else { return nil }
+                return SyncFile.Verdict(
+                    key: key, resolvedAt: item.resolvedAt, wasRejected: item.wasRejected,
+                    championID: item.championID.flatMap { toCloud[$0] },
+                    challengerIndex: item.challengerIndex
                 )
             }
 
