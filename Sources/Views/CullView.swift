@@ -29,6 +29,12 @@ struct CullView: View {
     @State private var showingLoupe = false
 
     #if os(macOS)
+    /// Punkt, w którym stał kursor — kadr 1:1 otwiera się właśnie tam.
+    @State private var loupeFocus: UnitPoint = .center
+    @State private var stageSize: CGSize = .zero
+    #endif
+
+    #if os(macOS)
     @StateObject private var metadata = MetadataIndex()
     /// Domyślnie otwarty — po to powstał. Zapamiętany, bo przy szybkim
     /// odsiewie panel bywa zbędny i nie chcę go zamykać przy każdym wejściu.
@@ -146,10 +152,15 @@ struct CullView: View {
         }
         .sheet(isPresented: $showingLoupe) {
             if let current {
+                #if os(macOS)
+                Loupe(
+                    asset: current, library: library,
+                    isPresented: $showingLoupe, focus: loupeFocus
+                )
+                .frame(minWidth: 900, minHeight: 640)
+                #else
                 Loupe(asset: current, library: library, isPresented: $showingLoupe)
-                    #if os(macOS)
-                    .frame(minWidth: 900, minHeight: 640)
-                    #endif
+                #endif
             }
         }
         #if os(iOS)
@@ -203,7 +214,49 @@ struct CullView: View {
         // ocenianie i przewijanie to przeciągnięcia, a pojedyncze stuknięcie
         // w tym widoku nic nie robi.
         .onTapGesture(count: 2) { if current != nil { showingLoupe = true } }
+        #if os(macOS)
+        // Rozmiar bierzemy z tła, a nie z nakładki: nakładka przechwyciłaby
+        // dwuklik, którym otwiera się podgląd.
+        .background {
+            GeometryReader { geometry in
+                Color.clear
+                    .onAppear { stageSize = geometry.size }
+                    .onChange(of: geometry.size) { _, size in stageSize = size }
+            }
+        }
+        .onContinuousHover { phase in
+            guard case .active(let point) = phase, let current else { return }
+            loupeFocus = Self.focus(at: point, in: stageSize, for: current)
+        }
+        #endif
     }
+
+    #if os(macOS)
+    /// Przelicza pozycję kursora na punkt względny **zdjęcia**, a nie okna.
+    ///
+    /// Zdjęcie jest wpasowane w scenę z zachowaniem proporcji, więc dookoła
+    /// zostają czarne pasy. Bez uwzględnienia ich szerokości kadr 1:1
+    /// otwierałby się przesunięty — i to tym bardziej, im bardziej proporcje
+    /// zdjęcia odbiegają od proporcji okna.
+    private static func focus(at point: CGPoint, in size: CGSize, for asset: PHAsset) -> UnitPoint {
+        guard size.width > 0, size.height > 0, asset.pixelHeight > 0 else { return .center }
+
+        let photo = CGFloat(asset.pixelWidth) / CGFloat(asset.pixelHeight)
+        let window = size.width / size.height
+        let shown = photo > window
+            ? CGSize(width: size.width, height: size.width / photo)
+            : CGSize(width: size.height * photo, height: size.height)
+
+        let inset = CGPoint(
+            x: (size.width - shown.width) / 2,
+            y: (size.height - shown.height) / 2
+        )
+        return UnitPoint(
+            x: min(max((point.x - inset.x) / shown.width, 0), 1),
+            y: min(max((point.y - inset.y) / shown.height, 0), 1)
+        )
+    }
+    #endif
 
     /// Nagłówek istnieje tylko na telefonie. Na Macu te same przełączniki
     /// siedzą w belce tytułowej, gdzie należą — własny pasek pod tytułem był

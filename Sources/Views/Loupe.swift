@@ -17,6 +17,11 @@ struct Loupe: View {
     let library: PhotoLibrary
     @Binding var isPresented: Bool
 
+    /// Miejsce, na którym ma się otworzyć kadr — na Macu tam, gdzie stał
+    /// kursor. Przy zdjęciu 8000 px środek jest prawie zawsze złą odpowiedzią:
+    /// ostrość sprawdza się w konkretnym punkcie, na który się właśnie patrzy.
+    var focus: UnitPoint = .center
+
     @State private var image: PlatformImage?
     @State private var request: PHImageRequestID?
     @State private var finished = false
@@ -46,6 +51,7 @@ struct Loupe: View {
                         .resizable()
                         .frame(width: side(image).width, height: side(image).height)
                 }
+                .defaultScrollAnchor(focus)
             } else if finished {
                 unavailable
             } else {
