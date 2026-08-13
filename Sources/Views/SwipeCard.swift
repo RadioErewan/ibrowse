@@ -39,6 +39,9 @@ struct SwipeCard<Content: View>: View {
     @ViewBuilder var content: Content
 
     @State private var offset: CGSize = .zero
+    /// Blokada na czas dojeżdżania kadru. Bez niej drugi gest w trakcie
+    /// animacji przeskakiwałby dwa zdjęcia i gubił jedno po drodze.
+    @State private var isCommitting = false
 
     /// Dystans, po którym gest się liczy. Na tyle duży, żeby przypadkowe
     /// muśnięcie przy przewijaniu nie zmieniło oceny.
@@ -67,10 +70,9 @@ struct SwipeCard<Content: View>: View {
                 x: -step + (isVertical ? 0 : offset.width),
                 y: isVertical ? offset.height : 0
             )
-            .animation(.interactiveSpring(duration: 0.25), value: offset)
             .overlay { verdict }
             .contentShape(Rectangle())
-            .gesture(drag(width: geometry.size.width))
+            .gesture(drag(step: step, height: geometry.size.height))
         }
     }
 
@@ -88,33 +90,68 @@ struct SwipeCard<Content: View>: View {
         }
     }
 
-    private func drag(width: CGFloat) -> some Gesture {
+    /// Ruch pod palcem idzie bez animacji — ma nadążać jeden do jednego.
+    /// Animowane są tylko dwa zakończenia: odbicie przy geście wycofanym
+    /// i dojazd przy zatwierdzonym.
+    private func drag(step: CGFloat, height: CGFloat) -> some Gesture {
         DragGesture()
-            .onChanged { offset = $0.translation }
+            .onChanged { value in
+                guard !isCommitting else { return }
+                offset = value.translation
+            }
             .onEnded { value in
+                guard !isCommitting else { return }
+
                 let vertical = abs(value.translation.height) > abs(value.translation.width)
                 let travelled = vertical ? value.translation.height : value.translation.width
 
                 guard abs(travelled) >= commitDistance else {
-                    offset = .zero          // odbicie: gest wycofany
+                    withAnimation(.spring(duration: 0.25)) { offset = .zero }
                     return
                 }
-
-                // Po zatwierdzeniu treść zmienia się pod spodem, więc powrót
-                // do zera musi być bez animacji. Animowany dawałby wrażenie,
-                // że **nowe** zdjęcie wjeżdża z powrotem spod krawędzi.
-                var instant = Transaction()
-                instant.disablesAnimations = true
-
-                // W obu osiach ruch „do przodu" idzie w stronę ujemną:
-                // w lewo następne zdjęcie, w górę wyższa ocena.
-                if vertical {
-                    onNudge(travelled < 0 ? 1 : -1)
-                } else {
-                    onStep(travelled < 0 ? 1 : -1)
-                }
-                withTransaction(instant) { offset = .zero }
+                commit(vertical: vertical, forward: travelled < 0, step: step, height: height)
             }
+    }
+
+    /// Kadr **dojeżdża do końca**, dopiero potem podmieniamy zdjęcie.
+    ///
+    /// Wcześniej podmiana następowała od razu, a przesunięcie wracało do zera
+    /// bez animacji — czysto, ale nie dało się poznać, czy gest w ogóle się
+    /// policzył. Teraz ruch kończy się tam, gdzie prowadził palec: sąsiad
+    /// dojeżdża na środek i dopiero wtedy staje się bieżącym zdjęciem.
+    private func commit(vertical: Bool, forward: Bool, step: CGFloat, height: CGFloat) {
+        isCommitting = true
+        let duration: Double = vertical ? 0.18 : 0.22
+
+        withAnimation(.easeOut(duration: duration)) {
+            if vertical {
+                // Ocenione zdjęcie odlatuje w stronę werdyktu.
+                offset = CGSize(width: 0, height: forward ? -height : height)
+            } else {
+                offset = CGSize(width: forward ? -step : step, height: 0)
+            }
+        }
+
+        Task { @MainActor in
+            try? await Task.sleep(for: .seconds(duration))
+
+            // W obu osiach ruch „do przodu" idzie w stronę ujemną: w lewo
+            // następne zdjęcie, w górę wyższa ocena.
+            if vertical {
+                onNudge(forward ? 1 : -1)
+            } else {
+                onStep(forward ? 1 : -1)
+            }
+
+            // Treść jest już podmieniona, więc powrót do zera musi być bez
+            // animacji — inaczej **nowe** zdjęcie wjeżdżałoby z powrotem
+            // spod krawędzi, czyli w odwrotną stronę niż szedł palec.
+            var instant = Transaction()
+            instant.disablesAnimations = true
+            withTransaction(instant) { offset = .zero }
+
+            isCommitting = false
+        }
     }
 
     /// Znak i siła zamiaru, zanim puścisz palec — żeby dało się wycofać ruch
