@@ -38,13 +38,11 @@ struct AssetThumbnail: View {
         }
     }
 
-    private var screenScale: Double {
-        #if os(macOS)
-        return Double(NSScreen.main?.backingScaleFactor ?? 2)
-        #else
-        return Double(UIScreen.main.scale)
-        #endif
-    }
+    /// Skala **tego** ekranu, nie „głównego" — patrz komentarz w `Loupe`.
+    /// Przy dwóch monitorach o różnej gęstości `NSScreen.main` potrafi wskazać
+    /// nie ten, na którym stoi okno, i miniatury robiły się rozmyte.
+    @Environment(\.displayScale) private var displayScale
+    private var screenScale: Double { Double(displayScale) }
 
     private func cancel() {
         if let request { library.cancel(request) }

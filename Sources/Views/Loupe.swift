@@ -26,6 +26,12 @@ struct Loupe: View {
     @State private var request: PHImageRequestID?
     @State private var finished = false
 
+    /// `nil` znaczy „jeszcze nie ustawione" — dopiero wtedy wolno skoczyć
+    /// na punkt kursora. Bez tego rozróżnienia każde przerysowanie widoku
+    /// odrzucałoby przesunięcie i wracało do miejsca kliknięcia.
+    @State private var settled: CGSize?
+    @State private var pan: CGSize = .zero
+
     /// Na Macu wolno dociągnąć z iCloud: miejsca jest więcej, a systemowa
     /// polityka „Optymalizuj pamięć" i tak eksmituje najstarsze oryginały.
     /// Na telefonie **nigdy** — tam pobrany oryginał zostaje na stałe,
@@ -43,15 +49,30 @@ struct Loupe: View {
             Color.black.ignoresSafeArea()
 
             if let image {
-                // Zwykły `ScrollView` zamiast własnego przesuwania kadru:
-                // daje gładkie panoramowanie gładzikiem i palcem, pilnuje
-                // krańców i nie wymaga ani linijki kodu na obsługę gestu.
-                ScrollView([.horizontal, .vertical]) {
+                // Przesunięcie liczone wprost, zamiast `ScrollView`
+                // z `defaultScrollAnchor`. Tamto ustawia pozycję przy
+                // **pierwszym układzie**, a ten powstaje, zanim zdjęcie
+                // dojdzie z dysku — kotwica trafiała w pustkę i kadr
+                // otwierał się gdzie indziej niż kliknięcie. Tu punkt
+                // wyliczamy dopiero wtedy, gdy znamy oba rozmiary.
+                GeometryReader { geometry in
                     Image(platformImage: image)
                         .resizable()
-                        .frame(width: side(image).width, height: side(image).height)
+                        .frame(width: side.width, height: side.height)
+                        .offset(current(in: geometry.size))
+                        .gesture(
+                            DragGesture()
+                                .onChanged { value in
+                                    let from = settled ?? centred(on: focus, in: geometry.size)
+                                    pan = CGSize(
+                                        width: from.width + value.translation.width,
+                                        height: from.height + value.translation.height
+                                    )
+                                    settled = clamped(pan, in: geometry.size)
+                                }
+                        )
                 }
-                .defaultScrollAnchor(focus)
+                .clipped()
             } else if finished {
                 unavailable
             } else {
@@ -75,20 +96,48 @@ struct Loupe: View {
     /// Jeden piksel zdjęcia na jeden piksel ekranu. W punktach to znaczy
     /// podzielić przez skalę ekranu — na Retinie inaczej dostalibyśmy
     /// powiększenie 2:1 i znów oglądalibyśmy interpolację.
-    private func side(_ image: PlatformImage) -> CGSize {
+    private var side: CGSize {
         CGSize(
             width: Double(asset.pixelWidth) / screenScale,
             height: Double(asset.pixelHeight) / screenScale
         )
     }
 
-    private var screenScale: Double {
-        #if os(macOS)
-        return Double(NSScreen.main?.backingScaleFactor ?? 2)
-        #else
-        return Double(UIScreen.main.scale)
-        #endif
+    private func current(in window: CGSize) -> CGSize {
+        clamped(settled ?? centred(on: focus, in: window), in: window)
     }
+
+    /// Przesunięcie, przy którym wskazany punkt zdjęcia ląduje na środku okna.
+    private func centred(on point: UnitPoint, in window: CGSize) -> CGSize {
+        CGSize(
+            width: window.width / 2 - point.x * side.width,
+            height: window.height / 2 - point.y * side.height
+        )
+    }
+
+    /// Nie pozwala wyjechać poza zdjęcie. Gdy wymiar mieści się w oknie
+    /// w całości, jest wyśrodkowany — szarpanie krótszą osią nic nie wnosi.
+    private func clamped(_ offset: CGSize, in window: CGSize) -> CGSize {
+        func fit(_ value: CGFloat, _ content: CGFloat, _ available: CGFloat) -> CGFloat {
+            guard content > available else { return (available - content) / 2 }
+            return min(max(value, available - content), 0)
+        }
+        return CGSize(
+            width: fit(offset.width, side.width, window.width),
+            height: fit(offset.height, side.height, window.height)
+        )
+    }
+
+    /// Skala **tego** ekranu, nie „głównego".
+    ///
+    /// Wcześniej było tu `NSScreen.main`, czyli ekran z aktywnym oknem według
+    /// systemu — a to nie musi być ekran, na którym stoi nasze okno. Przy
+    /// dwóch monitorach o różnej gęstości 1:1 wychodziło dwa razy za małe
+    /// i przesunięcie kadru było liczone w złej jednostce. `displayScale`
+    /// przychodzi ze środowiska widoku, więc zmienia się razem z przeniesieniem
+    /// okna na drugi monitor.
+    @Environment(\.displayScale) private var displayScale
+    private var screenScale: Double { Double(displayScale) }
 
     private var badge: some View {
         VStack {
