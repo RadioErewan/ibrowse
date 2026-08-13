@@ -65,17 +65,15 @@ struct MetadataPanel: View {
     /// najczęściej tłumaczy, dlaczego zdjęcie jest nie do uratowania.
     @ViewBuilder
     private var exposure: some View {
-        let parts = [
-            data.focalLength.map { String(format: "%.0f mm", $0) },
-            data.aperture.map { String(format: "f/%.1f", $0) },
-            data.shutter.map(Self.shutter),
-            data.iso.map { "ISO \($0)" },
-        ].compactMap { $0 }
+        let line = AssetFacts.exposureLine(
+            focalLength: data.focalLength, aperture: data.aperture,
+            shutter: data.shutter, iso: data.iso
+        )
 
-        if !parts.isEmpty || data.camera != nil {
+        if line != nil || data.camera != nil {
             VStack(alignment: .leading, spacing: 4) {
-                if !parts.isEmpty {
-                    Text(parts.joined(separator: " · "))
+                if let line {
+                    Text(line)
                         .font(.system(.callout, design: .monospaced))
                 }
                 if let camera = data.camera {
@@ -163,14 +161,14 @@ struct MetadataPanel: View {
             HStack(spacing: 10) {
                 Text("\(asset.pixelWidth) × \(asset.pixelHeight)")
                     .font(.caption.monospacedDigit())
-                Text(Self.megapixels(asset))
+                Text(AssetFacts.megapixels(asset))
                     .font(.caption)
                     .foregroundStyle(.secondary)
                 if asset.isFavorite {
                     Image(systemName: "heart.fill").font(.caption).foregroundStyle(.pink)
                 }
             }
-            let traits = Self.traits(asset)
+            let traits = AssetFacts.traits(asset)
             if !traits.isEmpty {
                 Text(traits.joined(separator: " · "))
                     .font(.caption)
@@ -187,29 +185,6 @@ struct MetadataPanel: View {
             .foregroundStyle(.tertiary)
     }
 
-    private static func shutter(_ seconds: Double) -> String {
-        guard seconds > 0 else { return "—" }
-        if seconds >= 1 { return String(format: "%.1f s", seconds) }
-        return "1/\(Int((1 / seconds).rounded()))"
-    }
-
-    private static func megapixels(_ asset: PHAsset) -> String {
-        let value = Double(asset.pixelWidth * asset.pixelHeight) / 1_000_000
-        return String(format: "%.1f Mpx", value)
-    }
-
-    private static func traits(_ asset: PHAsset) -> [String] {
-        var traits: [String] = []
-        let subtypes = asset.mediaSubtypes
-        if subtypes.contains(.photoPanorama) { traits.append("panorama") }
-        if subtypes.contains(.photoHDR) { traits.append("HDR") }
-        if subtypes.contains(.photoScreenshot) { traits.append("zrzut ekranu") }
-        if subtypes.contains(.photoLive) { traits.append("Live") }
-        if subtypes.contains(.photoDepthEffect) { traits.append("portret") }
-        if asset.representsBurst { traits.append("seria") }
-        if asset.location != nil { traits.append("z lokalizacją") }
-        return traits
-    }
 }
 
 /// Lista wartości jako zawijające się plakietki. Etykiet scen bywa

@@ -28,6 +28,10 @@ struct CullView: View {
     /// Domyślnie otwarty — po to powstał. Zapamiętany, bo przy szybkim
     /// odsiewie panel bywa zbędny i nie chcę go zamykać przy każdym wejściu.
     @AppStorage("cull.showingMetadata") private var showingMetadata = true
+    #else
+    /// Na telefonie to arkusz otwierany świadomie, więc stan jest ulotny
+    /// i zawsze zaczyna zamknięty.
+    @State private var showingMetadata = false
     #endif
 
     // MARK: - Zbiór roboczy
@@ -46,6 +50,13 @@ struct CullView: View {
 
     private var currentReview: Review? {
         current.flatMap { byID[$0.localIdentifier] }
+    }
+
+    /// Sąsiad w zbiorze roboczym, albo `nil` na końcach.
+    private func neighbour(_ delta: Int) -> PHAsset? {
+        let set = workingSet
+        let position = index + delta
+        return set.indices.contains(position) ? set[position] : nil
     }
 
     private var markedCount: Int {
@@ -102,6 +113,13 @@ struct CullView: View {
         .sheet(isPresented: $showingDeletions) {
             DeletionReview(library: library, reviews: reviews.filter(\.markedForDeletion))
         }
+        #if os(iOS)
+        .sheet(isPresented: $showingMetadata) {
+            if let current {
+                MetadataSheet(asset: current)
+            }
+        }
+        #endif
         .task(id: index) {
             prefetchNeighbours()
             focusID = current?.localIdentifier
@@ -121,7 +139,10 @@ struct CullView: View {
                         nudge(direction)
                         step(1)
                     },
-                    onStep: { step($0) }
+                    onStep: { step($0) },
+                    library: library,
+                    previous: neighbour(-1),
+                    next: neighbour(+1)
                 ) {
                     AssetImage(asset: current, library: library)
                 }
@@ -185,8 +206,12 @@ struct CullView: View {
                 stars
                 deletionMark
                 Spacer()
-                Button { step(-1) } label: { Image(systemName: "chevron.left") }
-                Button { step(1) } label: { Image(systemName: "chevron.right") }
+                // Jedna ikona zamiast stałego panelu — kto chce liczby,
+                // ten po nie sięga. Ekran należy się fotografii.
+                Button { showingMetadata = true } label: {
+                    Image(systemName: "info.circle")
+                }
+                .disabled(current == nil)
                 counter
             }
             .buttonStyle(.bordered)
@@ -248,7 +273,7 @@ struct CullView: View {
 
     private var hint: String {
         #if os(iOS)
-        "w bok przewijasz · w górę lepsze, w dół gorsze"
+        "pociągnij w bok, żeby zobaczyć sąsiednie · w górę lepsze, w dół gorsze"
         #else
         "1–5 ocena · −/+ przesuń · X do usunięcia · I metadane · ←/→ nawigacja"
         #endif
