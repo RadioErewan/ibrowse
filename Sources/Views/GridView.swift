@@ -12,10 +12,10 @@ struct GridView: View {
     @ObservedObject var monitor: PerfMonitor
     @ObservedObject var filters: Filters
 
-    /// Dwuklik na kafelku wchodzi w ocenianie od tego zdjęcia. To jedyne
-    /// zadanie siatki: nawigacja po archiwum i wejście w wybranym miejscu.
-    /// Sama przeglądarka miniatur nie służy do oceniania — kusi do
-    /// przewijania, a nie do decydowania.
+    /// Stuknięcie w kafelek wchodzi w ocenianie od tego zdjęcia (na Macu
+    /// dwuklik). To jedyne zadanie siatki: nawigacja po archiwum i wejście
+    /// w wybranym miejscu. Sama przeglądarka miniatur nie służy do oceniania
+    /// — kusi do przewijania, a nie do decydowania.
     var onOpen: (PHAsset) -> Void = { _ in }
 
     /// Zdjęcie, na którym stoi praca w pozostałych trybach. Siatka przewija
@@ -77,7 +77,17 @@ struct GridView: View {
                                 rating: reviewIndex[asset.localIdentifier]?.stars ?? 0,
                                 isFocus: asset.localIdentifier == focusID
                             )
+                            // Na telefonie otwiera pojedyncze stuknięcie, bo
+                            // tak działa każda galeria i nie ma tu czego
+                            // zaznaczać. Przewijaniu to nie przeszkadza: gest
+                            // dotknięcia nie odpala się, gdy palec wędruje.
+                            // Na Macu zostaje dwuklik — pojedyncze kliknięcie
+                            // należy się zaznaczaniu.
+                            #if os(iOS)
+                            .onTapGesture { onOpen(asset) }
+                            #else
                             .onTapGesture(count: 2) { onOpen(asset) }
+                            #endif
                         }
                     }
                     .padding(3)
