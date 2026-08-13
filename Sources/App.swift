@@ -85,6 +85,7 @@ struct RootView: View {
     @StateObject private var filters = Filters()
     @StateObject private var sync = LibrarySync()
     @State private var choosingFolder = false
+    @State private var showingActions = false
     @Environment(\.modelContext) private var context
 
     @State private var mode: Mode = .grid
@@ -173,10 +174,16 @@ struct RootView: View {
                             // i nie pokazywał się, bo dotknięcie zamyka menu
                             // razem z kotwicą, do której jest przypięty.
                             ToolbarItem(placement: .topBarLeading) { filterButton }
-                            ToolbarItem(placement: .topBarTrailing) { actionsMenu }
+                            ToolbarItem(placement: .topBarTrailing) { actionsButton }
                         }
                         .sheet(isPresented: $showingFilters) {
                             FilterPanel(library: library, filters: filters)
+                        }
+                        .sheet(isPresented: $showingActions) {
+                            ActionsSheet(
+                                library: library, similarity: similarity,
+                                albums: albums, sync: sync
+                            )
                         }
                 }
                 .tabItem { Label(item.rawValue, systemImage: item.icon) }
@@ -234,35 +241,15 @@ struct RootView: View {
         }
     }
 
-    /// Odciski i synchronizacja to operacje rzadkie i wsadowe — na telefonie
-    /// nie zasługują na stałe miejsce na ekranie.
+    /// Wejście do akcji na telefonie. Sam przycisk — cała zawartość mieszka
+    /// w arkuszu, bo `Menu` na iOS zamyka się przy każdej przebudowie widoku,
+    /// a tutaj przebudowa jest pewna: liczba serii i postęp liczenia zmieniają
+    /// się w trakcie. Stąd brało się pulsowanie.
     @ViewBuilder
-    private var actionsMenu: some View {
-        if similarity.isWorking {
-            ProgressView().controlSize(.small)
-        } else {
-            Menu {
-                Button {
-                    Task {
-                        await similarity.computeFingerprints(
-                            for: library.assets, library: library, context: context
-                        )
-                    }
-                } label: { Label("policz odciski", systemImage: "wand.and.stars") }
-
-                Button {
-                    Task {
-                        _ = albums.pull(into: context)
-                        await albums.push(from: context)
-                    }
-                } label: { Label("synchronizuj", systemImage: "arrow.triangle.2.circlepath") }
-
-                if !similarity.groups.isEmpty {
-                    Section("\(similarity.groups.count) serii") { EmptyView() }
-                }
-            } label: {
-                Image(systemName: "ellipsis.circle")
-            }
+    private var actionsButton: some View {
+        Button { showingActions = true } label: {
+            Image(systemName: similarity.isWorking || sync.isWorking
+                  ? "ellipsis.circle.fill" : "ellipsis.circle")
         }
     }
 
