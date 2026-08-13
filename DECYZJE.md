@@ -96,9 +96,18 @@ grozi utratą cudzych danych i opiera się na nieudokumentowanym zachowaniu.
 
 ## Interfejs
 
-**Wspólny jest model, nie układ.** Cztery razy przenieśliśmy poziomy pasek
-z Maca na telefon i za każdym razem rozsypywał się na jedną literę w wierszu.
-Każdy widok ma teraz własny chrome pod `#if os(…)`.
+**Wspólny jest model, nie sposób obsługi.** Nie chodzi o szerokość okna —
+szerokość to tylko objaw. Chodzi o to, że jedną platformą steruje klawiatura
+i wskaźnik, a drugą kciuk; że na Macu pojedyncze kliknięcie należy się
+zaznaczaniu, a na telefonie nie ma czego zaznaczać.
+
+Ten sam błąd wrócił pięć razy w pięciu przebraniach: poziomy pasek rozsypany
+na jedną literę w wierszu, `Picker` zwijający `Menu`, popover przypięty do
+znikającej kotwicy, `Form` bez własnego tła, dwuklik tam, gdzie wystarczy
+stuknięcie. Za każdym razem wyglądało na nowy problem i za każdym razem
+przyczyną było przeniesienie cudzego idiomu zamiast napisania własnego.
+
+Każdy widok ma własny chrome pod `#if os(…)`. Wspólne są dane i decyzje.
 
 Ładowanie obrazu jest **dwustopniowe**: najlepszy wariant z dysku natychmiast,
 potem podmiana na pełny z iCloud. Jedno żądanie dawało albo miniaturę 64×37,
