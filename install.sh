@@ -6,13 +6,15 @@
 set -euo pipefail
 
 export DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer
-DEVICE="526CA4B9-D44E-5CA4-B089-86A1353BAC39"   # RadiPhone
+# Identyfikator swojego telefonu znajdziesz przez:  xcrun devicectl list devices
+# Ustaw go raz w powłoce:  export IBROWSE_DEVICE=...
+DEVICE="${IBROWSE_DEVICE:?ustaw IBROWSE_DEVICE — patrz xcrun devicectl list devices}"
 
 xcodegen generate
 
 if [ "${1:-mac}" = "ios" ]; then
     xcodebuild -project ibrowse.xcodeproj -scheme ibrowse-ios \
-        -configuration Debug -destination "platform=iOS,name=RadiPhone" \
+        -configuration Debug -destination "id=$DEVICE" \
         -derivedDataPath build -allowProvisioningUpdates build
     xcrun devicectl device install app --device "$DEVICE" \
         build/Build/Products/Debug-iphoneos/ibrowse-ios.app

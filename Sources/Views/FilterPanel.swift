@@ -104,7 +104,7 @@ struct FilterPanel: View {
     private var searchField: some View {
         HStack(spacing: 6) {
             Image(systemName: "magnifyingglass").foregroundStyle(.secondary)
-            TextField("las, Weronika, tablica…", text: $filters.query)
+            TextField("las, tablica, Kraków…", text: $filters.query)
                 #if os(iOS)
                 .textFieldStyle(.plain)
                 .autocorrectionDisabled()

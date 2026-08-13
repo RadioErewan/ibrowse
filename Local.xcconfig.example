@@ -5,6 +5,7 @@
 // dziesięciu znaków widoczny po kliknięciu Manage Certificates albo w
 // ~/Library/MobileDevice/Provisioning Profiles po pierwszej instalacji.
 //
-// Na macOS ten plik nie jest potrzebny — tam podpisujemy doraźnie.
+// Potrzebny na obu platformach: macOS podpisuje tym samym certyfikatem, żeby
+// zgoda na Pełny dostęp do dysku przetrwała kolejne kompilacje.
 
 IBROWSE_TEAM_ID = XXXXXXXXXX

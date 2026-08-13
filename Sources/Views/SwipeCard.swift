@@ -4,8 +4,8 @@ import SwiftUI
 /// Gesty w trybie oceniania: **w bok przewijasz, w pionie oceniasz**.
 ///
 /// Pierwsza wersja miała to odwrotnie, z apek randkowych: w lewo gorsze,
-/// w prawo lepsze. Sprawdziło się źle i to nie kwestia gustu — Radek chciał
-/// przewinąć zdjęcie i wystawił mu ocenę. Błąd idzie tu w kosztowną stronę,
+/// w prawo lepsze. Sprawdziło się źle i to nie kwestia gustu: chcąc przewinąć
+/// zdjęcie, wystawiało mu się ocenę. Błąd idzie tu w kosztowną stronę,
 /// bo zostawia w skali wpis, którego nikt nie zamierzał. Pomyłka odwrotna
 /// (chcę ocenić, przewinąłem) nie kosztuje nic.
 ///
