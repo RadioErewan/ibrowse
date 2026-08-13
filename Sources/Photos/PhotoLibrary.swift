@@ -151,6 +151,40 @@ final class PhotoLibrary: ObservableObject {
         }
     }
 
+    /// Oryginał w pełnej rozdzielczości — wyłącznie do oceny ostrości.
+    ///
+    /// Świadomie osobno od `image(for:)`, bo koszt jest zupełnie inny:
+    /// rozkodowanie 50 Mpx to setki megabajtów pamięci, a na iOS pobranie
+    /// oryginału z iCloud zostawia go na urządzeniu **na stałe**. Dlatego
+    /// telefon dostaje wyłącznie to, co już leży lokalnie, a decyzję
+    /// o pobraniu podejmuje wywołujący, nie ta metoda.
+    ///
+    /// Na Macu przyrost jest ograniczony z góry przez systemową politykę
+    /// „Optymalizuj pamięć": to pamięć podręczna zarządzana przez system,
+    /// nie studnia bez dna.
+    @discardableResult
+    func original(
+        for asset: PHAsset,
+        allowNetwork: Bool,
+        onLoad: @escaping (PlatformImage?) -> Void
+    ) -> PHImageRequestID {
+        let options = PHImageRequestOptions()
+        options.isNetworkAccessAllowed = allowNetwork
+        options.deliveryMode = .highQualityFormat
+        options.resizeMode = .none
+
+        return imageManager.requestImage(
+            for: asset,
+            targetSize: PHImageManagerMaximumSize,
+            contentMode: .aspectFit,
+            options: options
+        ) { image, info in
+            let degraded = (info?[PHImageResultIsDegradedKey] as? Bool) ?? false
+            guard !degraded else { return }
+            onLoad(image)
+        }
+    }
+
     func cancel(_ request: PHImageRequestID) {
         imageManager.cancelImageRequest(request)
     }

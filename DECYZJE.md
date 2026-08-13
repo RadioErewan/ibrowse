@@ -257,16 +257,62 @@ na biało, bo iOS odrzuca ikony z przezroczystością.
 Dock i Finder trzymają ikonę w pamięci podręcznej i nie zauważają zmiany
 w pakiecie, więc `install.sh` przerejestrowuje aplikację w LaunchServices.
 
+## Podgląd 1:1
+
+Reszta aplikacji pracuje na podglądach do 2048 px, bo to szybkie i tanie.
+Ale **lupka nad podglądem kłamałaby**: pokazywałaby wygładzone powiększenie
+i odrzucałbyś ostre zdjęcia jako miękkie. Ostrość jest pierwszym pytaniem przy
+odsiewie, więc to jedyne miejsce, gdzie potrzeba prawdziwych pikseli.
+
+Stąd dwie zasady. Oryginał dociągamy **dopiero na żądanie**, nigdy z góry.
+A gdy go nie ma, mówimy to wprost, zamiast powiększać podgląd — narzędzie do
+oceniania nie ma prawa zmyślać materiału, na podstawie którego decydujesz.
+
+Na Macu wolno dociągnąć z iCloud. Przyrost nie jest wyciekiem, tylko pamięcią
+podręczną zarządzaną przez system: gdy zabraknie miejsca, „Optymalizuj pamięć"
+eksmituje najstarsze oryginały. Na telefonie **nigdy** — tam pobrany oryginał
+zostaje na stałe i nie ma API, żeby go usunąć.
+
+Skala liczona przez skalę ekranu, nie na sztywno: na Retinie bez tego
+dostalibyśmy 2:1 i znów oglądalibyśmy interpolację.
+
+## Konwersja do HEIC — właściwe miejsce jest przed importem
+
+Zmierzone na tej bibliotece: **20 568 JPEG-ów zajmuje 56,4 GB**, a HEIC jest
+o **40% oszczędniejszy na megapiksel** (0,18 wobec 0,30 MB/Mpx). Nagroda to
+około 20 GB, czyli szósta część archiwum. Edytowanych JPEG-ów jest 38, więc
+utrata historii edycji praktycznie nie istnieje.
+
+Mimo to **dla istniejącej biblioteki to zły interes**. PhotoKit nie umie
+podmienić oryginału w miejscu; trzeba stworzyć nowe zdjęcie i skasować stare,
+a wtedy: nowy `localIdentifier` (nasze oceny się odklejają), albumy do
+odtworzenia, twarze i etykiety od nowa, chwilowo podwójne zużycie iCloud
+i strata generacyjna.
+
+Wszystkie te problemy biorą się z jednego założenia — że konwertujemy zdjęcia
+**już będące w bibliotece**. Przy przygotowaniu zbioru **przed wgraniem** nie
+ma żadnego z nich: nie ma identyfikatora do zerwania, albumów ani twarzy. Są
+pliki na dysku, konwersja i jeden import. Dlatego takiego narzędzia nie było
+tam, gdzie Radek go szukał: należy przed biblioteką, nie w niej.
+
+To osobne narzędzie z tej samej rodziny. Zapisane jako pomysł, nie zaczęte.
+
 ## Co czeka
 
-- **Krok malejący albo Elo** — przy serii 20+ lider wygrywa kilkanaście razy
-  i wychodzi na sufit skali. Najbliższa realna wada, widoczna od razu przy
-  większych seriach.
-- **Wyszukiwarka po OCR i etykietach.** Indeks jest już otwarty i czytany,
-  brakuje tylko zapytania w drugą stronę: od słowa do zdjęć. Uwaga na skalę
-  — tekst jest zaindeksowany tylko dla 1 756 zdjęć, nie dla całego archiwum.
+- **Synchronizacja odcisków i stanu serii** — priorytet. Oceny jeżdżą przez
+  albumy, ale odciski i rozstrzygnięcia serii nie: każde urządzenie liczy
+  osobno i nie widzi pracy drugiego.
 - **Metadane w pojedynku** — przy dwóch podobnych klatkach ISO i czas
   rozstrzygają szybciej niż oko.
+- **Konwersja do HEIC przed importem** — osobne narzędzie, opisane wyżej.
+- **Sprawdzić `PHAssetResourceManager`** — być może strumieniuje dane
+  zasobu bez oznaczania zdjęcia jako lokalnie dostępnego. Gdyby tak było,
+  podgląd 1:1 na telefonie przestałby zajmować miejsce na stałe. To się
+  sprawdza pomiarem wolnego miejsca przed i po, na dziesięciu zdjęciach.
+
+Zdjęte z listy: **archiwum 0,5–1 TB poza Photos**. Radek uporządkował je
+sam, a dla innych użytkowników właściwą odpowiedzią jest narzędzie do
+przygotowania zbioru przed przeprowadzką, nie drugie źródło w katalogu.
 - **Synchronizacja odcisków i stanu serii** — dziś każde urządzenie liczy
   osobno i nie widzi rozstrzygnięć drugiego.
 - **Pasek narzędzi na macOS** — „policz odciski" ucina się do „p…".

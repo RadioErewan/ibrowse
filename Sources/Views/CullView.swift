@@ -23,6 +23,11 @@ struct CullView: View {
     @State private var index = 0
     @State private var showingDeletions = false
 
+    /// Podgląd 1:1. Przełącznik, nie przytrzymanie — przytrzymanie gubi się
+    /// przy przełączeniu okna i zostawia widok w stanie, którego nikt nie
+    /// zamawiał. `Z` jak w Lightroomie.
+    @State private var showingLoupe = false
+
     #if os(macOS)
     @StateObject private var metadata = MetadataIndex()
     /// Domyślnie otwarty — po to powstał. Zapamiętany, bo przy szybkim
@@ -139,6 +144,14 @@ struct CullView: View {
         .sheet(isPresented: $showingDeletions) {
             DeletionReview(library: library, reviews: reviews.filter(\.markedForDeletion))
         }
+        .sheet(isPresented: $showingLoupe) {
+            if let current {
+                Loupe(asset: current, library: library, isPresented: $showingLoupe)
+                    #if os(macOS)
+                    .frame(minWidth: 900, minHeight: 640)
+                    #endif
+            }
+        }
         #if os(iOS)
         .sheet(isPresented: $showingMetadata) {
             if let current {
@@ -186,6 +199,10 @@ struct CullView: View {
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
+        // Dwuklik otwiera 1:1 także na telefonie. Nie koliduje z niczym:
+        // ocenianie i przewijanie to przeciągnięcia, a pojedyncze stuknięcie
+        // w tym widoku nic nie robi.
+        .onTapGesture(count: 2) { if current != nil { showingLoupe = true } }
     }
 
     /// Nagłówek istnieje tylko na telefonie. Na Macu te same przełączniki
@@ -304,7 +321,7 @@ struct CullView: View {
         #if os(iOS)
         "pociągnij w bok, żeby zobaczyć sąsiednie · w górę lepsze, w dół gorsze"
         #else
-        "1–5 ocena · −/+ przesuń · X do usunięcia · I metadane · ←/→ nawigacja"
+        "1–5 ocena · −/+ przesuń · Z podgląd 1:1 · X do usunięcia · I metadane · ←/→ nawigacja"
         #endif
     }
 
@@ -324,6 +341,9 @@ struct CullView: View {
             return .handled
         case "x", "X":
             toggleDeletion()
+            return .handled
+        case "z", "Z":
+            if current != nil { showingLoupe.toggle() }
             return .handled
         #if os(macOS)
         case "i", "I":
