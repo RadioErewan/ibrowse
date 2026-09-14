@@ -31,7 +31,11 @@ struct SyncFile {
     /// Wersja 2: identyfikatory są **chmurowe**, nie lokalne. Pliki w wersji 1
     /// są cicho pomijane, i słusznie — wpisy w nich wskazują na identyfikatory
     /// obcego urządzenia, więc wczytane wyrządziłyby szkodę zamiast pożytku.
-    static let schema = 2
+    /// Wersja 3: ocena niesie **cechy policzone przez system** — ostrość,
+    /// ekspozycję, twarze. Czytane są tylko na macOS, ale jadą wszędzie, bo
+    /// telefon nie ma jak ich policzyć. Starsza wersja aplikacji pominie taki
+    /// plik w całości; to znaczy, że oba urządzenia trzeba zaktualizować razem.
+    static let schema = 3
     static let fileExtension = "ibsync"
 
     // MARK: - Przenoszone dane
@@ -43,6 +47,16 @@ struct SyncFile {
         var judgements: Int
         var markedForDeletion: Bool
         var updatedAt: Date
+
+        /// Cechy policzone przez system. Jadą w ocenie, ale **nie są oceną** —
+        /// przy scalaniu omijają regułę „wygrywa nowszy". Zero znaczy „nie
+        /// policzono", więc puste pole nigdy nie kasuje cudzego pomiaru.
+        var sharpness: Double = 0
+        var exposure: Double = 0
+        var faces: Int = 0
+        var eyesClosed: Int = 0
+        var smiles: Int = 0
+        var isScreenshot: Bool = false
     }
 
     struct Print: Sendable {
@@ -102,7 +116,9 @@ struct SyncFile {
             PRAGMA journal_mode=OFF;
             CREATE TABLE meta(key TEXT PRIMARY KEY, value TEXT);
             CREATE TABLE rating(assetID TEXT PRIMARY KEY, weight REAL, isRated INT,
-                                judgements INT, marked INT, updatedAt REAL);
+                                judgements INT, marked INT, updatedAt REAL,
+                                sharpness REAL, exposure REAL, faces INT,
+                                eyesClosed INT, smiles INT, screenshot INT);
             CREATE TABLE print(assetID TEXT PRIMARY KEY, vector BLOB, takenAt REAL);
             CREATE TABLE verdict(key TEXT PRIMARY KEY, resolvedAt REAL, wasRejected INT,
                                  championID TEXT, challengerIndex INT);
@@ -117,7 +133,7 @@ struct SyncFile {
         // Pierwsza wersja przygotowywała je w pętli i zapis 25 tysięcy
         // odcisków trwał pół minuty — to nie dysk był wąskim gardłem, tylko
         // dwadzieścia pięć tysięcy kompilacji tego samego SQL-a.
-        repeating(db, "INSERT OR REPLACE INTO rating VALUES(?,?,?,?,?,?)", payload.ratings) {
+        repeating(db, "INSERT OR REPLACE INTO rating VALUES(?,?,?,?,?,?,?,?,?,?,?,?)", payload.ratings) {
             statement, rating in
             bind(statement, 1, rating.assetID)
             sqlite3_bind_double(statement, 2, rating.weight)
@@ -125,6 +141,12 @@ struct SyncFile {
             sqlite3_bind_int(statement, 4, Int32(rating.judgements))
             sqlite3_bind_int(statement, 5, rating.markedForDeletion ? 1 : 0)
             sqlite3_bind_double(statement, 6, rating.updatedAt.timeIntervalSince1970)
+            sqlite3_bind_double(statement, 7, rating.sharpness)
+            sqlite3_bind_double(statement, 8, rating.exposure)
+            sqlite3_bind_int(statement, 9, Int32(rating.faces))
+            sqlite3_bind_int(statement, 10, Int32(rating.eyesClosed))
+            sqlite3_bind_int(statement, 11, Int32(rating.smiles))
+            sqlite3_bind_int(statement, 12, rating.isScreenshot ? 1 : 0)
         }
 
         repeating(db, "INSERT OR REPLACE INTO print VALUES(?,?,?)", payload.prints) {
@@ -180,14 +202,23 @@ struct SyncFile {
             payload.writtenAt = Date(timeIntervalSince1970: seconds)
         }
 
-        query(db, "SELECT assetID, weight, isRated, judgements, marked, updatedAt FROM rating") {
+        query(db, """
+            SELECT assetID, weight, isRated, judgements, marked, updatedAt,
+                   sharpness, exposure, faces, eyesClosed, smiles, screenshot FROM rating
+            """) {
             payload.ratings.append(Rating(
                 assetID: text($0, 0) ?? "",
                 weight: sqlite3_column_double($0, 1),
                 isRated: sqlite3_column_int($0, 2) != 0,
                 judgements: Int(sqlite3_column_int($0, 3)),
                 markedForDeletion: sqlite3_column_int($0, 4) != 0,
-                updatedAt: Date(timeIntervalSince1970: sqlite3_column_double($0, 5))
+                updatedAt: Date(timeIntervalSince1970: sqlite3_column_double($0, 5)),
+                sharpness: sqlite3_column_double($0, 6),
+                exposure: sqlite3_column_double($0, 7),
+                faces: Int(sqlite3_column_int($0, 8)),
+                eyesClosed: Int(sqlite3_column_int($0, 9)),
+                smiles: Int(sqlite3_column_int($0, 10)),
+                isScreenshot: sqlite3_column_int($0, 11) != 0
             ))
         }
 

@@ -29,6 +29,42 @@ final class Review {
     var markedForDeletion: Bool = false
     var updatedAt: Date = Date.now
 
+    // MARK: - Cechy policzone przez system
+    //
+    // Doklejone do oceny, a nie trzymane osobno, **żeby pojechały istniejącą
+    // rurą**. Plik wymiany wozi już oceny po identyfikatorach chmurowych, więc
+    // cecha dopisana tutaj trafia na telefon bez nowej tabeli i bez drugiej
+    // ścieżki scalania. Osobny model kosztowałby jedno i drugie.
+    //
+    // Żadna z tych liczb **nie jest decyzją** — wszystkie pochodzą z baz
+    // systemu na macOS. Dlatego przy scalaniu nie biorą udziału w regule
+    // „wygrywa nowszy": patrz `mergeRatings`. Rekord założony wyłącznie po to,
+    // by je nieść, ma `isRated == false` i nadal liczy się jako nieoceniony.
+    //
+    // Zero znaczy **brak pomiaru**, nie wynik zerowy — system analizuje
+    // bibliotekę w tle i część zdjęć zawsze czeka w kolejce.
+
+    /// Ostrość, 0–1. W bazie systemu kolumna nazywa się `ZBLURRINESSSCORE`
+    /// i nazwa kłamie: wartość rośnie wraz z ostrością, nie z rozmyciem.
+    var sharpness: Double = 0
+
+    /// Jakość ekspozycji, 0–1.
+    var exposure: Double = 0
+
+    /// Ile twarzy system znalazł na zdjęciu.
+    var faces: Int = 0
+
+    /// Twarze z co najmniej jednym zamkniętym okiem. Najkonkretniejszy powód
+    /// odrzucenia portretu, jaki system liczy za nas.
+    var eyesClosed: Int = 0
+
+    /// Twarze z uśmiechem.
+    var smiles: Int = 0
+
+    /// Zrzut ekranu rozpoznany przez system — śmieć, który nie ma po co
+    /// trafiać do oceniania.
+    var isScreenshot: Bool = false
+
     init(assetID: String) {
         self.assetID = assetID
     }
@@ -45,6 +81,31 @@ extension Review {
 
     /// Gwiazdki to zaokrąglona waga, nie osobne pole.
     var stars: Int { isRated ? Int(weight.rounded()) : 0 }
+
+    /// Czy rekord niesie cokolwiek policzonego przez system.
+    ///
+    /// Decyduje o dwóch rzeczach: czy wpis jedzie do pliku wymiany (inaczej
+    /// pojechałyby same oceny, a cechy zostałyby na Macu) i czy zdjęcie ma się
+    /// w ogóle pojawić w zestawieniu cech.
+    var hasFeatures: Bool {
+        sharpness > 0 || exposure > 0 || faces > 0 || isScreenshot
+    }
+
+    /// Przepisuje cechy z drugiego urządzenia.
+    ///
+    /// Osobno od oceny i **bez dotykania `updatedAt`**, bo to nie jest zmiana,
+    /// którą ktokolwiek zrobił — to ten sam pomiar systemu, tylko przywieziony.
+    /// Wpisanie go jako świeżej zmiany kazałoby mu wygrać z prawdziwą oceną
+    /// postawioną w międzyczasie na drugim urządzeniu.
+    func adoptFeatures(from other: Review) {
+        guard other.hasFeatures else { return }
+        sharpness = other.sharpness
+        exposure = other.exposure
+        faces = other.faces
+        eyesClosed = other.eyesClosed
+        smiles = other.smiles
+        isScreenshot = other.isScreenshot
+    }
 
     func set(_ value: Double) {
         weight = min(max(value, Self.range.lowerBound), Self.range.upperBound)

@@ -2,6 +2,7 @@
 import Foundation
 import Photos
 import SQLite3
+import SwiftData
 
 /// Metadane, których PhotoKit nie oddaje.
 ///
@@ -80,6 +81,113 @@ actor MetadataStore {
     func currentFailure() -> String? {
         openIfNeeded()
         return failure
+    }
+
+    /// Komplet cech jednego zdjęcia, tak jak je policzył system.
+    struct Features: Sendable {
+        var sharpness: Double = 0
+        var exposure: Double = 0
+        var faces: Int = 0
+        var eyesClosed: Int = 0
+        var smiles: Int = 0
+        var isScreenshot: Bool = false
+    }
+
+    /// Cechy całej biblioteki, dwoma zapytaniami.
+    ///
+    /// Twarze idą osobno i **zagregowane do zdjęcia**, bo w bazie systemu są
+    /// osobnymi wierszami — 18 tysięcy twarzy na 26 tysiącach zdjęć. Utrzymanie
+    /// ich po naszej stronie jako osobnych bytów wymagałoby drugiego modelu
+    /// i drugiej tabeli w pliku wymiany; policzone do liczby na zdjęciu
+    /// mieszczą się w ocenie, która i tak jeździ między urządzeniami.
+    ///
+    /// Tracimy przez to pozycję twarzy w kadrze. Świadomie: do pytania „czy
+    /// ktoś tu ma zamknięte oczy" pozycja nie jest potrzebna, a do rysowania
+    /// ramek nie mamy widoku, który by je pokazywał.
+    func features() -> [String: Features] {
+        openIfNeeded()
+        guard let library else { return [:] }
+
+        var result: [String: Features] = [:]
+
+        let assets = """
+            SELECT a.ZUUID, m.ZBLURRINESSSCORE, m.ZEXPOSURESCORE, a.ZISDETECTEDSCREENSHOT
+            FROM ZASSET a
+            JOIN ZMEDIAANALYSISASSETATTRIBUTES m ON m.ZASSET = a.Z_PK
+            WHERE a.ZUUID IS NOT NULL
+            """
+        var statement: OpaquePointer?
+        if sqlite3_prepare_v2(library, assets, -1, &statement, nil) == SQLITE_OK {
+            while sqlite3_step(statement) == SQLITE_ROW {
+                guard let uuid = Self.text(statement, 0) else { continue }
+                var entry = Features()
+                entry.sharpness = sqlite3_column_double(statement, 1)
+                entry.exposure = sqlite3_column_double(statement, 2)
+                entry.isScreenshot = sqlite3_column_int(statement, 3) != 0
+                result[uuid] = entry
+            }
+        }
+        sqlite3_finalize(statement)
+
+        let faces = """
+            SELECT a.ZUUID, COUNT(*),
+                   SUM(CASE WHEN d.ZISLEFTEYECLOSED = 1 OR d.ZISRIGHTEYECLOSED = 1 THEN 1 ELSE 0 END),
+                   SUM(CASE WHEN d.ZHASSMILE = 1 THEN 1 ELSE 0 END)
+            FROM ZDETECTEDFACE d JOIN ZASSET a ON a.Z_PK = d.ZASSETFORFACE
+            WHERE a.ZUUID IS NOT NULL
+            GROUP BY a.ZUUID
+            """
+        statement = nil
+        if sqlite3_prepare_v2(library, faces, -1, &statement, nil) == SQLITE_OK {
+            while sqlite3_step(statement) == SQLITE_ROW {
+                guard let uuid = Self.text(statement, 0) else { continue }
+                var entry = result[uuid] ?? Features()
+                entry.faces = Int(sqlite3_column_int(statement, 1))
+                entry.eyesClosed = Int(sqlite3_column_int(statement, 2))
+                entry.smiles = Int(sqlite3_column_int(statement, 3))
+                result[uuid] = entry
+            }
+        }
+        sqlite3_finalize(statement)
+
+        return result
+    }
+
+    /// Ostrość policzona przez system, dla **całej biblioteki naraz**.
+    ///
+    /// Kolumna nazywa się `ZBLURRINESSSCORE`, ale nazwa kłamie: sprawdzone na
+    /// zdjęciach z obu krańców skali — wysokie wartości to zdjęcia ostre,
+    /// niskie to poruszenie i miękkość. Zwracamy więc **ostrość**, nie
+    /// rozmycie, żeby nazwa po naszej stronie zgadzała się ze znaczeniem.
+    ///
+    /// Jedno zapytanie zamiast 26 tysięcy: odczyt po jednym zdjęciu ma sens
+    /// przy panelu, gdzie patrzysz na jedno, ale nie przy zestawieniu, które
+    /// z definicji sortuje wszystko.
+    ///
+    /// Dokładne zero odrzucamy jako **brak pomiaru**, nie zdjęcie beznadziejnie
+    /// rozmyte. Takich wierszy jest kilkadziesiąt i żaden nie ma oryginału na
+    /// dysku — to zdjęcia, których system jeszcze nie przeanalizował. Gdyby
+    /// wpadły do zestawienia, zajęłyby sam jego początek i to one byłyby
+    /// pierwszym, co zobaczysz.
+    func sharpness() -> [String: Double] {
+        openIfNeeded()
+        guard let library else { return [:] }
+
+        let sql = """
+            SELECT a.ZUUID, m.ZBLURRINESSSCORE
+            FROM ZASSET a JOIN ZMEDIAANALYSISASSETATTRIBUTES m ON m.ZASSET = a.Z_PK
+            WHERE m.ZBLURRINESSSCORE IS NOT NULL AND m.ZBLURRINESSSCORE > 0
+            """
+        var statement: OpaquePointer?
+        guard sqlite3_prepare_v2(library, sql, -1, &statement, nil) == SQLITE_OK else { return [:] }
+        defer { sqlite3_finalize(statement) }
+
+        var scores: [String: Double] = [:]
+        while sqlite3_step(statement) == SQLITE_ROW {
+            guard let uuid = Self.text(statement, 0) else { continue }
+            scores[uuid] = sqlite3_column_double(statement, 1)
+        }
+        return scores
     }
 
     /// Szukanie w drugą stronę: od słowa do zdjęć.
@@ -345,6 +453,65 @@ final class MetadataIndex: ObservableObject {
         guard identifier == asset.localIdentifier else { return }
         current = loaded
         failure = await store.currentFailure()
+    }
+}
+
+/// Przepisuje cechy z baz systemu do naszego składu.
+///
+/// Jawna, jednorazowa operacja — tak samo jak liczenie odcisków i z tego samego
+/// powodu: aplikacja nie ma prawa po cichu przemielić całego archiwum przy
+/// pierwszym uruchomieniu. Wynik trafia do `Review`, więc stamtąd jedzie
+/// synchronizacją na telefon, gdzie tych baz nie ma.
+@MainActor
+final class FeatureImport: ObservableObject {
+    @Published private(set) var isWorking = false
+    @Published private(set) var summary: String?
+
+    func run(context: ModelContext, library: PhotoLibrary) async {
+        guard !isWorking else { return }
+        isWorking = true
+        defer { isWorking = false }
+
+        let features = await MetadataStore.shared.features()
+        guard !features.isEmpty else {
+            summary = await MetadataStore.shared.currentFailure()
+                ?? "Baza biblioteki nie ma policzonych cech."
+            return
+        }
+
+        // Rekord zakładamy **tylko** dla zdjęcia, które faktycznie coś niesie.
+        // Inaczej powstałoby 26 tysięcy pustych ocen, z których każda jechałaby
+        // potem w każdym pliku wymiany.
+        let existing = Dictionary(
+            ((try? context.fetch(FetchDescriptor<Review>())) ?? []).map { ($0.assetID, $0) },
+            uniquingKeysWith: { a, _ in a }
+        )
+
+        var touched = 0
+        for asset in library.assets {
+            let id = asset.localIdentifier
+            guard let found = features[String(id.prefix(36))] else { continue }
+            guard found.sharpness > 0 || found.exposure > 0
+                    || found.faces > 0 || found.isScreenshot else { continue }
+
+            let review = existing[id] ?? {
+                let fresh = Review(assetID: id)
+                context.insert(fresh)
+                return fresh
+            }()
+
+            // Bez `updatedAt`: to pomiar systemu, nie czyjaś decyzja.
+            review.sharpness = found.sharpness
+            review.exposure = found.exposure
+            review.faces = found.faces
+            review.eyesClosed = found.eyesClosed
+            review.smiles = found.smiles
+            review.isScreenshot = found.isScreenshot
+            touched += 1
+        }
+
+        try? context.save()
+        summary = "Wczytałem cechy \(touched) zdjęć."
     }
 }
 #endif
