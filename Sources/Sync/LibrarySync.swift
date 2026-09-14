@@ -153,8 +153,28 @@ final class LibrarySync: ObservableObject {
             at: folder, includingPropertiesForKeys: nil
         )) ?? []
 
+        // Plik **jeszcze nieściągnięty wygląda inaczej niż ściągnięty**.
+        //
+        // iCloud Drive pokazuje go jako znacznik zastępczy o nazwie
+        // `.nazwa.ibsync.icloud` — z kropką z przodu i cudzym rozszerzeniem.
+        // Filtr po samym `ibsync` przelatywał obok, więc telefon, który nigdy
+        // nie pobrał 58 MB z Maca, meldował „nie znalazłem plików" stojąc
+        // dokładnie nad tym plikiem. Na Macu problem nie występował, bo tam
+        // wszystko było od dawna na dysku.
+        //
+        // Ze znacznika odtwarzamy prawdziwą nazwę i dalej pracujemy na niej —
+        // koordynator odczytu i tak każe dostawcy dostarczyć zawartość.
+        let placeholder = ".icloud"
         let others = contents
-            .filter { $0.pathExtension == SyncFile.fileExtension && $0.lastPathComponent != mine }
+            .compactMap { url -> URL? in
+                let name = url.lastPathComponent
+                if url.pathExtension == SyncFile.fileExtension { return url }
+                guard name.hasPrefix("."), name.hasSuffix(placeholder) else { return nil }
+                let real = String(name.dropFirst().dropLast(placeholder.count))
+                guard real.hasSuffix("." + SyncFile.fileExtension) else { return nil }
+                return folder.appending(path: real)
+            }
+            .filter { $0.lastPathComponent != mine }
 
         return others.enumerated()
             .compactMap { position, url in
@@ -163,10 +183,19 @@ final class LibrarySync: ObservableObject {
                 // sugerująca sieć kazała szukać winy w chmurze, gdy plik od
                 // dawna leżał na dysku.
                 let size = (try? url.resourceValues(forKeys: [.fileSizeKey]).fileSize) ?? 0
+                let onDisk = FileManager.default.fileExists(atPath: url.path)
                 report(
-                    "czytam plik \(position + 1) z \(others.count)"
+                    (onDisk ? "czytam" : "pobieram") + " plik \(position + 1) z \(others.count)"
                     + (size > 0 ? " (\(size / 1_048_576) MB)" : "") + "…"
                 )
+
+                // Prośba wprost, gdy pliku fizycznie nie ma. Koordynator zwykle
+                // sam każe go dostarczyć, ale przy pierwszym pobraniu dziesiątek
+                // megabajtów potrafi odpowiedzieć szybciej, niż dostawca zdąży —
+                // a wtedy odczyt zwraca pustkę zamiast czekać.
+                if !onDisk {
+                    try? FileManager.default.startDownloadingUbiquitousItem(at: url)
+                }
                 var payload: SyncFile.Payload?
                 var failure: NSError?
                 NSFileCoordinator().coordinate(
@@ -231,6 +260,24 @@ final class LibrarySync: ObservableObject {
             guard let assetID = toLocal[entry.assetID] else { continue }
 
             if let existing = index[assetID] {
+                // Cechy **przed** strażą czasu i niezależnie od niej.
+                //
+                // To pomiar systemu, nie decyzja, więc nie ma czego rozstrzygać
+                // po czasie. Gdyby jechały razem z oceną, Mac wysyłałby tysiące
+                // pustych ocen ze świeżą datą, a każda taka — będąc nowszą —
+                // skasowałaby ocenę postawioną wcześniej na telefonie. Zamiast
+                // tego obowiązuje „kto ma, ten daje": pusty pomiar nie nadpisuje
+                // niczego, a niepusty uzupełnia brak.
+                if entry.sharpness > 0 || entry.exposure > 0
+                    || entry.faces > 0 || entry.isScreenshot {
+                    existing.sharpness = entry.sharpness
+                    existing.exposure = entry.exposure
+                    existing.faces = entry.faces
+                    existing.eyesClosed = entry.eyesClosed
+                    existing.smiles = entry.smiles
+                    existing.isScreenshot = entry.isScreenshot
+                }
+
                 guard entry.updatedAt > existing.updatedAt else { continue }
                 // Przypisujemy wprost, a nie przez `set()`: tamto podbiłoby
                 // licznik ocen i datę, czyli policzyłoby przepisanie cudzej
@@ -247,6 +294,12 @@ final class LibrarySync: ObservableObject {
                 fresh.judgements = entry.judgements
                 fresh.markedForDeletion = entry.markedForDeletion
                 fresh.updatedAt = entry.updatedAt
+                fresh.sharpness = entry.sharpness
+                fresh.exposure = entry.exposure
+                fresh.faces = entry.faces
+                fresh.eyesClosed = entry.eyesClosed
+                fresh.smiles = entry.smiles
+                fresh.isScreenshot = entry.isScreenshot
                 context.insert(fresh)
                 index[assetID] = fresh
             }
@@ -330,8 +383,11 @@ final class LibrarySync: ObservableObject {
         var payload = SyncFile.Payload()
         payload.deviceName = SyncFolder.deviceName
 
+        // Także rekordy bez oceny, o ile niosą cechy — to jest cały sens ich
+        // istnienia. Filtr przepuszczający wyłącznie ocenione zostawiłby
+        // pomiary systemu na Macu, a telefon nie ma jak policzyć ich sam.
         let reviews = ((try? context.fetch(FetchDescriptor<Review>())) ?? [])
-            .filter { $0.isRated || $0.markedForDeletion }
+            .filter { $0.isRated || $0.markedForDeletion || $0.hasFeatures }
         let fingerprints = (try? context.fetch(FetchDescriptor<Fingerprint>())) ?? []
 
         // Jedno tłumaczenie na cały zapis. Wpisy bez odpowiednika w chmurze
@@ -341,7 +397,10 @@ final class LibrarySync: ObservableObject {
             return SyncFile.Rating(
                 assetID: cloud, weight: review.weight, isRated: review.isRated,
                 judgements: review.judgements, markedForDeletion: review.markedForDeletion,
-                updatedAt: review.updatedAt
+                updatedAt: review.updatedAt,
+                sharpness: review.sharpness, exposure: review.exposure,
+                faces: review.faces, eyesClosed: review.eyesClosed,
+                smiles: review.smiles, isScreenshot: review.isScreenshot
             )
         }
 

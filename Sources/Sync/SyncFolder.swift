@@ -46,12 +46,26 @@ enum SyncFolder {
         let options: URL.BookmarkResolutionOptions = []
         #endif
 
+        // Zakładka nie do odzyskania — **zapominamy ją**, zamiast udawać, że
+        // folder jest wybrany.
+        //
+        // Tak się dzieje po zmianie tożsamości aplikacji: zakładka wystawiona
+        // poprzedniemu podpisowi przestaje obowiązywać i nigdy już nie zacznie.
+        // Bez tego `isChosen` odpowiadało „tak", menu proponowało „zmień folder
+        // wymiany…", a synchronizacja kończyła się prośbą o wskazanie folderu,
+        // który przecież widniał jako wskazany.
         guard let url = try? URL(
             resolvingBookmarkData: data, options: options,
             relativeTo: nil, bookmarkDataIsStale: &stale
-        ) else { return nil }
+        ) else { forget(); return nil }
 
-        guard url.startAccessingSecurityScopedResource() else { return nil }
+        guard url.startAccessingSecurityScopedResource() else { forget(); return nil }
+
+        // Zakładka zwietrzała, ale wciąż wskazuje cel — wystawiamy ją na nowo,
+        // póki mamy dostęp. Inaczej przy kolejnym uruchomieniu może już nie być
+        // czego rozwiązywać.
+        if stale { try? remember(url) }
+
         return (url, { url.stopAccessingSecurityScopedResource() })
     }
 
