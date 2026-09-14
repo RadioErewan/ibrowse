@@ -227,6 +227,35 @@ Format to SQLite: 25 tysięcy wektorów to 39 MB danych binarnych, które w JSON
 urosłyby o jedną trzecią. Zapytania kompilujemy raz na tabelę — wersja
 z kompilacją per wiersz zapisywała plik pół minuty.
 
+### Plik nieściągnięty nazywa się inaczej niż ściągnięty
+
+iCloud Drive pokazuje plik, którego jeszcze nie pobrano, jako **znacznik
+zastępczy** o nazwie `.nazwa.ibsync.icloud` — z kropką z przodu i cudzym
+rozszerzeniem. Filtr po samym `ibsync` przelatywał obok, więc telefon stojący
+dokładnie nad plikiem Maca meldował „nie znalazłem plików z innych urządzeń".
+
+Na Macu to nigdy nie wyszło, bo tam wszystko było od dawna na dysku. Błąd
+czekał na pierwsze urządzenie, które dostaje plik, jakiego jeszcze nie ma.
+Ze znacznika odtwarzamy prawdziwą nazwę; gdy pliku fizycznie nie ma, prosimy
+o pobranie wprost, bo koordynator potrafi odpowiedzieć szybciej, niż dostawca
+zdąży dostarczyć dziesiątki megabajtów.
+
+Etykieta mówi **„pobieram"** albo „czytam" zależnie od tego, co się dzieje —
+to są różne oczekiwania i wcześniej nie dało się ich odróżnić.
+
+Sprawdzenie stanu wysyłki od strony systemu: `URLResourceKey`
+`.ubiquitousItemIsUploadedKey` i `.ubiquitousItemDownloadingStatusKey`.
+Bez tego nie sposób odróżnić „chmura jeszcze nie skończyła" od błędu w kodzie
+— a przy pliku 59 MB pierwsze zdarza się często.
+
+### Zakładka do folderu przestaje obowiązywać wraz z tożsamością aplikacji
+
+Po zmianie konta deweloperskiego zakładka wystawiona poprzedniemu podpisowi
+nie działa i nigdy już nie zacznie. Gorsze było to, że `isChosen` sprawdzało
+wyłącznie istnienie danych zakładki: menu twierdziło „folder wybrany",
+a synchronizacja prosiła o wskazanie folderu, który widniał jako wskazany.
+Zakładkę nie do odzyskania **zapominamy**, żeby interfejs mówił prawdę.
+
 ### `localIdentifier` nie jest wspólny między urządzeniami
 
 To był najdroższy błąd tego projektu i wyszedł tylko dlatego, że raport
@@ -300,6 +329,120 @@ certyfikatem zamiast doraźnie — TCC zapamiętuje tożsamość podpisu, a podp
 doraźny zmienia się przy każdej kompilacji i uprawnienie trzeba by nadawać
 po każdej przebudowie.
 
+## Cechy policzone przez system
+
+Pod biblioteką leży znacznie więcej, niż pokazuje aplikacja Zdjęcia: 89 tabel,
+a w nich ostrość każdego zdjęcia, jakość ekspozycji, 18 781 wykrytych twarzy
+z miną, wiekiem i stanem oczu, oraz 1,24 mln etykiet scen. Wszystko policzone,
+gotowe i **za darmo** — dokładnie te rzeczy, które sami liczylibyśmy tygodniami.
+
+Stąd czwarty tryb: przeglądy poprzeczne cudzą miarą. Nie ocena — **zestawienie**.
+Żadna z tych liczb nie dotyka wagi zdjęcia.
+
+### Nazwa kolumny potrafi znaczyć odwrotność
+
+`ZMEDIAANALYSISASSETATTRIBUTES.ZBLURRINESSSCORE` brzmi jak rozmycie, a rośnie
+wraz z **ostrością**. Rozstrzygnęło dopiero obejrzenie zdjęć z obu krańców
+skali: przy 0,37 wyszło poruszone zdjęcie z garażu, przy 0,999 ostry portret.
+Statystyka tego nie pokazała — średnia 0,88 przy maksimum 1,0 wyglądała
+sensownie w obie strony.
+
+Morał ogólniejszy: żadnej z tych nazw nie należy wierzyć bez obejrzenia
+skrajnych przypadków. To są nazwy wewnętrzne, nigdy nieprzeznaczone dla nikogo
+z zewnątrz.
+
+Sprawdzona ślepa uliczka: `ZOVERALLAESTHETICSCORE`. Zestawiona z prawdziwymi
+ocenami **nie układa się monotonicznie** — jedynki wypadły wyżej niż trójki.
+To ocena estetyczna, nie miara jakości, i jako sygnał do odsiewu nie działa.
+
+### Zero znaczy „nie policzono"
+
+Analiza chodzi, gdy Mac jest bezczynny i pod prądem, więc część wierszy zawsze
+czeka w kolejce z dokładnym zerem. Przy sortowaniu rosnąco zajęłyby cały
+początek wyniku — czyli pierwszym, co widać, byłyby zdjęcia bez pomiaru.
+Dlatego wszędzie odrzucamy dokładne zero jako brak danych.
+
+Podobna pułapka obok: `ZLATITUDE` jest wypełniona dla wszystkich zdjęć, ale
+`-180` to wartownik „bez lokalizacji" — u Radka 6 952 zdjęcia. Policzone
+naiwnie wysyłają czwartą część archiwum na antypody.
+
+### Transport: cechy jadą w ocenie
+
+iOS nie ma dostępu do tych baz — piaskownica nie wpuszcza do pakietu
+biblioteki. Telefon musiałby liczyć wszystko sam albo dostać gotowe.
+
+Cechy są więc **polami w `Review`**, a nie osobnym modelem. Powód jest jeden
+i praktyczny: plik wymiany wozi już oceny po identyfikatorach chmurowych, więc
+cecha dopisana tam jedzie istniejącą rurą — bez nowej tabeli i bez drugiej
+ścieżki scalania. Koszt zmierzony: komplet cech zdjęć i twarzy to **9,9 MB**
+wobec 39 MB odcisków, które i tak jadą. Sceny (27 MB) zostają na Macu.
+
+**Pomiar systemu nie uczestniczy w „wygrywa nowszy".** To jest sedno i jedyne
+miejsce, gdzie łatwo o cichą utratę danych. Gdyby cechy jechały razem z oceną,
+Mac wysyłałby tysiące pustych ocen ze świeżą datą, a każda taka — będąc nowszą
+— skasowałaby ocenę postawioną wcześniej na telefonie. Obowiązuje więc „kto ma,
+ten daje": cechy przepisują się **przed strażą czasu i niezależnie od niej**,
+pusty pomiar nie nadpisuje niczego.
+
+Rekord założony wyłącznie po to, by nieść cechy, ma `isRated == false` i nadal
+liczy się jako nieoceniony — filtry pytają o `isRated`, nie o istnienie wpisu.
+
+### Gęsty skład przewraca wzorce pisane dla rzadkiego
+
+Po imporcie `Review` urosło z 461 do 25 172 rekordów i natychmiast wyszło, że
+cały projekt stał na cichym założeniu o **rzadkości** tego składu. Widoki
+budowały słownik ocen we właściwości obliczanej — przy pół tysiąca rekordów
+darmowe, przy 25 tysiącach zabójcze, bo ciało widoku sięga po nie kilka razy.
+W ocenianiu jedno naciśnięcie klawisza liczyło kilkaset tysięcy operacji.
+
+Dwie zasady, które z tego zostają:
+
+- Widoki, które pytają o **decyzje**, biorą `@Query` zawężone predykatem do
+  `isRated || markedForDeletion`. Zapis pozostaje bezpieczny, bo idzie przez
+  `Review.upsert`, szukające po `assetID` niezależnie od zapytania.
+- Zestawienie cech liczy się **raz na zmianę warunków**, do `@State`, ze zwłoką
+  po ustaniu ruchu suwakiem — inaczej każda klatka przeciągania sortuje 26
+  tysięcy zdjęć.
+
+Zestawienie chodzi po **tym samym zbiorze, co ocenianie** (czyli przez filtry).
+Inaczej kliknięcie w zdjęcie spoza zawężenia nie trafiało w nic: wskaźnik
+zostawał na miejscu i otwierało się zupełnie inne zdjęcie.
+
+### Co siedzi w scenach
+
+Hierarchiczna taksonomia oparta na Wikidanych, nie płaska lista tagów. Słownik
+jest w systemie: `PhotosFormats.framework/Resources/PFSceneTaxonomyData_99.bz2`
+— 3 515 węzłów, 3 333 krawędzie rodzic–dziecko, do tego `scenetaxonomy.loctable`
+z nazwami w 42 językach. Łańcuch to numer sceny → kod Wikidata → nazwa.
+
+Pewność rozstrzyga wszystko: bez progu wychodzi 47,9 etykiety na zdjęcie, przy
+0,9 zostaje **4,7**. Dopiero to jest materiał do pokazania człowiekowi. Nazwy
+gotowe do wyświetlenia i tak leżą w `psi.sqlite`, który już czytamy.
+
+### Rozmiary — co czyni bazę wielką
+
+Z 992 MB nic ciekawego nie waży prawie nic:
+
+| Co | Rozmiar |
+| --- | --- |
+| Dziennik zmian (`ACHANGE`, `ATRANSACTION` + indeksy) | 258 MB |
+| Wektory i blobi (odciski scen i twarzy, OCR, metadane iCloud) | 258 MB |
+| Klasyfikacja scen z indeksami | 160 MB |
+| **Właściwości skalarne** | **36 MB** |
+
+Największy kawałek to historia synchronizacji z chmurą — nie dane o zdjęciach.
+
+### Dystrybucja: to nie wejdzie do App Store
+
+Mac App Store wymaga piaskownicy, a aplikacja w piaskownicy nie dostanie
+Pełnego dostępu do dysku. Na iOS pakietu biblioteki nie widać w ogóle. Zostaje
+**Developer ID i notaryzacja**, czyli dystrybucja poza sklepem — notaryzacja
+skanuje pod kątem złośliwego kodu, nie sprawdza zgodności z wytycznymi.
+
+To sugeruje podział, gdyby aplikacja miała kiedyś wyjść do ludzi: **eksporter**
+poza sklepem, czytający bazy i zapisujący małą przenośną paczkę, oraz
+**przeglądarka**, która działa z tą paczką albo bez niej.
+
 ## Ikona
 
 Jeden rysunek, **dwa kadry** — bo platformy chcą czegoś przeciwnego. Na Macu
@@ -359,6 +502,35 @@ tam, gdzie Radek go szukał: należy przed biblioteką, nie w niej.
 To osobne narzędzie z tej samej rodziny. Zapisane jako pomysł, nie zaczęte.
 
 ## Co czeka
+
+### Przesunięcie zakresu: z sortownika w przeglądarkę
+
+Odkrycie, ile gotowych danych leży pod biblioteką, zmienia klasę narzędzia.
+Sortownik potrzebował jednego dobrego widoku. Przeglądarka potrzebuje sposobu
+na **przecinanie zbioru** i wracanie do tego samego miejsca z różnych stron.
+
+Kształt docelowy, ustalony po pierwszym użyciu zakładki cech:
+
+- **Siatka jako tryb główny** — nie jedna z czterech zakładek.
+- **Pojedynczy podgląd** jako drugi tryb.
+- **Cechy jako osie** siatki i podglądu — sortowanie i filtrowanie, nie osobny
+  ekran. Dzisiejsza zakładka była najszybszym sposobem sprawdzenia, czy sygnał
+  jest cokolwiek wart; docelowo „ostrość" nie jest trybem, tylko kryterium,
+  tak samo jak rok czy liczba gwiazdek.
+- **Ocenianie i turniej schodzą do roli dodatku** — wywoływanego z przeglądarki,
+  gdy już się coś znalazło.
+
+Czego dziś brakuje do poziomu Bridge'a: zaznaczania i operacji na grupie,
+sortowania (kolejność jest taka, jaką poda PhotoKit), swobodnego porównywania
+obok siebie, grupowania po dniu, serii albo osobie — choć system ma policzone
+momenty i 7 290 klastrów osób.
+
+Przed kodowaniem: **poużywać**. Pierwsza obserwacja z używania jest taka, że
+zbiór zrzutów ekranu z `ZISDETECTEDSCREENSHOT` bije album „Zrzuty ekranu"
+w Zdjęciach — Apple idzie po typie pliku, a to jest wynik rozpoznania, więc
+łapie też sfotografowany ekran i obrazek zapisany z sieci. Ten sam silnik, dwa
+różne pytania, i użytkownikowi wystawiono gorsze. Takich miejsc jest tam
+zapewne więcej.
 
 - **Metadane w pojedynku** — przy dwóch podobnych klatkach ISO i czas
   rozstrzygają szybciej niż oko.

@@ -31,6 +31,12 @@ samego zwycięstwa.
 szukanie po treści: etykiety scen, imiona osób, nazwy miejsc i tekst odczytany
 ze zdjęć przez system.
 
+**Cechy** — przeglądy poprzeczne miarą policzoną przez system: od najbardziej
+poruszonych, od najgorzej naświetlonych, zdjęcia z zamkniętymi oczami, zrzuty
+ekranu. To zestawienie do obejrzenia, nie ocena — żadna z tych liczb nie dotyka
+wagi zdjęcia. Czyta je macOS z baz biblioteki (wymaga Pełnego dostępu do
+dysku), a na telefon przyjeżdżają synchronizacją, więc działają bez sieci.
+
 **Metadane** — na macOS panel boczny z techniką zdjęcia i tym, co widzi
 system. Na telefonie arkusz na żądanie.
 
