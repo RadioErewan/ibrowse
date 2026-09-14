@@ -17,7 +17,18 @@ struct CullView: View {
     /// trafia w to samo miejsce zamiast na początek biblioteki.
     @Binding var focusID: String?
     @Environment(\.modelContext) private var context
-    @Query private var reviews: [Review]
+    /// Tylko rekordy niosące **decyzję**, nie wszystkie.
+    ///
+    /// Odkąd cechy systemu jadą w ocenie, rekordów jest tyle, co zdjęć —
+    /// 25 tysięcy zamiast pół tysiąca. Ocenianie nie potrzebuje ani jednego
+    /// z tych pustych: pyta o gwiazdki i o zaznaczenie do usunięcia. Bez tego
+    /// zawężenia każde naciśnięcie klawisza przebudowywało słownik 25 tysięcy
+    /// pozycji, i to po kilka razy, bo sięga po niego kilka właściwości.
+    ///
+    /// Zapis jest bezpieczny mimo zawężenia, bo idzie przez `Review.upsert`,
+    /// które wyszukuje rekord po `assetID` niezależnie od tego zapytania.
+    @Query(filter: #Predicate<Review> { $0.isRated || $0.markedForDeletion })
+    private var reviews: [Review]
 
     @FocusState private var focused: Bool
     @State private var index = 0

@@ -19,7 +19,10 @@ import SwiftUI
 struct FilterPanel: View {
     @ObservedObject var library: PhotoLibrary
     @ObservedObject var filters: Filters
-    @Query private var reviews: [Review]
+    /// Panel liczy tylko, ile zdjęć pasuje do warunków — a te dotyczą stanu
+    /// oceny. Patrz komentarz w `CullView`.
+    @Query(filter: #Predicate<Review> { $0.isRated || $0.markedForDeletion })
+    private var reviews: [Review]
     @Environment(\.dismiss) private var dismiss
 
     private var byID: [String: Review] {
