@@ -26,7 +26,11 @@ struct GridView: View {
     /// i trzeba było odnajdywać się ręcznie.
     var focusID: String?
 
-    @Query private var reviews: [Review]
+    /// Siatka rysuje gwiazdki i filtruje po stanie oceny — puste rekordy
+    /// niosące same cechy systemu nie zmieniają w niej nic, a jest ich
+    /// pięćdziesiąt razy więcej niż ocen. Patrz komentarz w `CullView`.
+    @Query(filter: #Predicate<Review> { $0.isRated || $0.markedForDeletion })
+    private var reviews: [Review]
 
     #if os(macOS)
     @State private var thumbSize: Double = 140
@@ -124,12 +128,21 @@ struct GridView: View {
 
 /// Jedna komórka siatki. Zgłasza start i koniec ładowania do monitora, więc
 /// widać, ile żądań wisi jednocześnie przy szybkim scrollu.
-private struct Thumbnail: View {
+///
+/// Niepubliczna dla modułu, ale nie `private`: z tego samego kafelka korzysta
+/// zestawienie ostrości. Drugi, prawie identyczny kafelek rozjechałby się
+/// z tym przy pierwszej zmianie ładowania miniatur.
+struct Thumbnail: View {
     let asset: PHAsset
     let library: PhotoLibrary
     let monitor: PerfMonitor
     let side: Double
     let rating: Int
+
+    /// Podpis w rogu — liczba, według której akurat sortujemy. Bez niego
+    /// zestawienie ostrości byłoby ciągiem zdjęć bez wytłumaczenia, dlaczego
+    /// stoją w tej kolejności.
+    var badge: String? = nil
 
     /// Zdjęcie, od którego przyszliśmy z innego trybu. Samo przewinięcie nie
     /// wystarcza — wśród setek podobnych kafelków środek ekranu nic nie znaczy.
@@ -145,6 +158,21 @@ private struct Thumbnail: View {
                 Image(platformImage: image)
                     .resizable()
                     .scaledToFill()
+            }
+            if let badge {
+                VStack {
+                    HStack {
+                        Text(badge)
+                            .font(.system(size: 9, weight: .medium).monospacedDigit())
+                            .foregroundStyle(.white)
+                            .padding(.horizontal, 4)
+                            .padding(.vertical, 2)
+                            .background(.black.opacity(0.55), in: Capsule())
+                        Spacer()
+                    }
+                    Spacer()
+                }
+                .padding(3)
             }
             if rating > 0 {
                 VStack {

@@ -102,13 +102,20 @@ struct RootView: View {
         case grid = "siatka"
         case cull = "ocenianie"
         case pair = "parowanie"
+        case sharp = "cechy"
         var id: String { rawValue }
+
+        /// Wszystkie tryby na obu platformach. Cechy czyta z baz systemu sam
+        /// macOS, ale wynik jedzie do telefonu w ocenie — więc zakładka ma tam
+        /// co pokazać, a dopóki nie ma, mówi wprost, skąd się to bierze.
+        static var available: [Mode] { allCases }
 
         var icon: String {
             switch self {
             case .grid: "square.grid.2x2"
             case .cull: "star"
             case .pair: "rectangle.on.rectangle"
+            case .sharp: "camera.metering.spot"
             }
         }
     }
@@ -163,7 +170,7 @@ struct RootView: View {
         // Poziomy pasek z Maca nie mieści się na szerokości kciuka: nazwy
         // trybów się ucinały, a przyciski rozlewały na trzy linie.
         TabView(selection: $mode) {
-            ForEach(Mode.allCases) { item in
+            ForEach(Mode.available) { item in
                 NavigationStack {
                     screen(item)
                         .navigationTitle(item.rawValue)
@@ -207,11 +214,13 @@ struct RootView: View {
             .toolbar {
                 ToolbarItem(placement: .navigation) {
                     Picker("", selection: $mode) {
-                        ForEach(Mode.allCases) { Text($0.rawValue).tag($0) }
+                        ForEach(Mode.available) { Text($0.rawValue).tag($0) }
                     }
                     .pickerStyle(.segmented)
                     .labelsHidden()
-                    .frame(width: 260)
+                    // Czwarty tryb nie mieścił się w 260 punktach — nazwy
+                    // zaczynały się ucinać w połowie.
+                    .frame(width: 330)
                 }
                 ToolbarItemGroup(placement: .primaryAction) {
                     fingerprintControl
@@ -243,6 +252,17 @@ struct RootView: View {
             )
         case .cull: CullView(library: library, filters: filters, focusID: $focusID)
         case .pair: PairView(library: library, similarity: similarity, focusID: $focusID)
+        case .sharp:
+            FeaturesView(
+                library: library,
+                monitor: monitor,
+                filters: filters,
+                onOpen: { asset in
+                    focusID = asset.localIdentifier
+                    self.mode = .cull
+                },
+                focusID: focusID
+            )
         }
     }
 
