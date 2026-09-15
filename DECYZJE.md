@@ -600,6 +600,27 @@ czego przepełnić. Poprzednia wersja obcięła się dwa razy z rzędu — raz p
 lewej (`Grid` nie ściska się do tego, co dostaje), raz po prawej (segmentowany
 przełącznik zażądał więcej niż 400 punktów).
 
+### Gwiazdki są zbiorem, nie zakresem
+
+Zakres z dwoma końcami wymuszał regułę „pierwsze stuknięcie zwija zakres do
+jednej gwiazdki, drugie go rozciąga". Była oszczędna — jeden ruch zamiast dwóch
+suwaków — i całkowicie niemożliwa do odgadnięcia z wyglądu kontrolki. Zgłoszenie
+brzmiało: „nie rozumiem logiki zaznaczania gwiazdek".
+
+Gorsze było jednak to, czego zakres nie umiał: wybrać trójki i piątki
+z pominięciem czwórki. Przy przeglądzie to normalne pytanie.
+
+Teraz każda gwiazdka jest osobnym przełącznikiem, a pusty zbiór znaczy „bez
+zawężania", nie „nic" — inaczej odznaczenie ostatniej kasowałoby cały widok
+i wyglądało jak awaria.
+
+Przy okazji wyszła cicha luka: `Review.stars` to zaokrąglona waga z zakresu
+**0–5**, a stary zakres zaczynał się od jedynki. Zdjęcia wypchnięte na samo
+dno — czyli dokładnie te, które wypycha się tam, żeby je potem skasować — nie
+pokazywały się w żadnym filtrze. Zero jest teraz pełnoprawną pozycją skali,
+z przekreśloną gwiazdką, bo to nie brak oceny, tylko ocena najniższa
+z możliwych.
+
 ### Co z tego zostaje na później
 
 `rawValue` w `Filters.Feature` i `Filters.Order` jest jednocześnie **kluczem

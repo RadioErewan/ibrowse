@@ -162,44 +162,62 @@ struct FilterPanel: View {
         }
     }
 
-    /// Zakres gwiazdek ma sens wyłącznie wśród ocenionych: dla nieocenionych
-    /// nie ma czego zawężać, a „do usunięcia" jest znacznikiem, nie punktem
-    /// na skali.
+    /// Gwiazdki mają sens wyłącznie wśród ocenionych: dla nieocenionych nie ma
+    /// czego zawężać, a „do usunięcia" jest znacznikiem, nie punktem na skali.
+    ///
+    /// Każda gwiazdka to **osobny przełącznik**, nie koniec zakresu. Można
+    /// zapalić samą trójkę albo trójkę i piątkę z pominięciem czwórki.
+    /// Poprzednia wersja trzymała zakres i musiała udawać, że stuknięcie raz
+    /// zwija, a raz rozciąga — regułę tę dało się poznać wyłącznie przez
+    /// zaskoczenie.
     @ViewBuilder
     private var starRange: some View {
         if filters.standing == .rated {
-            VStack(alignment: .leading, spacing: 4) {
-                HStack(spacing: 4) {
-                    ForEach(1...5, id: \.self) { value in
-                        let inRange = value >= filters.minStars && value <= filters.maxStars
-                        Image(systemName: inRange ? "star.fill" : "star")
-                            .foregroundStyle(inRange ? Color.yellow : Color.secondary.opacity(0.35))
-                            .onTapGesture { pick(value) }
-                    }
-                    Spacer(minLength: 0)
+            VStack(alignment: .leading, spacing: 6) {
+                HStack(spacing: 0) {
+                    ForEach(0...5, id: \.self) { value in starCell(value) }
                 }
-                Text("Stuknij gwiazdkę, żeby ustawić koniec zakresu.")
+                Text(starSummary)
                     .font(.caption2)
                     .foregroundStyle(.tertiary)
                     .fixedSize(horizontal: false, vertical: true)
             }
-            .padding(.top, 4)
+            .padding(.top, 6)
         }
     }
 
-    /// Pierwsze stuknięcie zwija zakres do jednej gwiazdki, drugie go rozciąga.
-    /// Dwa suwaki dawałyby to samo dwoma ruchami zamiast jednym.
-    private func pick(_ value: Int) {
-        if filters.minStars == filters.maxStars {
-            if value < filters.minStars {
-                filters.minStars = value
-            } else {
-                filters.maxStars = value
-            }
-        } else {
-            filters.minStars = value
-            filters.maxStars = value
+    /// Jedna pozycja skali: symbol i pod nim liczba zdjęć, które ją mają.
+    /// Zero dostaje przekreśloną gwiazdkę — to nie brak oceny, tylko ocena
+    /// najniższa z możliwych.
+    private func starCell(_ value: Int) -> some View {
+        let isOn = filters.stars.contains(value)
+        let symbol = value == 0
+            ? (isOn ? "star.slash.fill" : "star.slash")
+            : (isOn ? "star.fill" : "star")
+
+        return VStack(spacing: 1) {
+            Image(systemName: symbol)
+                .font(.system(size: 13))
+                .foregroundStyle(isOn ? Color.yellow : Color.secondary.opacity(0.35))
+            Text((tally.stars[value] ?? 0).formatted())
+                .font(.system(size: 9).monospacedDigit())
+                .foregroundStyle(isOn ? .secondary : .tertiary)
+                .lineLimit(1)
+                .minimumScaleFactor(0.6)
         }
+        .frame(maxWidth: .infinity)
+        .contentShape(Rectangle())
+        .onTapGesture {
+            if isOn { filters.stars.remove(value) } else { filters.stars.insert(value) }
+        }
+    }
+
+    private var starSummary: String {
+        guard !filters.stars.isEmpty else {
+            return "Wszystkie oceny. Stuknij gwiazdkę, żeby zawęzić."
+        }
+        let chosen = filters.stars.sorted().map(String.init).joined(separator: ", ")
+        return "Tylko: \(chosen). Stuknij ponownie, żeby odznaczyć."
     }
 
     // MARK: - Cechy

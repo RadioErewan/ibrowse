@@ -404,9 +404,9 @@ extension RootView {
         switch filters.standing {
         case .all: break
         case .rated:
-            parts.append(filters.minStars == filters.maxStars
-                         ? "★\(filters.minStars)"
-                         : "★\(filters.minStars)–\(filters.maxStars)")
+            parts.append(filters.stars.isEmpty
+                         ? filters.standing.rawValue
+                         : "★" + filters.stars.sorted().map(String.init).joined(separator: ","))
         default: parts.append(filters.standing.rawValue)
         }
 

@@ -101,8 +101,21 @@ final class Filters: ObservableObject {
     }
 
     @Published var standing: Standing = .all
-    @Published var minStars: Int = 1
-    @Published var maxStars: Int = 5
+    /// Które liczby gwiazdek przepuszczamy — **zbiór, nie zakres**.
+    ///
+    /// Zakres z dwoma końcami wymuszał regułę „pierwsze stuknięcie zwija,
+    /// drugie rozciąga", której nie dało się odgadnąć z wyglądu kontrolki.
+    /// Gorzej: nie pozwalał wybrać trójki i piątki z pominięciem czwórki,
+    /// a to jest normalne pytanie przy przeglądzie.
+    ///
+    /// Pusty zbiór znaczy **bez zawężania**, nie „nic". Inaczej wyłączenie
+    /// ostatniej gwiazdki kasowałoby cały widok i wyglądało jak awaria.
+    ///
+    /// Zero jest pełnoprawną pozycją, bo `Review.stars` to zaokrąglona waga
+    /// z zakresu 0–5, a wypchnięcie zdjęcia na samo dno to sposób oznaczania
+    /// go do skasowania. Poprzedni zakres zaczynał się od jedynki i te zdjęcia
+    /// były niewidoczne.
+    @Published var stars: Set<Int> = []
 
     /// Szukanie po tym, co widzi system: etykiety scen, imiona, nazwy miejsc
     /// i słowa odczytane ze zdjęć.
@@ -171,7 +184,8 @@ final class Filters: ObservableObject {
     /// zbiór przestawiałby się pod palcem przy każdej ocenie i zdjęcie
     /// uciekałoby spod kursora w trakcie pracy.
     func apply(_ reviews: [String: Review], features: FeatureIndex) -> [PHAsset] {
-        let key = "\(baseStamp)|\(standing.rawValue)|\(minStars)|\(maxStars)"
+        let key = "\(baseStamp)|\(standing.rawValue)"
+            + "|\(stars.sorted().map(String.init).joined(separator: ","))"
             + "|\(feature.rawValue)|\(threshold)|\(order.rawValue)"
             + "|\(reviews.count)|\(features.revision)"
         if key == cacheKey { return cached }
@@ -261,6 +275,10 @@ final class Filters: ObservableObject {
     struct Tally {
         var standing: [Standing: Int] = [:]
         var feature: [Feature: Int] = [:]
+        /// Ile zdjęć ma daną liczbę gwiazdek — liczone **bez** bieżącego
+        /// wyboru gwiazdek, bo inaczej każda pozycja poza wybraną pokazywałaby
+        /// zero i kontrolka przestawałaby cokolwiek mówić.
+        var stars: [Int: Int] = [:]
         var total = 0
     }
 
@@ -284,6 +302,9 @@ final class Filters: ObservableObject {
                 for value in Feature.allCases where carries(row, as: value) {
                     result.feature[value, default: 0] += 1
                 }
+            }
+            if passesFeature, let review, review.isRated {
+                result.stars[review.stars, default: 0] += 1
             }
             if passesFeature && passesStanding { result.total += 1 }
         }
@@ -336,7 +357,7 @@ final class Filters: ObservableObject {
             return review?.isRated != true
         case .rated:
             guard let review, review.isRated else { return false }
-            return review.stars >= minStars && review.stars <= maxStars
+            return stars.isEmpty || stars.contains(review.stars)
         case .marked:
             return review?.markedForDeletion == true
         }
@@ -346,7 +367,7 @@ final class Filters: ObservableObject {
 
     var isActive: Bool {
         fromYear > 0 || toYear < 9999 || standing != .all || !query.isEmpty
-            || feature != .any || order != .library
+            || feature != .any || order != .library || !stars.isEmpty
     }
 
     func clear() {
@@ -354,8 +375,7 @@ final class Filters: ObservableObject {
         standing = .all
         feature = .any
         order = .library
-        minStars = 1
-        maxStars = 5
+        stars = []
         fromYear = 0
         toYear = 9999
     }
