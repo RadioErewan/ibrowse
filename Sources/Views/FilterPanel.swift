@@ -78,8 +78,8 @@ struct FilterPanel: View {
                 // `.frame(width:)` na zewnętrznym stosie nie powstrzymuje
                 // dziecka, które zażąda więcej — takie dziecko wylewa się
                 // symetrycznie i znika pod krawędzią.
-                .frame(width: 368, alignment: .leading)
-                .padding(16)
+                .frame(width: Self.contentWidth, alignment: .leading)
+                .padding(Self.padding)
             }
 
             Divider()
@@ -94,13 +94,24 @@ struct FilterPanel: View {
             }
             .padding(12)
         }
-        .frame(width: 400)
+        .frame(width: Self.panelWidth)
         .frame(maxHeight: 560)
         // Popover sam nie maluje tła pod treścią — bez tego przez panel widać
         // zdjęcia z siatki i nie da się go przeczytać.
         .background(Color(nsColor: .windowBackgroundColor))
         #endif
     }
+
+    /// Szerokość dyktuje **najszerszy** element, a jest nim segmentowany
+    /// przełącznik stanu oceny: cztery pozycje, z których ostatnia to „do
+    /// usunięcia". Segmentowany nie skraca napisów ani nie zawija — przy
+    /// ciaśniejszym panelu po prostu ucinał ostatnią pozycję o parę punktów.
+    ///
+    /// Obie liczby stoją obok siebie celowo: treść musi być węższa o obustronne
+    /// wcięcie, a rozjazd między nimi wraca jako obcięcie przy krawędzi.
+    private static let panelWidth: Double = 440
+    private static let padding: Double = 16
+    private static var contentWidth: Double { panelWidth - 2 * padding }
 
     #if os(macOS)
     @ViewBuilder
