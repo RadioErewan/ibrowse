@@ -641,9 +641,22 @@ ikona sama nosi zaokrąglony kształt i margines wokół niego, bo system niczeg
 nie przycina. Na iOS kanwa musi być wypełniona do krawędzi, bo maskę nakłada
 system; ten sam plik dałby tam zaokrąglony kwadracik w białej ramce.
 
-`tools/make-icon.swift` robi komplet z `Resources/icon-source.png`. Uwaga na
-kierunek parametru: **większy udział to szerszy kadr, czyli mniejszy kafelek**.
-Dla tego rysunku wyszło 0,835.
+`tools/make-icon.swift` robi komplet z `Resources/icon-source.png` i **sam
+znajduje kafelek**: szuka pikseli jaśniejszych od tła wzdłuż środkowego wiersza
+i środkowej kolumny, gdzie krawędź kafelka jest prosta. Szuka jaśniejszych, a nie
+„różnych od tła", bo między tłem a kafelkiem leży cień — ciemniejszy od obu
+— i łapanie go dawało kadr o kilka procent za szeroki.
+
+Ręczna liczba została jako awaryjna, na wypadek kafelka w tej samej bieli co
+tło (tak było w rysunku z sierpnia 2026, stąd zmierzone wtedy 0,835). Zawodziła
+z powodu, który widać dopiero po fakcie: **kafelek nie musi stać na środku
+kanwy**. W rysunku z września siedział 19 px wyżej, więc każdy wyśrodkowany
+kadr zostawiał biały pasek z jednej strony i wcinał się w rysunek z drugiej.
+Jedna liczba nie ma jak tego opisać — potrzebny jest prostokąt.
+
+Narożniki kafelka zostają białe i **tak ma być**: maskę zaokrąglenia nakłada
+iOS i to on je przycina. Kadrowanie „do środka", żeby ich nie było, obcina
+rysunek i nadal ich nie usuwa.
 
 Na Macu pełen komplet od 16 px, nie samo 1024 — małe kafelki widuje się
 częściej niż duże, a skalowane w locie rozmywają się w plamę. Alfę spłaszczamy

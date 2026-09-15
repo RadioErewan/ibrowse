@@ -9,11 +9,15 @@
 // wypełniona do krawędzi, bo maskę zaokrąglenia nakłada system. Ten sam plik
 // wrzucony w oba miejsca daje albo ikonę w ramce, albo ikonę przyciętą.
 //
-// „udział" to część szerokości źródła zajmowana przez sam kafelek — stąd
-// bierze się kadr dla iOS. Uwaga na kierunek: **większy udział to szerszy
-// kadr, czyli mniejszy kafelek**. Za dużo białego marginesu na telefonie —
-// obniż; obcięte narożniki — podnieś. Domyślne 0.835 zmierzone na rysunku
-// z sierpnia 2026.
+// Kadr dla iOS narzędzie **znajduje samo**: szuka jaśniejszego od tła kafelka
+// i przycina dokładnie do niego. „Udział" jest już tylko awaryjny — przydaje
+// się, gdy kafelek jest tej samej bieli co tło i nie ma czego znaleźć (tak
+// było w rysunku z sierpnia 2026, stąd zmierzone ręcznie 0.835).
+//
+// Ręczne mierzenie było zawodne z powodu, który widać dopiero po fakcie:
+// kafelek nie musi stać na środku kanwy. W rysunku z września 2026 siedział
+// 19 px wyżej, więc **każdy** wyśrodkowany kadr zostawiał biały pasek z jednej
+// strony i wcinał się w rysunek z drugiej. Jedna liczba nie ma jak tego opisać.
 
 import AppKit
 import CoreGraphics
@@ -40,9 +44,60 @@ guard let source = NSImage(contentsOfFile: sourcePath),
 
 let root = URL(fileURLWithPath: FileManager.default.currentDirectoryPath)
 
+// MARK: - Znajdowanie kafelka
+
+/// Prostokąt kafelka albo `nil`, gdy nie da się go odróżnić od tła.
+///
+/// Kafelek jest jaśniejszy niż tło, a **między** nimi leży cień, czyli pasmo
+/// ciemniejsze od obu. Dlatego szukamy pikseli jaśniejszych od tła, a nie
+/// „różnych od tła" — to drugie łapie cień i daje kadr o kilka procent za
+/// szeroki. Skanujemy środkowy wiersz i środkową kolumnę, bo tam kafelek nie
+/// ma zaokrągleń i jego krawędź jest prosta.
+func findTile(in image: CGImage) -> CGRect? {
+    let w = image.width, h = image.height
+    var data = [UInt8](repeating: 0, count: w * h * 4)
+    guard let context = CGContext(
+        data: &data, width: w, height: h, bitsPerComponent: 8, bytesPerRow: w * 4,
+        space: CGColorSpaceCreateDeviceRGB(),
+        bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue
+    ) else { return nil }
+    context.draw(image, in: CGRect(x: 0, y: 0, width: w, height: h))
+
+    func luminance(_ x: Int, _ y: Int) -> Int {
+        let i = (y * w + x) * 4
+        return (Int(data[i]) * 299 + Int(data[i + 1]) * 587 + Int(data[i + 2]) * 114) / 1000
+    }
+
+    let background = luminance(2, 2)
+    let brighter = { (x: Int, y: Int) in luminance(x, y) > background + 2 }
+    let midY = h / 2, midX = w / 2
+
+    var left = -1, right = -1, bottom = -1, top = -1
+    for x in 0..<w where brighter(x, midY) { left = x; break }
+    for x in stride(from: w - 1, through: 0, by: -1) where brighter(x, midY) { right = x; break }
+    for y in 0..<h where brighter(midX, y) { bottom = y; break }
+    for y in stride(from: h - 1, through: 0, by: -1) where brighter(midX, y) { top = y; break }
+
+    guard left >= 0, right > left, bottom >= 0, top > bottom else { return nil }
+
+    // Kafelek zajmujący prawie całą kanwę albo jej ułamek to znak, że
+    // trafiliśmy w coś innego niż kafelek. Wtedy lepiej oddać pole liczbie.
+    let share = Double(right - left + 1) / Double(w)
+    guard share > 0.5, share < 0.98 else { return nil }
+
+    // Kadr musi być kwadratem, bo ikona jest kwadratem. Bierzemy krótszy bok
+    // i środek **kafelka**, nie kanwy.
+    let side = Double(min(right - left + 1, top - bottom + 1))
+    return CGRect(
+        x: Double(left + right + 1) / 2 - side / 2,
+        y: Double(bottom + top + 1) / 2 - side / 2,
+        width: side, height: side
+    )
+}
+
 /// Rysuje na **białym tle**, zawsze. iOS odrzuca ikony z kanałem alfa, a i na
 /// Macu przezroczystość w rogach potrafi wyjść szarym prostokątem.
-func render(_ image: CGImage, side: Int, cropping share: Double) -> CGImage? {
+func render(_ image: CGImage, side: Int, cropping box: CGRect?) -> CGImage? {
     let space = CGColorSpaceCreateDeviceRGB()
     guard let context = CGContext(
         data: nil, width: side, height: side, bitsPerComponent: 8, bytesPerRow: 0,
@@ -53,19 +108,7 @@ func render(_ image: CGImage, side: Int, cropping share: Double) -> CGImage? {
     context.fill(CGRect(x: 0, y: 0, width: side, height: side))
     context.interpolationQuality = .high
 
-    let cropped: CGImage
-    if share < 0.999 {
-        let width = Double(image.width) * share
-        let height = Double(image.height) * share
-        let box = CGRect(
-            x: (Double(image.width) - width) / 2,
-            y: (Double(image.height) - height) / 2,
-            width: width, height: height
-        )
-        cropped = image.cropping(to: box) ?? image
-    } else {
-        cropped = image
-    }
+    let cropped = box.flatMap { image.cropping(to: $0) } ?? image
 
     context.draw(cropped, in: CGRect(x: 0, y: 0, width: side, height: side))
     return context.makeImage()
@@ -94,7 +137,7 @@ var macEntries: [String] = []
 for (point, scale) in macSizes {
     let side = point * scale
     let name = "icon_\(point)x\(point)\(scale == 2 ? "@2x" : "").png"
-    guard let image = render(original, side: side, cropping: 1.0) else { continue }
+    guard let image = render(original, side: side, cropping: nil) else { continue }
     write(image, to: macSet.appending(path: name))
     macEntries.append("""
         {"filename":"\(name)","idiom":"mac","scale":"\(scale)x","size":"\(point)x\(point)"}
@@ -110,7 +153,17 @@ try? """
 let iosSet = root.appending(path: "Resources/iOS.xcassets/AppIcon.appiconset")
 try? FileManager.default.createDirectory(at: iosSet, withIntermediateDirectories: true)
 
-if let image = render(original, side: 1024, cropping: tileShare) {
+// Znaleziony kafelek ma pierwszeństwo przed podaną liczbą — patrz komentarz
+// przy `findTile`.
+let side = Double(original.width) * tileShare
+let fallback = CGRect(
+    x: (Double(original.width) - side) / 2,
+    y: (Double(original.height) - side) / 2,
+    width: side, height: side
+)
+let iosBox = findTile(in: original) ?? fallback
+
+if let image = render(original, side: 1024, cropping: iosBox) {
     write(image, to: iosSet.appending(path: "icon.png"))
 }
 try? """
@@ -118,4 +171,9 @@ try? """
 "info":{"author":"ibrowse","version":1}}
 """.write(to: iosSet.appending(path: "Contents.json"), atomically: true, encoding: .utf8)
 
-print("macOS: \(macSizes.count) plików · iOS: 1024×1024 z kadru \(Int(tileShare * 100))%")
+let found = findTile(in: original) != nil
+print("""
+    macOS: \(macSizes.count) plików · iOS: 1024×1024
+    kadr: \(Int(iosBox.width))×\(Int(iosBox.height)) w (\(Int(iosBox.minX)), \(Int(iosBox.minY))) \
+    — \(found ? "kafelek znaleziony" : "awaryjnie z udziału \(tileShare)")
+    """)
