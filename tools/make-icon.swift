@@ -1,7 +1,7 @@
 #!/usr/bin/env swift
 // Robi komplet ikon z jednego pliku źródłowego.
 //
-//   swift tools/make-icon.swift ikona.png [udział]
+//   swift tools/make-icon.swift [mac.png] [ios.png]
 //
 // macOS i iOS potrzebują **innego kadru tego samego rysunku**. Na Macu ikona
 // jest rysunkiem swobodnym: sam nosi zaokrąglony kształt i margines wokół
@@ -9,15 +9,20 @@
 // wypełniona do krawędzi, bo maskę zaokrąglenia nakłada system. Ten sam plik
 // wrzucony w oba miejsca daje albo ikonę w ramce, albo ikonę przyciętą.
 //
-// Kadr dla iOS narzędzie **znajduje samo**: szuka jaśniejszego od tła kafelka
-// i przycina dokładnie do niego. „Udział" jest już tylko awaryjny — przydaje
-// się, gdy kafelek jest tej samej bieli co tło i nie ma czego znaleźć (tak
-// było w rysunku z sierpnia 2026, stąd zmierzone ręcznie 0.835).
+// Najlepiej podać **dwa mastery**, po jednym na kadr: `icon-source.png`
+// z marginesem i cieniem dla Maca, `icon-source-ios.png` wypełniony do
+// krawędzi dla telefonu. Wtedy nic nie trzeba zgadywać ani przycinać.
 //
-// Ręczne mierzenie było zawodne z powodu, który widać dopiero po fakcie:
-// kafelek nie musi stać na środku kanwy. W rysunku z września 2026 siedział
-// 19 px wyżej, więc **każdy** wyśrodkowany kadr zostawiał biały pasek z jednej
-// strony i wcinał się w rysunek z drugiej. Jedna liczba nie ma jak tego opisać.
+// Gdy drugiego nie ma, narzędzie **znajduje kafelek samo** w pierwszym: szuka
+// pikseli jaśniejszych od tła i przycina do nich. Działa, ale gorzej — rysunek
+// dla Maca ma na brzegach cień, a wycięty z niego kadr dla iOS niesie go ze
+// sobą.
+//
+// Przezroczystość traktujemy różnie na każdej platformie i to jest celowe.
+// macOS **potrzebuje** alfy: ikona jest tam rysunkiem swobodnym, a spłaszczona
+// na biało wychodzi w Docku białym kwadratem. iOS alfy **nie przyjmuje**
+// w ogóle, więc tam spłaszczamy. Poprzednia wersja spłaszczała wszędzie i na
+// Macu to był błąd, tyle że niewidoczny, bo rysunek miał białe tło.
 
 import AppKit
 import CoreGraphics
@@ -25,7 +30,7 @@ import Foundation
 
 let arguments = CommandLine.arguments
 let sourcePath = arguments.count >= 2 ? arguments[1] : "Resources/icon-source.png"
-let tileShare = arguments.count >= 3 ? Double(arguments[2]) ?? 0.835 : 0.835
+let iosPath = arguments.count >= 3 ? arguments[2] : "Resources/icon-source-ios.png"
 
 guard FileManager.default.fileExists(atPath: sourcePath) else {
     print("""
@@ -95,17 +100,22 @@ func findTile(in image: CGImage) -> CGRect? {
     )
 }
 
-/// Rysuje na **białym tle**, zawsze. iOS odrzuca ikony z kanałem alfa, a i na
-/// Macu przezroczystość w rogach potrafi wyjść szarym prostokątem.
-func render(_ image: CGImage, side: Int, cropping box: CGRect?) -> CGImage? {
+/// `flatten` decyduje o tle: biel dla iOS, przezroczystość dla Maca.
+/// Patrz komentarz na górze pliku — to nie jest szczegół, tylko różnica
+/// między ikoną w Docku a białym kwadratem w Docku.
+func render(_ image: CGImage, side: Int, cropping box: CGRect?, flatten: Bool) -> CGImage? {
     let space = CGColorSpaceCreateDeviceRGB()
     guard let context = CGContext(
         data: nil, width: side, height: side, bitsPerComponent: 8, bytesPerRow: 0,
-        space: space, bitmapInfo: CGImageAlphaInfo.noneSkipLast.rawValue
+        space: space,
+        bitmapInfo: (flatten ? CGImageAlphaInfo.noneSkipLast
+                             : CGImageAlphaInfo.premultipliedLast).rawValue
     ) else { return nil }
 
-    context.setFillColor(CGColor(red: 1, green: 1, blue: 1, alpha: 1))
-    context.fill(CGRect(x: 0, y: 0, width: side, height: side))
+    if flatten {
+        context.setFillColor(CGColor(red: 1, green: 1, blue: 1, alpha: 1))
+        context.fill(CGRect(x: 0, y: 0, width: side, height: side))
+    }
     context.interpolationQuality = .high
 
     let cropped = box.flatMap { image.cropping(to: $0) } ?? image
@@ -137,7 +147,8 @@ var macEntries: [String] = []
 for (point, scale) in macSizes {
     let side = point * scale
     let name = "icon_\(point)x\(point)\(scale == 2 ? "@2x" : "").png"
-    guard let image = render(original, side: side, cropping: nil) else { continue }
+    guard let image = render(original, side: side, cropping: nil, flatten: false)
+    else { continue }
     write(image, to: macSet.appending(path: name))
     macEntries.append("""
         {"filename":"\(name)","idiom":"mac","scale":"\(scale)x","size":"\(point)x\(point)"}
@@ -153,17 +164,13 @@ try? """
 let iosSet = root.appending(path: "Resources/iOS.xcassets/AppIcon.appiconset")
 try? FileManager.default.createDirectory(at: iosSet, withIntermediateDirectories: true)
 
-// Znaleziony kafelek ma pierwszeństwo przed podaną liczbą — patrz komentarz
-// przy `findTile`.
-let side = Double(original.width) * tileShare
-let fallback = CGRect(
-    x: (Double(original.width) - side) / 2,
-    y: (Double(original.height) - side) / 2,
-    width: side, height: side
-)
-let iosBox = findTile(in: original) ?? fallback
+// Własny master wygrywa z przycinaniem cudzego — patrz komentarz na górze.
+let iosSource = NSImage(contentsOfFile: iosPath)?
+    .cgImage(forProposedRect: nil, context: nil, hints: nil)
+let iosImage = iosSource ?? original
+let iosBox: CGRect? = iosSource != nil ? nil : findTile(in: original)
 
-if let image = render(original, side: 1024, cropping: iosBox) {
+if let image = render(iosImage, side: 1024, cropping: iosBox, flatten: true) {
     write(image, to: iosSet.appending(path: "icon.png"))
 }
 try? """
@@ -171,9 +178,15 @@ try? """
 "info":{"author":"ibrowse","version":1}}
 """.write(to: iosSet.appending(path: "Contents.json"), atomically: true, encoding: .utf8)
 
-let found = findTile(in: original) != nil
+let howIOS: String
+if iosSource != nil {
+    howIOS = "z własnego mastera \(iosPath)"
+} else if let box = iosBox {
+    howIOS = "z kadru \(Int(box.width))×\(Int(box.height)) znalezionego w rysunku dla Maca"
+} else {
+    howIOS = "z całego rysunku dla Maca — kafelka nie znalazłem, sprawdź wynik"
+}
 print("""
-    macOS: \(macSizes.count) plików · iOS: 1024×1024
-    kadr: \(Int(iosBox.width))×\(Int(iosBox.height)) w (\(Int(iosBox.minX)), \(Int(iosBox.minY))) \
-    — \(found ? "kafelek znaleziony" : "awaryjnie z udziału \(tileShare)")
+    macOS: \(macSizes.count) plików, z przezroczystością
+    iOS:   1024×1024, spłaszczone na biało, \(howIOS)
     """)

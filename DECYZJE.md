@@ -641,29 +641,50 @@ ikona sama nosi zaokrąglony kształt i margines wokół niego, bo system niczeg
 nie przycina. Na iOS kanwa musi być wypełniona do krawędzi, bo maskę nakłada
 system; ten sam plik dałby tam zaokrąglony kwadracik w białej ramce.
 
-`tools/make-icon.swift` robi komplet z `Resources/icon-source.png` i **sam
-znajduje kafelek**: szuka pikseli jaśniejszych od tła wzdłuż środkowego wiersza
-i środkowej kolumny, gdzie krawędź kafelka jest prosta. Szuka jaśniejszych, a nie
-„różnych od tła", bo między tłem a kafelkiem leży cień — ciemniejszy od obu
-— i łapanie go dawało kadr o kilka procent za szeroki.
+Najlepiej więc mieć **dwa mastery**, po jednym na kadr: `Resources/icon-source.png`
+z marginesem i cieniem, `Resources/icon-source-ios.png` wypełniony do krawędzi.
+`tools/make-icon.swift` robi z nich komplet.
 
-Ręczna liczba została jako awaryjna, na wypadek kafelka w tej samej bieli co
-tło (tak było w rysunku z sierpnia 2026, stąd zmierzone wtedy 0,835). Zawodziła
-z powodu, który widać dopiero po fakcie: **kafelek nie musi stać na środku
-kanwy**. W rysunku z września siedział 19 px wyżej, więc każdy wyśrodkowany
-kadr zostawiał biały pasek z jednej strony i wcinał się w rysunek z drugiej.
-Jedna liczba nie ma jak tego opisać — potrzebny jest prostokąt.
+Gdy drugiego mastera nie ma, narzędzie **znajduje kafelek samo** w pierwszym:
+szuka pikseli jaśniejszych od tła wzdłuż środkowego wiersza i środkowej
+kolumny, gdzie krawędź jest prosta. Jaśniejszych, a nie „różnych od tła", bo
+między tłem a kafelkiem leży cień — ciemniejszy od obu — i łapanie go dawało
+kadr o kilka procent za szeroki. To działa, ale gorzej: wycięty kadr niesie ze
+sobą cień z brzegów rysunku dla Maca.
 
-Narożniki kafelka zostają białe i **tak ma być**: maskę zaokrąglenia nakłada
-iOS i to on je przycina. Kadrowanie „do środka", żeby ich nie było, obcina
-rysunek i nadal ich nie usuwa.
+Wcześniej kadr opisywała **jedna liczba**, udział szerokości. Zawodziła
+z powodu, który widać dopiero po fakcie: kafelek nie musi stać na środku kanwy.
+W jednym z rysunków siedział 19 px wyżej, więc każdy wyśrodkowany kadr
+zostawiał biały pasek z jednej strony i wcinał się w rysunek z drugiej. Jedna
+liczba nie ma jak tego opisać — potrzebny jest prostokąt.
 
-Na Macu pełen komplet od 16 px, nie samo 1024 — małe kafelki widuje się
-częściej niż duże, a skalowane w locie rozmywają się w plamę. Alfę spłaszczamy
-na biało, bo iOS odrzuca ikony z przezroczystością.
+### Przezroczystość: inaczej na każdej platformie
+
+macOS **potrzebuje** alfy. Ikona jest tam rysunkiem swobodnym z własnym
+cieniem, a spłaszczona na biało wychodzi w Docku białym kwadratem. iOS alfy
+**nie przyjmuje** w ogóle.
+
+Poprzednia wersja spłaszczała na biało wszędzie — i na Macu to był błąd, tylko
+niewidoczny, bo ówczesny rysunek miał białe tło i biały kwadrat wtapiał się
+w rysunek. Wyszło dopiero przy ikonie z prawdziwą przezroczystością.
+
+Na Macu robimy pełen komplet od 16 px, nie samo 1024: małe kafelki widuje się
+częściej niż duże, a skalowane w locie rozmywają się w plamę.
 
 Dock i Finder trzymają ikonę w pamięci podręcznej i nie zauważają zmiany
 w pakiecie, więc `install.sh` przerejestrowuje aplikację w LaunchServices.
+
+### Rysunek
+
+Pierwsze dwie wersje były kwiatkiem z ikony Zdjęć Apple z dołożonym własnym
+elementem. Do buildów na własnym biurku obojętne; przed czymkolwiek, co idzie
+przez recenzję Apple, nie do utrzymania — ikona wyraźnie zbudowana na ikonie
+aplikacji systemowej jest odrzucana, a to dokładnie ta kategoria kłopotu,
+o którą chodziło w pytaniu „czy mogą za to zablokować developera".
+
+Obecny rysunek jest własny: spektralna płytka i szklana lupa ze znakiem
+ćwiartek. Ćwiartki są czytelne także przy 16 px, gdzie spektrum robi się jedną
+plamą — i tak ma być.
 
 ## Podgląd 1:1
 
