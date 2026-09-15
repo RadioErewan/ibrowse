@@ -192,6 +192,51 @@ extension Review {
         try? context.save()
         return review
     }
+
+    /// Oznacza albo odznacza **całą pulę** jednym przebiegiem.
+    ///
+    /// Nie przez `upsert` w pętli: tamto robi zapytanie i zapis na każde
+    /// zdjęcie, więc dwieście oznaczeń to czterysta operacji na bazie
+    /// i widoczne zacięcie. Tu jest jedno zapytanie, jeden zapis.
+    ///
+    /// Zwraca liczbę faktycznie zmienionych rekordów — nie liczbę zdjęć w puli.
+    /// Te dwie rzeczy różnią się, gdy część była już oznaczona, i właśnie
+    /// tę pierwszą warto pokazać.
+    @discardableResult
+    static func mark(
+        _ assetIDs: [String], deleted: Bool, in context: ModelContext
+    ) -> Int {
+        guard !assetIDs.isEmpty else { return 0 }
+
+        let wanted = Set(assetIDs)
+        let existing = Dictionary(
+            ((try? context.fetch(FetchDescriptor<Review>())) ?? [])
+                .filter { wanted.contains($0.assetID) }
+                .map { ($0.assetID, $0) },
+            uniquingKeysWith: { a, _ in a }
+        )
+
+        var changed = 0
+        for id in wanted {
+            if let review = existing[id] {
+                guard review.markedForDeletion != deleted else { continue }
+                review.markedForDeletion = deleted
+                review.updatedAt = .now
+                changed += 1
+            } else {
+                // Zdejmowanie oznaczenia z nieistniejącego rekordu to nic —
+                // nie zakładamy pustych ocen tylko po to, żeby zapisać w nich
+                // brak decyzji.
+                guard deleted else { continue }
+                let fresh = Review(assetID: id)
+                fresh.markedForDeletion = true
+                context.insert(fresh)
+                changed += 1
+            }
+        }
+        if changed > 0 { try? context.save() }
+        return changed
+    }
 }
 
 /// Odcisk wizualny z Vision, trzymany żeby nie liczyć go przy każdym starcie.

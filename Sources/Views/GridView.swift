@@ -42,6 +42,17 @@ struct GridView: View {
     @Query(filter: #Predicate<Review> { $0.isRated || $0.markedForDeletion })
     private var reviews: [Review]
 
+    @Environment(\.modelContext) private var context
+
+    /// Pytanie przed oznaczeniem całej puli. Samo oznaczenie jest odwracalne
+    /// — kasuje dopiero przegląd — ale pomyłka przy szeroko otwartym filtrze
+    /// oznaczyłaby ćwierć archiwum i trzeba by to cofać ręcznie.
+    @State private var confirming = false
+    @State private var lastMarked: Int?
+    @State private var showingDeletions = false
+
+    private var marked: [Review] { reviews.filter(\.markedForDeletion) }
+
     #if os(macOS)
     @State private var thumbSize: Double = 140
     #else
@@ -80,6 +91,11 @@ struct GridView: View {
 
             Divider()
             #endif
+
+            if filters.isActive {
+                selection(shown)
+                Divider()
+            }
 
             ScrollViewReader { proxy in
                 ScrollView {
@@ -123,6 +139,84 @@ struct GridView: View {
                 }
                 .task(id: focusID) { await reveal(focusID, using: proxy) }
             }
+        }
+    }
+
+    /// Pasek pojawia się **tylko przy założonym filtrze** i to jest cała jego
+    /// logika. Filtr znalazł pulę — dopiero wtedy jest co robić z pulą jako
+    /// całością. Bez filtru zabierałby wysokość na przycisk bez sensu, a na
+    /// telefonie wysokość jest tym, czego brakuje najbardziej.
+    ///
+    /// To jest pierwsza operacja na grupie w tej aplikacji. Do tej pory każda
+    /// decyzja dotyczyła jednego zdjęcia, bo narzędzie było sortownikiem —
+    /// a odkąd filtr potrafi wyciąć 208 zrzutów ekranu, klikanie ich po kolei
+    /// przestaje mieć sens.
+    @ViewBuilder
+    private func selection(_ shown: [PHAsset]) -> some View {
+        HStack(spacing: 10) {
+            Text("\(shown.count)")
+                .font(.callout.monospacedDigit().weight(.semibold))
+            Text(shown.count == 1 ? "zdjęcie w tym filtrze" : "zdjęć w tym filtrze")
+                .foregroundStyle(.secondary)
+                .lineLimit(1)
+
+            Spacer(minLength: 8)
+
+            if let lastMarked {
+                Text("oznaczono \(lastMarked)")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .transition(.opacity)
+            }
+
+            // Wyjście do przeglądu **tutaj**, a nie tylko w ocenianiu.
+            // Oznaczanie i kasowanie zostają rozdzielone, ale nie ma powodu,
+            // żeby po oznaczeniu puli trzeba było jeszcze zmieniać tryb.
+            if !marked.isEmpty {
+                Button {
+                    showingDeletions = true
+                } label: {
+                    Label("\(marked.count) do usunięcia", systemImage: "trash.fill")
+                }
+                .tint(.red)
+                #if os(iOS)
+                .font(.caption)
+                #endif
+            }
+
+            Button(role: .destructive) {
+                confirming = true
+            } label: {
+                Label("oznacz do usunięcia", systemImage: "trash")
+            }
+            .disabled(shown.isEmpty)
+            #if os(iOS)
+            .font(.caption)
+            #endif
+        }
+        .buttonStyle(.bordered)
+        .controlSize(.small)
+        .padding(.horizontal, 12)
+        .padding(.vertical, 7)
+        .background(.bar)
+        .animation(.easeInOut(duration: 0.2), value: lastMarked)
+        .sheet(isPresented: $showingDeletions) {
+            DeletionReview(library: library, reviews: marked)
+        }
+        .confirmationDialog(
+            "Oznaczyć \(shown.count) zdjęć do usunięcia?",
+            isPresented: $confirming, titleVisibility: .visible
+        ) {
+            Button("Oznacz \(shown.count)", role: .destructive) {
+                let changed = Review.mark(
+                    shown.map(\.localIdentifier), deleted: true, in: context
+                )
+                lastMarked = changed
+            }
+            Button("Anuluj", role: .cancel) {}
+        } message: {
+            Text("Nic jeszcze nie zniknie. Zdjęcia trafią do przeglądu "
+                 + "do usunięcia, gdzie można je odznaczyć albo skasować.")
         }
     }
 
