@@ -443,6 +443,113 @@ To sugeruje podział, gdyby aplikacja miała kiedyś wyjść do ludzi: **eksport
 poza sklepem, czytający bazy i zapisujący małą przenośną paczkę, oraz
 **przeglądarka**, która działa z tą paczką albo bez niej.
 
+## Jeden zbiór roboczy
+
+### Dwa zbiory to błąd, którego nie da się obejść
+
+Zestawienie cech powstało jako osobna zakładka i było tam najszybszą drogą do
+odpowiedzi „czy ten sygnał jest cokolwiek wart". Odpowiedź brzmiała: tak. Ale
+zakładka miała wadę, której nie dało się naprawić bez rozbiórki.
+
+Ocenianie chodzi po `filters.apply(...)`. Zestawienie miało własny zbiór:
+własny obiektyw, własny próg, własne sortowanie. Kliknięcie w kafelek ustawiało
+wspólny wskaźnik i przełączało tryb — ocenianie szukało tego zdjęcia u siebie
+i dalej szło **swoją** kolejką. Zgłoszenie brzmiało: „w trybie cecha znajduję
+fotkę, wchodzę w zoom, oceniam, następna w kolejce jest fotka z siatki
+wszystkie".
+
+Pierwsza poprawka przepuszczała zestawienie przez te same filtry, co ocenianie.
+Naprawiała trafienie w kliknięte zdjęcie i nic poza tym — **następne** wciąż
+przychodziło z innej kolejki, bo zbioru cech nie da się zapisać w `Filters`
+i przenieść przez przełączenie trybu.
+
+Właściwą naprawą było zlikwidowanie drugiego zbioru. Cecha i porządek
+przeniosły się do `Filters`, obok roku i stanu oceny, a `FeaturesView` zniknął.
+Siatka jest jedna. Kolejka jest jedna. „Poruszone" to warunek, „od poruszonych"
+to sortowanie — jedno i drugie widzi każdy tryb.
+
+### Tryb to narzędzie, nie widok
+
+Lista trybów mieszała dwie różne rzeczy: **co oglądam** (siatka, cechy) i **co
+robię** (ocenianie, parowanie). Zestawienie cech było więc trybem, choć jest
+pytaniem o zbiór — i stąd brała się jego własna kolejka. Po rozdzieleniu
+zostały trzy narzędzia: siatka, ocenianie, parowanie. Co oglądam, rozstrzyga
+filtr.
+
+Kasowanie **nie** dostało własnego narzędzia, choć się o to prosiło. Decyzja
+Radka: wypchnięcie zdjęcia niżej w ocenie pozwala je później wyfiltrować
+i skasować hurtem. Jedna skala zamiast skali i osobnego trybu.
+
+### Cechy czytamy raz, do zwykłego słownika
+
+Cechy mieszkają w `Review`, bo tamtędy jadą na telefon. Ale sięganie po nie
+przez `@Query` byłoby zabójcze i to z trzech powodów naraz: rekordów z cechami
+jest tyle, co zdjęć (25 tysięcy); zapytanie unieważnia widok przy **każdym**
+zapisie, więc każda ocena przebudowywałaby siatkę razem ze słownikiem;
+a ocenianie celowo pyta tylko o rekordy niosące decyzję i tych pustych nie widzi.
+
+Stąd `FeatureIndex`: jedno pobranie do słownika zwykłych struktur, bez obiektów
+modelu. Cechy zmieniają się wyłącznie przy wczytaniu z baz systemu albo przy
+synchronizacji — czyli wtedy, gdy ktoś o to wprost poprosi. Wtedy słownik
+przeładowujemy jawnie. W trakcie pracy nie zmienia się nic.
+
+### Zbiór roboczy trzymamy policzony, ale nie przeliczamy go przy ocenie
+
+`apply(...)` woła się kilka razy na jedno odrysowanie, bo sięgają po niego
+właściwości obliczane. Sortowanie 26 tysięcy pozycji przy każdym z nich
+stawiało interfejs — ta sama lekcja, co przy pierwszym wczytaniu cech.
+Wynik jest więc zapamiętany pod podpisem z warunków.
+
+Podpis celowo **nie zawiera ocen poszczególnych zdjęć**. Gdyby zawierał, zbiór
+przy porządku „od najlepszych" przestawiałby się pod palcem przy każdej ocenie
+i zdjęcie uciekałoby spod kursora w trakcie pracy. Zmiana kolejności należy się
+zmianie warunków, nie zmianie oceny.
+
+### Brak pomiaru to nie wynik najgorszy
+
+Przy sortowaniu „od poruszonych" zdjęcia bez pomiaru idą na **koniec**, nie na
+początek. Zero w bazie znaczy „nie policzono" (patrz rozdział wyżej), więc
+wpuszczenie ich przodem dałoby tysiące kadrów, o których nie wiemy nic — czyli
+najgorszą możliwą odpowiedź na zadane pytanie. Tak samo nieocenione przy
+„od najgorszych": brak oceny nie jest zerem.
+
+### Pasek miniatur: kolejka musi być widoczna
+
+Cały ten błąd sprowadza się do jednego zdania: **kolejka była niewidzialna**.
+Wchodziło się w zdjęcie i trzeba było zgadywać, po czym idzie się dalej —
+a dowiadywało się dopiero po geście.
+
+Pasek pod zdjęciem pokazuje ten sam zbiór, w tej samej kolejności, z zaznaczoną
+bieżącą pozycją i z podpisem miary, która jest w grze. Widać, co będzie
+następne, **zanim** zrobisz gest; widać, skąd przyszedłeś; a rozjazd zbiorów
+byłby widoczny od pierwszej chwili zamiast do wyśledzenia.
+
+Nie jest mapą całości i nie udaje. Przy 26 tysiącach żaden pasek nie zmieści
+archiwum — to okno wokół bieżącego miejsca, wracające na środek przy każdym
+kroku. Chowa się klawiszem `T`, bo przy szybkim odsiewie zabiera wysokość,
+której na telefonie nie ma.
+
+### Skąd to wzięte
+
+Z rozbioru `lightgallery.js` 1.4.1 — biblioteki, której Radek używa na blogu
+i którą wybrał po długim szukaniu. Rozstrzygające było to, że wywołuje ją
+**bez jednej opcji**: wszystkie zachowania to wartości domyślne. Czyli nie
+zestaw do wyboru, tylko jeden dobrze dobrany zestaw.
+
+Co stamtąd weszło: pasek miniatur jako jedyny sposób na skok dalej niż o jedno
+zdjęcie; podpis miary przy miniaturze; obraz idący za palcem z progiem
+i odbiciem (to akurat ibrowse miał już wcześniej, doszliśmy do tego osobno).
+
+Co świadomie **nie** weszło: `loop`. Przy 37 zdjęciach z zamku brak ściany jest
+miły, przy 26 tysiącach okrążenie archiwum bez ostrzeżenia rozbija całe
+założenie „wracasz tam, gdzie skończyłeś".
+
+Czego tamta biblioteka nie ma, a co jest darmowe natywnie: ciągłości
+przestrzennej przy otwieraniu — kafel rosnący w zdjęcie. W markupie bloga nie
+ma `data-lg-size`, więc `zoomFromOrigin` nie działa i zdjęcie pojawia się bez
+związku z klikniętym kafelkiem. Gdyby ten ruch był, opisany wyżej rozjazd
+zbiorów byłby widoczny w pierwszej klatce.
+
 ## Ikona
 
 Jeden rysunek, **dwa kadry** — bo platformy chcą czegoś przeciwnego. Na Macu
@@ -509,20 +616,19 @@ Odkrycie, ile gotowych danych leży pod biblioteką, zmienia klasę narzędzia.
 Sortownik potrzebował jednego dobrego widoku. Przeglądarka potrzebuje sposobu
 na **przecinanie zbioru** i wracanie do tego samego miejsca z różnych stron.
 
-Kształt docelowy, ustalony po pierwszym użyciu zakładki cech:
+Kształt docelowy, ustalony po pierwszym użyciu zakładki cech — **zrobiony**,
+opis w rozdziale „Jeden zbiór roboczy":
 
 - **Siatka jako tryb główny** — nie jedna z czterech zakładek.
 - **Pojedynczy podgląd** jako drugi tryb.
 - **Cechy jako osie** siatki i podglądu — sortowanie i filtrowanie, nie osobny
-  ekran. Dzisiejsza zakładka była najszybszym sposobem sprawdzenia, czy sygnał
-  jest cokolwiek wart; docelowo „ostrość" nie jest trybem, tylko kryterium,
-  tak samo jak rok czy liczba gwiazdek.
+  ekran. Zakładka była najszybszym sposobem sprawdzenia, czy sygnał jest
+  cokolwiek wart; nie jest trybem, tylko kryterium, tak samo jak rok.
 - **Ocenianie i turniej schodzą do roli dodatku** — wywoływanego z przeglądarki,
   gdy już się coś znalazło.
 
 Czego dziś brakuje do poziomu Bridge'a: zaznaczania i operacji na grupie,
-sortowania (kolejność jest taka, jaką poda PhotoKit), swobodnego porównywania
-obok siebie, grupowania po dniu, serii albo osobie — choć system ma policzone
+swobodnego porównywania obok siebie, grupowania po dniu, serii albo osobie — choć system ma policzone
 momenty i 7 290 klastrów osób.
 
 Przed kodowaniem: **poużywać**. Pierwsza obserwacja z używania jest taka, że

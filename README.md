@@ -27,18 +27,24 @@ i przepuszcza je przez turniej „które z tych dwóch jest lepsze". Seria z N
 zdjęć kosztuje N−1 decyzji. Wynik zależy od tego, **kogo pokonałeś**, nie od
 samego zwycięstwa.
 
-**Filtrowanie** — zakres lat, stan oceny, zakres gwiazdek, a na macOS także
-szukanie po treści: etykiety scen, imiona osób, nazwy miejsc i tekst odczytany
-ze zdjęć przez system.
+**Filtrowanie** — zakres lat, stan oceny, zakres gwiazdek, cechy policzone
+przez system, a na macOS także szukanie po treści: etykiety scen, imiona osób,
+nazwy miejsc i tekst odczytany ze zdjęć.
 
-**Cechy** — przeglądy poprzeczne miarą policzoną przez system: od najbardziej
-poruszonych, od najgorzej naświetlonych, zdjęcia z zamkniętymi oczami, zrzuty
-ekranu. To zestawienie do obejrzenia, nie ocena — żadna z tych liczb nie dotyka
-wagi zdjęcia. Czyta je macOS z baz biblioteki (wymaga Pełnego dostępu do
-dysku), a na telefon przyjeżdżają synchronizacją, więc działają bez sieci.
+**Cechy** — poruszone, źle naświetlone, z zamkniętymi oczami, zrzuty ekranu.
+Są **warunkiem filtru i porządkiem**, nie osobnym ekranem: „od najbardziej
+poruszonych" to takie samo kryterium jak rok czy liczba gwiazdek, więc siatka,
+ocenianie i pasek miniatur widzą ten sam zbiór w tej samej kolejności. Żadna
+z tych liczb nie dotyka wagi zdjęcia — to pomiar systemu, nie ocena. Czyta je
+macOS z baz biblioteki (wymaga Pełnego dostępu do dysku), a na telefon
+przyjeżdżają synchronizacją, więc działają bez sieci.
 
 **Metadane** — na macOS panel boczny z techniką zdjęcia i tym, co widzi
 system. Na telefonie arkusz na żądanie.
+
+**Pasek miniatur** pod zdjęciem (`T` na Macu) — widoczna kolejka: co będzie
+następne i skąd się przyszło, ze skokiem dalej niż o jedno zdjęcie bez
+wychodzenia do siatki.
 
 **Podgląd 1:1** (`Z` na Macu, dwuklik na telefonie) — jedyne miejsce
 z prawdziwymi pikselami, bo tylko tam da się ocenić ostrość.

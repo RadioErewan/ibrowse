@@ -2,7 +2,12 @@ import Photos
 import SwiftData
 import SwiftUI
 
-/// Siatka nad całą biblioteką — test wytrzymałości SwiftUI na skali archiwum.
+/// Siatka nad całą biblioteką — **jedyny** widok kafelków w aplikacji.
+///
+/// Wcześniej były dwa: ta siatka i osobne zestawienie cech. Każde z własnym
+/// zbiorem, więc kliknięcie w zestawieniu wchodziło w ocenianie i lądowało
+/// w innej kolejce. Teraz kafelki są jedne, a „poruszone" to warunek filtru
+/// jak każdy inny — patrz komentarz w `Filters`.
 ///
 /// Celowo bez stronicowania i bez sztuczek: wszystkie assety wpadają do
 /// `LazyVGrid`, tak jak zrobiłby to ktoś piszący to naiwnie. Jeśli to wyrobi
@@ -11,6 +16,11 @@ struct GridView: View {
     @ObservedObject var library: PhotoLibrary
     @ObservedObject var monitor: PerfMonitor
     @ObservedObject var filters: Filters
+
+    /// Cechy policzone przez system — źródło podpisów na kafelkach i warunków
+    /// filtru. Osobno od ocen, bo zmieniają się raz na wczytanie, a nie przy
+    /// każdym naciśnięciu klawisza.
+    @ObservedObject var features: FeatureIndex
 
     /// Stuknięcie w kafelek wchodzi w ocenianie od tego zdjęcia (na Macu
     /// dwuklik). To jedyne zadanie siatki: nawigacja po archiwum i wejście
@@ -46,7 +56,7 @@ struct GridView: View {
 
     var body: some View {
         let reviewIndex = byID
-        let shown = filters.apply(reviewIndex)
+        let shown = filters.apply(reviewIndex, features: features)
 
         return VStack(spacing: 0) {
             // Pasek pomiarowy i suwak rozmiaru to narzędzia pracy przy
@@ -58,6 +68,11 @@ struct GridView: View {
                 Slider(value: $thumbSize, in: 80...280) { Text("rozmiar") }
                     .frame(width: 180)
                 Spacer()
+                if filters.axis != .none {
+                    Text(filters.feature == .any ? filters.order.rawValue : filters.feature.hint)
+                        .font(.caption)
+                        .foregroundStyle(.tertiary)
+                }
                 PerfOverlay(monitor: monitor, total: shown.count)
             }
             .padding(.horizontal, 14)
@@ -79,6 +94,7 @@ struct GridView: View {
                                 monitor: monitor,
                                 side: thumbSize,
                                 rating: reviewIndex[asset.localIdentifier]?.stars ?? 0,
+                                badge: filters.badge(for: asset.localIdentifier, in: features),
                                 isFocus: asset.localIdentifier == focusID
                             )
                             // Na telefonie otwiera pojedyncze stuknięcie, bo
@@ -101,13 +117,28 @@ struct GridView: View {
                         ContentUnavailableView(
                             "Nic nie pasuje",
                             systemImage: "line.3.horizontal.decrease.circle",
-                            description: Text("Żadne zdjęcie nie spełnia warunków filtru.")
+                            description: Text(emptyNote)
                         )
                     }
                 }
                 .task(id: focusID) { await reveal(focusID, using: proxy) }
             }
         }
+    }
+
+    /// Pusto znaczy co innego, gdy w grze jest cecha: może nie chodzić
+    /// o filtr, tylko o to, że nikt jeszcze nie wczytał pomiarów.
+    private var emptyNote: String {
+        guard filters.axis != .none, features.isEmpty else {
+            return "Żadne zdjęcie nie spełnia warunków filtru."
+        }
+        #if os(macOS)
+        return "Cechy leżą w bazach biblioteki Zdjęć i nikt ich jeszcze nie wczytał. "
+            + "Zrób to przyciskiem w belce — wymaga Pełnego dostępu do dysku."
+        #else
+        return "Cechy liczy system na Macu i przyjeżdżają tu synchronizacją. "
+            + "Wczytaj je na Macu, zsynchronizuj oba urządzenia i wróć tutaj."
+        #endif
     }
 
     /// Przewija do zdjęcia, na którym stoi praca.
@@ -130,8 +161,8 @@ struct GridView: View {
 /// widać, ile żądań wisi jednocześnie przy szybkim scrollu.
 ///
 /// Niepubliczna dla modułu, ale nie `private`: z tego samego kafelka korzysta
-/// zestawienie ostrości. Drugi, prawie identyczny kafelek rozjechałby się
-/// z tym przy pierwszej zmianie ładowania miniatur.
+/// pasek miniatur pod zdjęciem. Drugi, prawie identyczny kafelek rozjechałby
+/// się z tym przy pierwszej zmianie ładowania miniatur.
 struct Thumbnail: View {
     let asset: PHAsset
     let library: PhotoLibrary
@@ -139,9 +170,8 @@ struct Thumbnail: View {
     let side: Double
     let rating: Int
 
-    /// Podpis w rogu — liczba, według której akurat sortujemy. Bez niego
-    /// zestawienie ostrości byłoby ciągiem zdjęć bez wytłumaczenia, dlaczego
-    /// stoją w tej kolejności.
+    /// Podpis w rogu — liczba, przez którą zdjęcie stoi w tym miejscu.
+    /// Patrz `Filters.badge(for:in:)`.
     var badge: String? = nil
 
     /// Zdjęcie, od którego przyszliśmy z innego trybu. Samo przewinięcie nie

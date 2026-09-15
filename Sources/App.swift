@@ -84,6 +84,11 @@ struct RootView: View {
     @StateObject private var albums = AlbumSync()
     @StateObject private var filters = Filters()
     @StateObject private var sync = LibrarySync()
+    /// Cechy systemu wyjęte z bazy raz i trzymane obok — patrz `FeatureIndex`.
+    @StateObject private var features = FeatureIndex()
+    #if os(macOS)
+    @StateObject private var importer = FeatureImport()
+    #endif
     @State private var choosingFolder = false
     @State private var showingActions = false
     @Environment(\.modelContext) private var context
@@ -98,16 +103,19 @@ struct RootView: View {
     /// się ocenianie, a ocenianie zaczyna tam, gdzie kliknąłeś w siatce.
     @State private var focusID: String?
 
+    /// **Narzędzie**, nie widok.
+    ///
+    /// Do niedawna ta lista mieszała dwie różne rzeczy: co oglądam (siatka,
+    /// cechy) i co robię (ocenianie, parowanie). Zestawienie cech było więc
+    /// trybem, choć jest pytaniem o zbiór — i właśnie dlatego miało własną
+    /// kolejkę, z której kliknięcie wyprowadzało donikąd. Teraz co oglądam
+    /// rozstrzyga filtr, a tu zostaje wyłącznie to, co robię.
     enum Mode: String, CaseIterable, Identifiable {
         case grid = "siatka"
         case cull = "ocenianie"
         case pair = "parowanie"
-        case sharp = "cechy"
         var id: String { rawValue }
 
-        /// Wszystkie tryby na obu platformach. Cechy czyta z baz systemu sam
-        /// macOS, ale wynik jedzie do telefonu w ocenie — więc zakładka ma tam
-        /// co pokazać, a dopóki nie ma, mówi wprost, skąd się to bierze.
         static var available: [Mode] { allCases }
 
         var icon: String {
@@ -115,7 +123,6 @@ struct RootView: View {
             case .grid: "square.grid.2x2"
             case .cull: "star"
             case .pair: "rectangle.on.rectangle"
-            case .sharp: "camera.metering.spot"
             }
         }
     }
@@ -145,6 +152,16 @@ struct RootView: View {
             }
         }
         .task { await library.start() }
+        // Cechy czytamy raz, do zwykłego słownika. Po wczytaniu z baz systemu
+        // i po synchronizacji odświeżamy je jawnie — same z siebie się nie
+        // zmieniają, więc nie ma czego pilnować w tle.
+        .task { features.load(context: context) }
+        // Synchronizacja przywozi cechy z drugiego urządzenia, więc po jej
+        // zakończeniu słownik jest nieaktualny.
+        .task(id: sync.isWorking) {
+            guard !sync.isWorking else { return }
+            features.load(context: context)
+        }
         .task(id: library.assets.count) { filters.adopt(library.assets) }
         // Przy zmianie trybu zwalniamy podgrzane renditiony — inaczej
         // przejście z siatki do parowania trzyma w pamięci dwa komplety.
@@ -184,7 +201,7 @@ struct RootView: View {
                             ToolbarItem(placement: .topBarTrailing) { actionsButton }
                         }
                         .sheet(isPresented: $showingFilters) {
-                            FilterPanel(library: library, filters: filters)
+                            FilterPanel(library: library, filters: filters, features: features)
                         }
                         .sheet(isPresented: $showingActions) {
                             ActionsSheet(
@@ -218,12 +235,11 @@ struct RootView: View {
                     }
                     .pickerStyle(.segmented)
                     .labelsHidden()
-                    // Czwarty tryb nie mieścił się w 260 punktach — nazwy
-                    // zaczynały się ucinać w połowie.
-                    .frame(width: 330)
+                    .frame(width: 260)
                 }
                 ToolbarItemGroup(placement: .primaryAction) {
                     fingerprintControl
+                    featureControl
                     filterButton
                     syncControl
                 }
@@ -244,25 +260,19 @@ struct RootView: View {
                 library: library,
                 monitor: monitor,
                 filters: filters,
+                features: features,
                 onOpen: { asset in
                     focusID = asset.localIdentifier
                     self.mode = .cull
                 },
                 focusID: focusID
             )
-        case .cull: CullView(library: library, filters: filters, focusID: $focusID)
+        case .cull:
+            CullView(
+                library: library, filters: filters, monitor: monitor,
+                features: features, focusID: $focusID
+            )
         case .pair: PairView(library: library, similarity: similarity, focusID: $focusID)
-        case .sharp:
-            FeaturesView(
-                library: library,
-                monitor: monitor,
-                filters: filters,
-                onOpen: { asset in
-                    focusID = asset.localIdentifier
-                    self.mode = .cull
-                },
-                focusID: focusID
-            )
         }
     }
 
@@ -277,6 +287,30 @@ struct RootView: View {
                   ? "ellipsis.circle.fill" : "ellipsis.circle")
         }
     }
+
+    /// Wczytanie cech jest jawną operacją na całym archiwum — tak samo jak
+    /// liczenie odcisków i dokładnie z tego samego powodu. Mieszkało kiedyś
+    /// w zakładce cech; po jej likwidacji należy tu, obok pozostałych
+    /// poleceń działających na całości.
+    #if os(macOS)
+    @ViewBuilder
+    private var featureControl: some View {
+        if importer.isWorking {
+            ProgressView().controlSize(.small)
+        } else {
+            Button {
+                Task {
+                    await importer.run(context: context, library: library)
+                    features.load(context: context)
+                }
+            } label: {
+                Label("wczytaj cechy", systemImage: "camera.metering.spot")
+            }
+            .help(importer.summary
+                  ?? "Czyta ostrość, ekspozycję i twarze z baz biblioteki Zdjęć")
+        }
+    }
+    #endif
 
     /// Liczenie odcisków jest jawną, jednorazową operacją — nie chcę, żeby
     /// aplikacja po cichu mieliła całe archiwum przy pierwszym starcie.
@@ -326,7 +360,7 @@ extension RootView {
         }
         #if os(macOS)
         .popover(isPresented: $showingFilters) {
-            FilterPanel(library: library, filters: filters)
+            FilterPanel(library: library, filters: filters, features: features)
         }
         #endif
     }

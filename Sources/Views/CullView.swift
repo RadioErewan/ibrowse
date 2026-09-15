@@ -9,6 +9,13 @@ import SwiftUI
 struct CullView: View {
     @ObservedObject var library: PhotoLibrary
     @ObservedObject var filters: Filters
+    @ObservedObject var monitor: PerfMonitor
+
+    /// Cechy systemu — te same, po których filtruje i sortuje siatka.
+    /// Ocenianie samo ich nie używa do niczego poza podpisami w pasku
+    /// miniatur, ale **musi** dostać ten sam obiekt, bo inaczej liczyłoby
+    /// zbiór roboczy inaczej niż siatka. Właśnie o to się to kiedyś rozbiło.
+    @ObservedObject var features: FeatureIndex
 
     /// Wspólny wskaźnik „gdzie jestem w archiwum", jeden na całą aplikację.
     ///
@@ -39,6 +46,11 @@ struct CullView: View {
     /// zamawiał. `Z` jak w Lightroomie.
     @State private var showingLoupe = false
 
+    /// Pasek miniatur. Zapamiętany, bo przy szybkim odsiewie zabiera wysokość,
+    /// której na telefonie nie ma — ale przy przeglądaniu jest tym, po co się
+    /// tu przyszło. Klawisz `T` na Macu.
+    @AppStorage("cull.showingStrip") private var showingStrip = true
+
     #if os(macOS)
     /// Punkt, w którym stał kursor — kadr 1:1 otwiera się właśnie tam.
     @State private var loupeFocus: UnitPoint = .center
@@ -62,7 +74,7 @@ struct CullView: View {
         Dictionary(reviews.map { ($0.assetID, $0) }, uniquingKeysWith: { a, _ in a })
     }
 
-    private var workingSet: [PHAsset] { filters.apply(byID) }
+    private var workingSet: [PHAsset] { filters.apply(byID, features: features) }
 
     private var current: PHAsset? {
         let set = workingSet
@@ -95,6 +107,19 @@ struct CullView: View {
             #endif
 
             stage
+
+            if showingStrip {
+                Divider()
+                FilmStrip(
+                    assets: workingSet,
+                    index: index,
+                    library: library,
+                    monitor: monitor,
+                    badge: { filters.badge(for: $0, in: features) },
+                    onPick: { index = $0 }
+                )
+            }
+
             footer
         }
         #if os(macOS)
@@ -149,6 +174,8 @@ struct CullView: View {
         // albo poza zakresem.
         .onChange(of: filters.standing) { _, _ in index = 0 }
         .onChange(of: filters.base.count) { _, _ in index = 0 }
+        .onChange(of: filters.feature) { _, _ in index = 0 }
+        .onChange(of: filters.order) { _, _ in index = 0 }
         // Skacze tylko wtedy, gdy wskaźnik przyszedł z zewnątrz. Bez tego
         // warunku widok reagowałby na własne zapisy i pętla by się zapętliła.
         .task(id: focusID) {
@@ -314,6 +341,10 @@ struct CullView: View {
                 Spacer()
                 // Jedna ikona zamiast stałego panelu — kto chce liczby,
                 // ten po nie sięga. Ekran należy się fotografii.
+                Button { showingStrip.toggle() } label: {
+                    Image(systemName: showingStrip
+                          ? "rectangle.grid.1x2.fill" : "rectangle.grid.1x2")
+                }
                 Button { showingMetadata = true } label: {
                     Image(systemName: "info.circle")
                 }
@@ -385,7 +416,7 @@ struct CullView: View {
         #if os(iOS)
         "pociągnij w bok, żeby zobaczyć sąsiednie · w górę lepsze, w dół gorsze"
         #else
-        "1–5 ocena · −/+ przesuń · Z podgląd 1:1 · X do usunięcia · I metadane · ←/→ nawigacja"
+        "1–5 ocena · −/+ przesuń · Z podgląd 1:1 · X do usunięcia · T pasek · I metadane · ←/→ nawigacja"
         #endif
     }
 
@@ -408,6 +439,9 @@ struct CullView: View {
             return .handled
         case "z", "Z":
             if current != nil { showingLoupe.toggle() }
+            return .handled
+        case "t", "T":
+            showingStrip.toggle()
             return .handled
         #if os(macOS)
         case "i", "I":

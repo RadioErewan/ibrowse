@@ -19,6 +19,11 @@ import SwiftUI
 struct FilterPanel: View {
     @ObservedObject var library: PhotoLibrary
     @ObservedObject var filters: Filters
+
+    /// Cechy policzone przez system. Były kiedyś osobną zakładką z własnym
+    /// zbiorem — teraz są tu, obok roku i stanu oceny, bo to ten sam rodzaj
+    /// pytania: „co teraz oglądam".
+    @ObservedObject var features: FeatureIndex
     /// Panel liczy tylko, ile zdjęć pasuje do warunków — a te dotyczą stanu
     /// oceny. Patrz komentarz w `CullView`.
     @Query(filter: #Predicate<Review> { $0.isRated || $0.markedForDeletion })
@@ -29,7 +34,7 @@ struct FilterPanel: View {
         Dictionary(reviews.map { ($0.assetID, $0) }, uniquingKeysWith: { a, _ in a })
     }
 
-    private var matching: Int { filters.apply(byID).count }
+    private var matching: Int { filters.apply(byID, features: features).count }
 
     var body: some View {
         #if os(iOS)
@@ -37,6 +42,8 @@ struct FilterPanel: View {
             Form {
                 Section("Szukaj w treści") { searchField; searchNote }
                 Section("Ocena") { standingPicker; starRange }
+                Section("Cechy systemu") { featurePicker; thresholdSlider; featureNote }
+                Section("Kolejność") { orderPicker }
                 if !library.years.isEmpty {
                     Section("Zakres lat") { yearPickers }
                 }
@@ -61,6 +68,8 @@ struct FilterPanel: View {
                 VStack(alignment: .leading, spacing: 20) {
                     group("Szukaj w treści") { searchField; searchNote }
                     group("Ocena") { standingPicker; starRange }
+                    group("Cechy systemu") { featurePicker; thresholdSlider; featureNote }
+                    group("Kolejność") { orderPicker }
                     if !library.years.isEmpty {
                         group("Zakres lat") { yearPickers }
                     }
@@ -193,6 +202,68 @@ struct FilterPanel: View {
             filters.minStars = value
             filters.maxStars = value
         }
+    }
+
+    // MARK: - Cechy
+
+    private var featurePicker: some View {
+        Picker("cecha", selection: $filters.feature) {
+            ForEach(Filters.Feature.allCases) { Text($0.rawValue).tag($0) }
+        }
+        #if os(macOS)
+        .pickerStyle(.menu)
+        .labelsHidden()
+        #endif
+    }
+
+    /// Próg ma sens wyłącznie przy warunkach ciągłych. Przy „zrzutach ekranu"
+    /// nie ma czego przesuwać — to zdjęcie albo jest zrzutem, albo nie jest.
+    @ViewBuilder
+    private var thresholdSlider: some View {
+        if filters.feature.isContinuous {
+            HStack(spacing: 10) {
+                Slider(value: $filters.threshold, in: 0.1...1.0) { Text("próg") }
+                Text(String(format: "poniżej %.2f", filters.threshold))
+                    .font(.caption.monospacedDigit())
+                    .foregroundStyle(.secondary)
+            }
+        }
+    }
+
+    @ViewBuilder
+    private var featureNote: some View {
+        if features.isEmpty {
+            #if os(macOS)
+            Text("Nie wczytano jeszcze cech. Przycisk w belce narzędzi — wymaga Pełnego dostępu do dysku.")
+                .font(.caption)
+                .foregroundStyle(.orange)
+                .fixedSize(horizontal: false, vertical: true)
+            #else
+            Text("Nie wczytano jeszcze cech. Liczy je Mac i przyjeżdżają tu synchronizacją.")
+                .font(.caption)
+                .foregroundStyle(.orange)
+                .fixedSize(horizontal: false, vertical: true)
+            #endif
+        } else {
+            Text("\(features.count) zdjęć z pomiarem · \(filters.feature.hint)")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+    }
+
+    // MARK: - Kolejność
+
+    /// Porządek zbioru to nie ozdoba: decyduje, co znaczy „następne zdjęcie"
+    /// po geście w ocenianiu.
+    private var orderPicker: some View {
+        Picker("kolejność", selection: $filters.order) {
+            ForEach(Filters.Order.allCases) { Text($0.rawValue).tag($0) }
+        }
+        #if os(macOS)
+        .pickerStyle(.menu)
+        .labelsHidden()
+        #endif
     }
 
     // MARK: - Lata
