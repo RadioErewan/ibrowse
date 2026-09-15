@@ -2,130 +2,259 @@ import Photos
 import SwiftData
 import SwiftUI
 
-/// Dedykowany widok filtrowania — wszystkie warunki w jednym miejscu.
+/// Wszystkie warunki w jednym miejscu — na macOS **na stałe przy krawędzi
+/// okna**, na telefonie w arkuszu.
 ///
-/// Wcześniej rok wybierało się w pasku narzędzi, a stan oceny w segmentowanym
-/// przełączniku nad zdjęciem. Dwa miejsca na jedno pytanie „co teraz oglądam",
-/// przy czym drugie z nich znikało po przejściu do siatki.
+/// Filtr przestał być czynnością („otwórz, wybierz, zamknij") i stał się
+/// widokiem. Powód jest jeden i jest nim licznik: dopóki panel trzeba było
+/// otworzyć, nie dało się wiedzieć, ile czego jest, bez przerywania pracy.
 ///
-/// Licznik jest tu najważniejszy: pokazuje wynik **zanim** zamkniesz okno. Bez
-/// niego zawężanie zakresu to strzelanie w ciemno i wychodzenie za każdym
-/// razem, żeby sprawdzić, czy cokolwiek zostało.
+/// Warunki są **wierszami z licznikami**, nie przełącznikami. To rozwiązuje
+/// trzy rzeczy naraz:
 ///
-/// Układ jest inny na każdej platformie. Na telefonie `Form` w arkuszu jest
-/// naturalny. Na Macu ten sam `Form` w popoverze wyszedł przezroczysty —
-/// styl zgrupowany nie maluje własnego tła, więc przez panel przebijała
-/// siatka zdjęć. Dlatego Mac dostaje zwykły stos z jawnym tłem.
+/// - Każdy wiersz mówi, ile zdjęć dałby, **zanim** go klikniesz. Poprzednia
+///   wersja miała jeden licznik na dole i pokazywała wynik po wyborze, więc
+///   zawężanie było strzelaniem w ciemno.
+/// - Wiersze rosną **w dół**, a pion jest tani i przewijalny. Segmentowany
+///   przełącznik rósł w bok i przy czterech pozycjach ucinał ostatnią
+///   o kilka punktów — a liczba kategorii nie jest zamknięta i długość słów
+///   zmieni się przy pierwszym tłumaczeniu.
+/// - Nie ma tu ani jednej sztywnej szerokości, więc nie ma czego przepełnić.
 struct FilterPanel: View {
     @ObservedObject var library: PhotoLibrary
     @ObservedObject var filters: Filters
-
-    /// Cechy policzone przez system. Były kiedyś osobną zakładką z własnym
-    /// zbiorem — teraz są tu, obok roku i stanu oceny, bo to ten sam rodzaj
-    /// pytania: „co teraz oglądam".
     @ObservedObject var features: FeatureIndex
-    /// Panel liczy tylko, ile zdjęć pasuje do warunków — a te dotyczą stanu
-    /// oceny. Patrz komentarz w `CullView`.
+
+    /// Panel liczy tylko po stanie oceny — puste rekordy niosące same cechy
+    /// systemu nie zmieniają w nim nic. Patrz komentarz w `CullView`.
     @Query(filter: #Predicate<Review> { $0.isRated || $0.markedForDeletion })
     private var reviews: [Review]
-    @Environment(\.dismiss) private var dismiss
 
-    private var byID: [String: Review] {
-        Dictionary(reviews.map { ($0.assetID, $0) }, uniquingKeysWith: { a, _ in a })
+    #if os(iOS)
+    @Environment(\.dismiss) private var dismiss
+    #endif
+
+    /// Liczniki przeliczane **raz na zmianę warunków**, nie przy odrysowaniu.
+    /// Dziewięć sprawdzeń na zdjęcie razy 25 tysięcy to nic, ale nie przy
+    /// każdej klatce przeciągania suwakiem.
+    @State private var tally = Filters.Tally()
+
+    private var trigger: String {
+        "\(filters.baseStamp)|\(filters.standing.rawValue)|\(filters.feature.rawValue)"
+        + "|\(filters.threshold)|\(reviews.count)|\(features.revision)"
     }
 
-    private var matching: Int { filters.apply(byID, features: features).count }
+    private func recount() {
+        let index = Dictionary(
+            reviews.map { ($0.assetID, $0) }, uniquingKeysWith: { a, _ in a }
+        )
+        tally = filters.tally(index, features: features)
+    }
 
     var body: some View {
+        content
+            .task(id: trigger) {
+                try? await Task.sleep(for: .milliseconds(120))
+                guard !Task.isCancelled else { return }
+                recount()
+            }
+    }
+
+    @ViewBuilder
+    private var content: some View {
         #if os(iOS)
         NavigationStack {
-            Form {
-                Section("Szukaj w treści") { searchField; searchNote }
-                Section("Ocena") { standingPicker; starRange }
-                Section("Cechy systemu") { featurePicker; thresholdSlider; featureNote }
-                Section("Kolejność") { orderPicker }
-                if !library.years.isEmpty {
-                    Section("Zakres lat") { yearPickers }
+            ScrollView { sections.padding(16) }
+                .navigationTitle("Filtr")
+                .navigationBarTitleDisplayMode(.inline)
+                .toolbar {
+                    ToolbarItem(placement: .cancellationAction) {
+                        Button("wyczyść") { filters.clear() }
+                            .disabled(!filters.isActive)
+                    }
+                    ToolbarItem(placement: .confirmationAction) {
+                        Button("Gotowe") { dismiss() }
+                    }
                 }
-                Section { tally }
-            }
-            .navigationTitle("Filtr")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .cancellationAction) {
-                    Button("wyczyść") { filters.clear() }
-                        .disabled(!filters.isActive)
-                }
-                ToolbarItem(placement: .confirmationAction) {
-                    Button("Gotowe") { dismiss() }
-                }
-            }
+                .safeAreaInset(edge: .bottom) { footer }
         }
         .presentationDetents([.medium, .large])
         #else
-        VStack(alignment: .leading, spacing: 0) {
-            ScrollView {
-                VStack(alignment: .leading, spacing: 20) {
-                    group("Szukaj w treści") { searchField; searchNote }
-                    group("Ocena") { standingPicker; starRange }
-                    group("Cechy systemu") { featurePicker; thresholdSlider; featureNote }
-                    group("Kolejność") { orderPicker }
-                    if !library.years.isEmpty {
-                        group("Zakres lat") { yearPickers }
-                    }
-                }
-                // Twarda szerokość treści, nie sama szerokość panelu.
-                // `.frame(width:)` na zewnętrznym stosie nie powstrzymuje
-                // dziecka, które zażąda więcej — takie dziecko wylewa się
-                // symetrycznie i znika pod krawędzią.
-                .frame(width: Self.contentWidth, alignment: .leading)
-                .padding(Self.padding)
-            }
-
+        VStack(spacing: 0) {
+            ScrollView { sections.padding(14) }
             Divider()
-
-            HStack(spacing: 12) {
-                tally
-                Spacer()
-                Button("wyczyść") { filters.clear() }
-                    .disabled(!filters.isActive)
-                Button("Gotowe") { dismiss() }
-                    .keyboardShortcut(.defaultAction)
-            }
-            .padding(12)
+            footer
         }
-        .frame(width: Self.panelWidth)
-        .frame(maxHeight: 560)
-        // Popover sam nie maluje tła pod treścią — bez tego przez panel widać
-        // zdjęcia z siatki i nie da się go przeczytać.
-        .background(Color(nsColor: .windowBackgroundColor))
         #endif
     }
 
-    /// Szerokość dyktuje **najszerszy** element, a jest nim segmentowany
-    /// przełącznik stanu oceny: cztery pozycje, z których ostatnia to „do
-    /// usunięcia". Segmentowany nie skraca napisów ani nie zawija — przy
-    /// ciaśniejszym panelu po prostu ucinał ostatnią pozycję o parę punktów.
-    ///
-    /// Obie liczby stoją obok siebie celowo: treść musi być węższa o obustronne
-    /// wcięcie, a rozjazd między nimi wraca jako obcięcie przy krawędzi.
-    private static let panelWidth: Double = 440
-    private static let padding: Double = 16
-    private static var contentWidth: Double { panelWidth - 2 * padding }
+    private var sections: some View {
+        VStack(alignment: .leading, spacing: 18) {
+            group("Szukaj w treści") { searchField; searchNote }
+            group("Ocena") { standingRows; starRange }
+            group("Cechy systemu") { featureRows; thresholdSlider; featureNote }
+            group("Kolejność") { orderRows }
+            if !library.years.isEmpty {
+                group("Zakres lat") { yearPickers }
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+    }
 
-    #if os(macOS)
     @ViewBuilder
     private func group<Content: View>(
         _ title: String, @ViewBuilder content: () -> Content
     ) -> some View {
-        VStack(alignment: .leading, spacing: 8) {
+        VStack(alignment: .leading, spacing: 6) {
             Text(title.uppercased())
                 .font(.caption2.weight(.semibold))
                 .foregroundStyle(.tertiary)
+                .padding(.bottom, 2)
             content()
         }
     }
-    #endif
+
+    // MARK: - Wiersz
+
+    /// Jeden warunek. Znacznik po lewej, nazwa w środku, liczba po prawej.
+    ///
+    /// Nazwa ma prawo zająć dwie linie — to jedyne miejsce, w którym długie
+    /// tłumaczenie może się rozlać, i rozleje się w dół, gdzie nie boli.
+    /// Liczba nie zawija się nigdy, bo cyfry są wszędzie tak samo szerokie.
+    @ViewBuilder
+    private func row(
+        _ title: String, count: Int?, isOn: Bool, action: @escaping () -> Void
+    ) -> some View {
+        Button(action: action) {
+            HStack(alignment: .firstTextBaseline, spacing: 7) {
+                Image(systemName: isOn ? "largecircle.fill.circle" : "circle")
+                    .font(.system(size: 11))
+                    .foregroundStyle(isOn ? Color.accentColor : Color.secondary.opacity(0.35))
+                Text(title)
+                    .lineLimit(2)
+                    .multilineTextAlignment(.leading)
+                    .foregroundStyle(isOn ? .primary : .secondary)
+                Spacer(minLength: 10)
+                if let count {
+                    Text(count.formatted())
+                        .font(.caption.monospacedDigit())
+                        .foregroundStyle(count == 0 ? .tertiary : .secondary)
+                        .layoutPriority(1)
+                }
+            }
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        #if os(macOS)
+        .padding(.vertical, 1)
+        #else
+        .padding(.vertical, 3)
+        #endif
+    }
+
+    // MARK: - Ocena
+
+    private var standingRows: some View {
+        ForEach(Filters.Standing.allCases) { value in
+            row(value.rawValue,
+                count: tally.standing[value] ?? 0,
+                isOn: filters.standing == value) { filters.standing = value }
+        }
+    }
+
+    /// Zakres gwiazdek ma sens wyłącznie wśród ocenionych: dla nieocenionych
+    /// nie ma czego zawężać, a „do usunięcia" jest znacznikiem, nie punktem
+    /// na skali.
+    @ViewBuilder
+    private var starRange: some View {
+        if filters.standing == .rated {
+            VStack(alignment: .leading, spacing: 4) {
+                HStack(spacing: 4) {
+                    ForEach(1...5, id: \.self) { value in
+                        let inRange = value >= filters.minStars && value <= filters.maxStars
+                        Image(systemName: inRange ? "star.fill" : "star")
+                            .foregroundStyle(inRange ? Color.yellow : Color.secondary.opacity(0.35))
+                            .onTapGesture { pick(value) }
+                    }
+                    Spacer(minLength: 0)
+                }
+                Text("Stuknij gwiazdkę, żeby ustawić koniec zakresu.")
+                    .font(.caption2)
+                    .foregroundStyle(.tertiary)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+            .padding(.top, 4)
+        }
+    }
+
+    /// Pierwsze stuknięcie zwija zakres do jednej gwiazdki, drugie go rozciąga.
+    /// Dwa suwaki dawałyby to samo dwoma ruchami zamiast jednym.
+    private func pick(_ value: Int) {
+        if filters.minStars == filters.maxStars {
+            if value < filters.minStars {
+                filters.minStars = value
+            } else {
+                filters.maxStars = value
+            }
+        } else {
+            filters.minStars = value
+            filters.maxStars = value
+        }
+    }
+
+    // MARK: - Cechy
+
+    private var featureRows: some View {
+        ForEach(Filters.Feature.allCases) { value in
+            // „Bez warunku" też ma licznik — to jest liczba, do której
+            // wracasz, i bez niej nie widać, ile kosztuje każdy warunek.
+            row(value.rawValue,
+                count: tally.feature[value] ?? 0,
+                isOn: filters.feature == value) { filters.feature = value }
+        }
+    }
+
+    /// Próg ma sens wyłącznie przy warunkach ciągłych. Przy „zrzutach ekranu"
+    /// nie ma czego przesuwać — zdjęcie albo jest zrzutem, albo nie jest.
+    @ViewBuilder
+    private var thresholdSlider: some View {
+        if filters.feature.isContinuous {
+            VStack(alignment: .leading, spacing: 2) {
+                Slider(value: $filters.threshold, in: 0.1...1.0) { Text("próg") }
+                    .labelsHidden()
+                Text(String(format: "poniżej %.2f", filters.threshold))
+                    .font(.caption.monospacedDigit())
+                    .foregroundStyle(.secondary)
+            }
+            .padding(.top, 4)
+        }
+    }
+
+    @ViewBuilder
+    private var featureNote: some View {
+        if features.isEmpty {
+            #if os(macOS)
+            note("Nie wczytano jeszcze cech. Przycisk w belce narzędzi — wymaga Pełnego dostępu do dysku.",
+                 colour: .orange)
+            #else
+            note("Nie wczytano jeszcze cech. Liczy je Mac i przyjeżdżają tu synchronizacją.",
+                 colour: .orange)
+            #endif
+        } else {
+            note(filters.feature.hint, colour: .secondary)
+        }
+    }
+
+    // MARK: - Kolejność
+
+    /// Porządek zbioru to nie ozdoba: decyduje, co znaczy „następne zdjęcie"
+    /// po geście w ocenianiu. Bez licznika, bo kolejność niczego nie odsiewa.
+    private var orderRows: some View {
+        ForEach(Filters.Order.allCases) { value in
+            row(value.rawValue, count: nil,
+                isOn: filters.order == value) { filters.order = value }
+        }
+    }
 
     // MARK: - Szukanie
 
@@ -154,205 +283,78 @@ struct FilterPanel: View {
 
     @ViewBuilder
     private var searchNote: some View {
-        if let note = filters.searchNote {
-            Text(note)
-                .font(.caption)
-                .foregroundStyle(.orange)
-                .fixedSize(horizontal: false, vertical: true)
+        if let text = filters.searchNote {
+            note(text, colour: .orange)
         } else {
-            Text("Etykiety scen, imiona osób, nazwy miejsc i tekst ze zdjęć.")
-                .font(.caption)
-                .foregroundStyle(.secondary)
-                .fixedSize(horizontal: false, vertical: true)
+            note("Etykiety scen, imiona osób, nazwy miejsc i tekst ze zdjęć.", colour: .secondary)
         }
     }
 
-    // MARK: - Ocena
-
-    private var standingPicker: some View {
-        Picker("stan", selection: $filters.standing) {
-            ForEach(Filters.Standing.allCases) { Text($0.rawValue).tag($0) }
-        }
-        .pickerStyle(.segmented)
-        .labelsHidden()
-    }
-
-    /// Zakres gwiazdek ma sens wyłącznie wśród ocenionych: dla nieocenionych
-    /// nie ma czego zawężać, a „do usunięcia" jest znacznikiem, nie punktem
-    /// na skali.
-    @ViewBuilder
-    private var starRange: some View {
-        if filters.standing == .rated {
-            VStack(alignment: .leading, spacing: 4) {
-                HStack(spacing: 4) {
-                    ForEach(1...5, id: \.self) { value in
-                        let inRange = value >= filters.minStars && value <= filters.maxStars
-                        Image(systemName: inRange ? "star.fill" : "star")
-                            .foregroundStyle(inRange ? Color.yellow : Color.secondary.opacity(0.35))
-                            .onTapGesture { pick(value) }
-                    }
-                    Spacer()
-                    Text(filters.minStars == filters.maxStars
-                         ? "dokładnie \(filters.minStars)"
-                         : "\(filters.minStars)–\(filters.maxStars)")
-                        .font(.caption.monospacedDigit())
-                        .foregroundStyle(.secondary)
-                }
-                Text("Stuknij gwiazdkę, żeby ustawić koniec zakresu.")
-                    .font(.caption2)
-                    .foregroundStyle(.tertiary)
-            }
-        }
-    }
-
-    /// Pierwsze stuknięcie zwija zakres do jednej gwiazdki, drugie go rozciąga.
-    /// Dwa suwaki dawałyby to samo dwoma ruchami zamiast jednym.
-    private func pick(_ value: Int) {
-        if filters.minStars == filters.maxStars {
-            if value < filters.minStars {
-                filters.minStars = value
-            } else {
-                filters.maxStars = value
-            }
-        } else {
-            filters.minStars = value
-            filters.maxStars = value
-        }
-    }
-
-    // MARK: - Cechy
-
-    private var featurePicker: some View {
-        Picker("cecha", selection: $filters.feature) {
-            ForEach(Filters.Feature.allCases) { Text($0.rawValue).tag($0) }
-        }
-        #if os(macOS)
-        .pickerStyle(.menu)
-        .labelsHidden()
-        .frame(maxWidth: .infinity, alignment: .leading)
-        #endif
-    }
-
-    /// Próg ma sens wyłącznie przy warunkach ciągłych. Przy „zrzutach ekranu"
-    /// nie ma czego przesuwać — to zdjęcie albo jest zrzutem, albo nie jest.
-    @ViewBuilder
-    private var thresholdSlider: some View {
-        if filters.feature.isContinuous {
-            HStack(spacing: 10) {
-                Slider(value: $filters.threshold, in: 0.1...1.0) { Text("próg") }
-                Text(String(format: "poniżej %.2f", filters.threshold))
-                    .font(.caption.monospacedDigit())
-                    .foregroundStyle(.secondary)
-                    .frame(width: 84, alignment: .trailing)
-            }
-        }
-    }
-
-    @ViewBuilder
-    private var featureNote: some View {
-        if features.isEmpty {
-            #if os(macOS)
-            Text("Nie wczytano jeszcze cech. Przycisk w belce narzędzi — wymaga Pełnego dostępu do dysku.")
-                .font(.caption)
-                .foregroundStyle(.orange)
-                .fixedSize(horizontal: false, vertical: true)
-            #else
-            Text("Nie wczytano jeszcze cech. Liczy je Mac i przyjeżdżają tu synchronizacją.")
-                .font(.caption)
-                .foregroundStyle(.orange)
-                .fixedSize(horizontal: false, vertical: true)
-            #endif
-        } else {
-            Text("\(features.count) zdjęć z pomiarem · \(filters.feature.hint)")
-                .font(.caption)
-                .foregroundStyle(.secondary)
-                .fixedSize(horizontal: false, vertical: true)
-        }
-    }
-
-    // MARK: - Kolejność
-
-    /// Porządek zbioru to nie ozdoba: decyduje, co znaczy „następne zdjęcie"
-    /// po geście w ocenianiu.
-    private var orderPicker: some View {
-        Picker("kolejność", selection: $filters.order) {
-            ForEach(Filters.Order.allCases) { Text($0.rawValue).tag($0) }
-        }
-        #if os(macOS)
-        .pickerStyle(.menu)
-        .labelsHidden()
-        .frame(maxWidth: .infinity, alignment: .leading)
-        #endif
+    private func note(_ text: String, colour: Color) -> some View {
+        Text(text)
+            .font(.caption)
+            .foregroundStyle(colour)
+            .fixedSize(horizontal: false, vertical: true)
     }
 
     // MARK: - Lata
 
-    /// Na Macu etykiety idą do własnej kolumny o **stałej** szerokości.
-    ///
-    /// Domyślne `Picker` z etykietą dobiera szerokość do treści, więc każdy
-    /// wiersz kończył się w innym miejscu, a „od" i „do" wisiały poza wcięciem
-    /// pozostałych sekcji.
-    ///
-    /// Pierwsza poprawka użyła `Grid` i było gorzej: `Grid` liczy szerokość
-    /// z zawartości kolumn i **nie ściska się** do tego, co dostaje. Panel ma
-    /// 400 punktów, a treść zażądała więcej i wylała się poza jego lewą
-    /// krawędź — obcięło etykiety sekcji i „Pasuje" w stopce. Stała szerokość
-    /// etykiety daje to samo wyrównanie bez tego ryzyka.
+    /// Etykieta nad polem, nie obok niego. Przy wąskiej kolumnie i dowolnym
+    /// tłumaczeniu to jedyny układ, który nie ma jak się nie zmieścić.
     @ViewBuilder
     private var yearPickers: some View {
-        #if os(macOS)
-        yearRow("od", fromPicker)
-        yearRow("do", toPicker)
-        #else
-        fromPicker
-        toPicker
-        #endif
+        VStack(alignment: .leading, spacing: 8) {
+            labelled("od") {
+                Picker("od", selection: $filters.fromYear) {
+                    Text("od początku").tag(0)
+                    ForEach(library.years, id: \.year) { entry in
+                        Text("\(String(entry.year))  ·  \(entry.count)").tag(entry.year)
+                    }
+                }
+            }
+            labelled("do") {
+                Picker("do", selection: $filters.toYear) {
+                    Text("do końca").tag(9999)
+                    ForEach(library.years.reversed(), id: \.year) { entry in
+                        Text(String(entry.year)).tag(entry.year)
+                    }
+                }
+            }
+        }
     }
 
-    #if os(macOS)
     @ViewBuilder
-    private func yearRow<P: View>(_ label: String, _ picker: P) -> some View {
-        HStack(spacing: 8) {
-            Text(label)
-                .foregroundStyle(.secondary)
-                .frame(width: 22, alignment: .leading)
-            picker
+    private func labelled<Content: View>(
+        _ title: String, @ViewBuilder content: () -> Content
+    ) -> some View {
+        VStack(alignment: .leading, spacing: 2) {
+            Text(title).font(.caption).foregroundStyle(.secondary)
+            content()
                 .labelsHidden()
                 .frame(maxWidth: .infinity, alignment: .leading)
-        }
-    }
-    #endif
-
-    private var fromPicker: some View {
-        Picker("od", selection: $filters.fromYear) {
-            Text("od początku").tag(0)
-            ForEach(library.years, id: \.year) { entry in
-                Text("\(String(entry.year))  ·  \(entry.count)").tag(entry.year)
-            }
-        }
-    }
-
-    private var toPicker: some View {
-        Picker("do", selection: $filters.toYear) {
-            Text("do końca").tag(9999)
-            ForEach(library.years.reversed(), id: \.year) { entry in
-                Text(String(entry.year)).tag(entry.year)
-            }
         }
     }
 
     // MARK: - Wynik
 
-    private var tally: some View {
+    private var footer: some View {
         HStack(spacing: 6) {
-            Text("Pasuje")
-                .foregroundStyle(.secondary)
-            Text("\(matching)")
+            Text("Pasuje").foregroundStyle(.secondary)
+            Text("\(tally.total)")
                 .font(.body.monospacedDigit().weight(.semibold))
-                .foregroundStyle(matching == 0 ? .orange : .primary)
+                .foregroundStyle(tally.total == 0 ? .orange : .primary)
             Text("z \(library.assets.count)")
                 .font(.caption.monospacedDigit())
                 .foregroundStyle(.secondary)
+            Spacer(minLength: 8)
+            #if os(macOS)
+            Button("wyczyść") { filters.clear() }
+                .disabled(!filters.isActive)
+            #endif
         }
+        .lineLimit(1)
+        .padding(.horizontal, 12)
+        .padding(.vertical, 10)
+        .background(.bar)
     }
 }

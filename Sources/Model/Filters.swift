@@ -192,7 +192,10 @@ final class Filters: ObservableObject {
 
     /// Czy zdjęcie spełnia warunek cechy. Brak pomiaru to **nie** wynik zerowy
     /// — nieprzeanalizowane zdjęcie nie jest poruszone, tylko niezbadane.
-    private func carries(_ row: FeatureIndex.Row?) -> Bool {
+    private func carries(_ row: FeatureIndex.Row?) -> Bool { carries(row, as: feature) }
+
+    func carries(_ row: FeatureIndex.Row?, as feature: Feature) -> Bool {
+        guard feature != .any else { return true }
         guard let row else { return false }
         switch feature {
         case .any: return true
@@ -242,6 +245,51 @@ final class Filters: ObservableObject {
         }
     }
 
+    // MARK: - Liczniki
+
+    /// Ile zdjęć dałby **każdy** warunek, gdyby go teraz wybrać.
+    ///
+    /// To jest najważniejsza rzecz w panelu i powód, dla którego warunki są
+    /// wierszami, a nie przełącznikiem. Dotąd licznik był jeden i mówił, co
+    /// wyszło **po** wyborze — czyli zawężanie było strzelaniem w ciemno
+    /// i wychodzeniem za każdym razem, żeby sprawdzić, czy cokolwiek zostało.
+    /// Licznik przy każdym wierszu odpowiada, zanim klikniesz.
+    ///
+    /// Liczby są **wzajemnie uwarunkowane**: przy ocenach liczymy z nałożoną
+    /// cechą, przy cechach z nałożonym stanem oceny. Inaczej wiersz obiecywałby
+    /// tysiąc zdjęć i dawał trzy, bo reszta odpadłaby na drugim warunku.
+    struct Tally {
+        var standing: [Standing: Int] = [:]
+        var feature: [Feature: Int] = [:]
+        var total = 0
+    }
+
+    func tally(_ reviews: [String: Review], features: FeatureIndex) -> Tally {
+        var result = Tally()
+
+        for asset in base {
+            let id = asset.localIdentifier
+            let review = reviews[id]
+            let row = features[id]
+
+            let passesFeature = carries(row, as: feature)
+            let passesStanding = accepts(review, as: standing)
+
+            if passesFeature {
+                for value in Standing.allCases where accepts(review, as: value) {
+                    result.standing[value, default: 0] += 1
+                }
+            }
+            if passesStanding {
+                for value in Feature.allCases where carries(row, as: value) {
+                    result.feature[value, default: 0] += 1
+                }
+            }
+            if passesFeature && passesStanding { result.total += 1 }
+        }
+        return result
+    }
+
     /// Podpis na kafelku: liczba, przez którą zdjęcie znalazło się w tym
     /// miejscu. Bez niego zestawienie jest ciągiem zdjęć bez wytłumaczenia,
     /// dlaczego stoją w tej kolejności.
@@ -278,7 +326,9 @@ final class Filters: ObservableObject {
         }
     }
 
-    func accepts(_ review: Review?) -> Bool {
+    func accepts(_ review: Review?) -> Bool { accepts(review, as: standing) }
+
+    func accepts(_ review: Review?, as standing: Standing) -> Bool {
         switch standing {
         case .all:
             return true

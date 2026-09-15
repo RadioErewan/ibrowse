@@ -550,6 +550,69 @@ ma `data-lg-size`, więc `zoomFromOrigin` nie działa i zdjęcie pojawia się be
 związku z klikniętym kafelkiem. Gdyby ten ruch był, opisany wyżej rozjazd
 zbiorów byłby widoczny w pierwszej klatce.
 
+## Filtr jako widok, nie czynność
+
+### Segmentowany przełącznik nie umie zawieść z godnością
+
+Etykieta z za długim tekstem obcina się wielokropkiem. Menu też. Segmentowany
+nie robi nic: nie skraca, nie zawija, nie przewija — wychodzi poza przydzielone
+miejsce i znika pod krawędzią. Przy czterech pozycjach stanu oceny ucinał „do
+usunięcia" o kilka punktów, a szerokość rośnie liniowo z liczbą pozycji.
+
+Dwie rzeczy z tego wynikają i obie są przyszłe. Liczba kategorii **nie jest
+zamknięta** — wystarczy dołożyć jedną cechę. A długość słów zmieni się przy
+pierwszym tłumaczeniu, bo żaden inny język nie ma tych samych długości.
+
+Zasada, którą z tego wyciągamy: **pion jest tani i przewijalny, poziom jest
+sztywny**. Cokolwiek rośnie z liczbą pozycji albo z długością słów, ma rosnąć
+w dół.
+
+### Licznik przy każdym warunku, nie jeden na dole
+
+To jest właściwy powód przebudowy, a szerokość była tylko pretekstem.
+
+Panel miał jeden licznik w stopce i mówił, co wyszło **po** wyborze. Czyli
+zawężanie było strzelaniem w ciemno: wybierz, zamknij, zobacz, wróć. Skoro
+warunki są wierszami, każdy niesie własną liczbę i odpowiada **zanim**
+klikniesz. To jest realizacja „przecinających przeglądów" znacznie bliższa
+temu, o co chodziło, niż jakikolwiek przełącznik.
+
+Liczby są **wzajemnie uwarunkowane**: przy ocenach liczymy z nałożoną cechą,
+przy cechach z nałożonym stanem oceny. Inaczej wiersz obiecywałby tysiąc zdjęć
+i dawał trzy, bo reszta odpadłaby na drugim warunku. Kosztuje to dziewięć
+sprawdzeń na zdjęcie, czyli jeden przelot po zbiorze — liczone raz na zmianę
+warunków, ze zwłoką, tak samo jak wszystko inne w tej aplikacji.
+
+### Pasek boczny zamiast wyskakującego panelu
+
+Skoro licznik ma odpowiadać przed wyborem, to panel, który trzeba otworzyć,
+przeczy sam sobie. Na macOS filtr jest więc kolumną przy krawędzi okna:
+liczniki widać cały czas, bez przerywania pracy. Na telefonie zostaje arkusz,
+bo tam nie ma z czego wykroić kolumny.
+
+Użyty jest `NavigationSplitView`, a nie własny `HStack` z kreską — z tego samego
+powodu, dla którego metadane siedzą w `.inspector`: system sam rysuje materiał
+paska, pamięta szerokość, daje się przeciągać i dokłada do belki przycisk
+zwijania. Własna kolumna to kolejny drobiazg, który czyta się jako obcy.
+
+Uboczny zysk: w panelu nie ma już ani jednej sztywnej szerokości, więc nie ma
+czego przepełnić. Poprzednia wersja obcięła się dwa razy z rzędu — raz po
+lewej (`Grid` nie ściska się do tego, co dostaje), raz po prawej (segmentowany
+przełącznik zażądał więcej niż 400 punktów).
+
+### Co z tego zostaje na później
+
+`rawValue` w `Filters.Feature` i `Filters.Order` jest jednocześnie **kluczem
+zapisu w `UserDefaults` i napisem na ekranie**. Dopóki napis jest polski i stały,
+działa. W dniu tłumaczenia trzeba to rozdzielić — stabilny `rawValue`
+techniczny, osobna etykieta — i zrobić to **przed** tym, jak komukolwiek
+zapiszą się preferencje, bo potem wymaga migracji ustawień i zgadywania,
+w jakim języku coś zapisano.
+
+Tak samo plakietki na kafelkach: „zrzut" mieści się w kapsule na 92 punktach,
+dłuższe tłumaczenie nie. Dla przypadków binarnych odpowiedzią jest symbol
+zamiast słowa; liczby zostają liczbami, bo są międzynarodowe.
+
 ## Ikona
 
 Jeden rysunek, **dwa kadry** — bo platformy chcą czegoś przeciwnego. Na Macu

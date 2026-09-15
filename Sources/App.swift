@@ -95,6 +95,11 @@ struct RootView: View {
 
     @State private var mode: Mode = .grid
     @State private var showingFilters = false
+    #if os(macOS)
+    /// Pasek filtru jest **widokiem**, nie czynnością, więc jego stan przeżywa
+    /// zamknięcie aplikacji tak samo jak stan inspektora metadanych.
+    @AppStorage("filters.sidebar") private var sidebarVisible = true
+    #endif
 
     /// Jedno miejsce, w którym stoi praca — wspólne dla wszystkich trybów.
     ///
@@ -229,12 +234,23 @@ struct RootView: View {
         // na to prawdziwy toolbar, który sam dba o odstępy, przezroczystość
         // przy przewijaniu i zwijanie nadmiaru pozycji. Mniej własnego kodu
         // i mniej obcego wyglądu naraz.
-        VStack(spacing: 0) {
-            screen(mode)
-            StatusStrip(similarity: similarity, sync: sync, albums: albums)
-        }
-        .animation(.easeInOut(duration: 0.2), value: similarity.isWorking)
-        .animation(.easeInOut(duration: 0.2), value: sync.isWorking)
+        // Filtr przy krawędzi okna, na stałe.
+        //
+        // `NavigationSplitView`, a nie własny `HStack` z kreską: sam rysuje
+        // materiał paska, pamięta szerokość kolumny, daje się przeciągać
+        // i dokłada do belki systemowy przycisk zwijania. Ten sam powód,
+        // dla którego metadane siedzą w `.inspector`, a nie we własnej
+        // kolumnie — patrz komentarz w `CullView`.
+        NavigationSplitView(columnVisibility: sidebarBinding) {
+            FilterPanel(library: library, filters: filters, features: features)
+                .navigationSplitViewColumnWidth(min: 190, ideal: 230, max: 340)
+        } detail: {
+            VStack(spacing: 0) {
+                screen(mode)
+                StatusStrip(similarity: similarity, sync: sync, albums: albums)
+            }
+            .animation(.easeInOut(duration: 0.2), value: similarity.isWorking)
+            .animation(.easeInOut(duration: 0.2), value: sync.isWorking)
             .toolbar {
                 ToolbarItem(placement: .navigation) {
                     Picker("", selection: $mode) {
@@ -247,7 +263,6 @@ struct RootView: View {
                 ToolbarItemGroup(placement: .primaryAction) {
                     fingerprintControl
                     featureControl
-                    filterButton
                     syncControl
                 }
             }
@@ -256,8 +271,22 @@ struct RootView: View {
             // dawało kaszę: pierwsze wiersze metadanych mieszały się
             // z przyciskami.
             .toolbarBackground(.visible, for: .windowToolbar)
+        }
         #endif
     }
+
+    #if os(macOS)
+    /// `NavigationSplitView` mówi o widoczności trzema stanami, a nas
+    /// interesują dwa. `.all` i `.detailOnly` to jedyne, które ma sens przy
+    /// dwóch kolumnach; `.automatic` zostawiamy systemowi przy pierwszym
+    /// otwarciu i zapisujemy dopiero to, co użytkownik wybierze sam.
+    private var sidebarBinding: Binding<NavigationSplitViewVisibility> {
+        Binding(
+            get: { sidebarVisible ? .all : .detailOnly },
+            set: { sidebarVisible = $0 != .detailOnly }
+        )
+    }
+    #endif
 
     @ViewBuilder
     private func screen(_ mode: Mode) -> some View {
@@ -365,11 +394,6 @@ extension RootView {
                 .font(.caption)
             #endif
         }
-        #if os(macOS)
-        .popover(isPresented: $showingFilters) {
-            FilterPanel(library: library, filters: filters, features: features)
-        }
-        #endif
     }
 
     fileprivate var filterLabel: String {

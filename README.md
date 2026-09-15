@@ -29,7 +29,9 @@ samego zwycięstwa.
 
 **Filtrowanie** — zakres lat, stan oceny, zakres gwiazdek, cechy policzone
 przez system, a na macOS także szukanie po treści: etykiety scen, imiona osób,
-nazwy miejsc i tekst odczytany ze zdjęć.
+nazwy miejsc i tekst odczytany ze zdjęć. Każdy warunek niesie własny licznik,
+więc widać, ile czego jest, **zanim** się go wybierze. Na macOS filtr jest
+kolumną przy krawędzi okna, na telefonie arkuszem.
 
 **Cechy** — poruszone, źle naświetlone, z zamkniętymi oczami, zrzuty ekranu.
 Są **warunkiem filtru i porządkiem**, nie osobnym ekranem: „od najbardziej
