@@ -213,6 +213,7 @@ struct FilterPanel: View {
         #if os(macOS)
         .pickerStyle(.menu)
         .labelsHidden()
+        .frame(maxWidth: .infinity)
         #endif
     }
 
@@ -226,6 +227,7 @@ struct FilterPanel: View {
                 Text(String(format: "poniżej %.2f", filters.threshold))
                     .font(.caption.monospacedDigit())
                     .foregroundStyle(.secondary)
+                    .frame(width: 84, alignment: .trailing)
             }
         }
     }
@@ -263,19 +265,49 @@ struct FilterPanel: View {
         #if os(macOS)
         .pickerStyle(.menu)
         .labelsHidden()
+        .frame(maxWidth: .infinity)
         #endif
     }
 
     // MARK: - Lata
 
+    /// Na Macu etykiety idą do własnej kolumny, a pola rozciągają się na całą
+    /// szerokość panelu.
+    ///
+    /// Domyślne `Picker` z etykietą dobiera szerokość do treści, więc każdy
+    /// wiersz kończył się w innym miejscu, a „od" i „do" wisiały poza wcięciem
+    /// pozostałych sekcji. Przy czterech kontrolkach pod sobą wygląda to jak
+    /// przypadek, a nie układ. `Grid` wyrównuje kolumny między wierszami —
+    /// `HStack` nie potrafi, bo każdy wiersz mierzy się osobno.
     @ViewBuilder
     private var yearPickers: some View {
+        #if os(macOS)
+        Grid(alignment: .leading, horizontalSpacing: 8, verticalSpacing: 8) {
+            GridRow {
+                Text("od").foregroundStyle(.secondary)
+                fromPicker.labelsHidden().frame(maxWidth: .infinity)
+            }
+            GridRow {
+                Text("do").foregroundStyle(.secondary)
+                toPicker.labelsHidden().frame(maxWidth: .infinity)
+            }
+        }
+        #else
+        fromPicker
+        toPicker
+        #endif
+    }
+
+    private var fromPicker: some View {
         Picker("od", selection: $filters.fromYear) {
             Text("od początku").tag(0)
             ForEach(library.years, id: \.year) { entry in
                 Text("\(String(entry.year))  ·  \(entry.count)").tag(entry.year)
             }
         }
+    }
+
+    private var toPicker: some View {
         Picker("do", selection: $filters.toYear) {
             Text("do końca").tag(9999)
             ForEach(library.years.reversed(), id: \.year) { entry in

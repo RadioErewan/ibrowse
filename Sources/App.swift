@@ -200,19 +200,26 @@ struct RootView: View {
                             ToolbarItem(placement: .topBarLeading) { filterButton }
                             ToolbarItem(placement: .topBarTrailing) { actionsButton }
                         }
-                        .sheet(isPresented: $showingFilters) {
-                            FilterPanel(library: library, filters: filters, features: features)
-                        }
-                        .sheet(isPresented: $showingActions) {
-                            ActionsSheet(
-                                library: library, similarity: similarity,
-                                albums: albums, sync: sync
-                            )
-                        }
                 }
                 .tabItem { Label(item.rawValue, systemImage: item.icon) }
                 .tag(item)
             }
+        }
+        // Arkusze wiszą na `TabView`, a **nie** w każdej zakładce z osobna.
+        //
+        // `TabView` trzyma wszystkie zakładki żywe naraz, więc trzy takie same
+        // `.sheet` podpięte pod jeden `Bool` to trzy zgłoszenia do tej samej
+        // prezentacji. SwiftUI wybiera wtedy jedno — i niekoniecznie to
+        // z zakładki, w której stoisz. Objawiało się to tak, że filtr nie
+        // otwierał się w siatce, za to wyskakiwał po przejściu do oceniania.
+        .sheet(isPresented: $showingFilters) {
+            FilterPanel(library: library, filters: filters, features: features)
+        }
+        .sheet(isPresented: $showingActions) {
+            ActionsSheet(
+                library: library, similarity: similarity,
+                albums: albums, sync: sync
+            )
         }
         #else
         // Sterowanie idzie do **belki tytułowej**, nie pod nią.
