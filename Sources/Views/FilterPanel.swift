@@ -74,6 +74,11 @@ struct FilterPanel: View {
                         group("Zakres lat") { yearPickers }
                     }
                 }
+                // Twarda szerokość treści, nie sama szerokość panelu.
+                // `.frame(width:)` na zewnętrznym stosie nie powstrzymuje
+                // dziecka, które zażąda więcej — takie dziecko wylewa się
+                // symetrycznie i znika pod krawędzią.
+                .frame(width: 368, alignment: .leading)
                 .padding(16)
             }
 
@@ -213,7 +218,7 @@ struct FilterPanel: View {
         #if os(macOS)
         .pickerStyle(.menu)
         .labelsHidden()
-        .frame(maxWidth: .infinity)
+        .frame(maxWidth: .infinity, alignment: .leading)
         #endif
     }
 
@@ -265,38 +270,47 @@ struct FilterPanel: View {
         #if os(macOS)
         .pickerStyle(.menu)
         .labelsHidden()
-        .frame(maxWidth: .infinity)
+        .frame(maxWidth: .infinity, alignment: .leading)
         #endif
     }
 
     // MARK: - Lata
 
-    /// Na Macu etykiety idą do własnej kolumny, a pola rozciągają się na całą
-    /// szerokość panelu.
+    /// Na Macu etykiety idą do własnej kolumny o **stałej** szerokości.
     ///
     /// Domyślne `Picker` z etykietą dobiera szerokość do treści, więc każdy
     /// wiersz kończył się w innym miejscu, a „od" i „do" wisiały poza wcięciem
-    /// pozostałych sekcji. Przy czterech kontrolkach pod sobą wygląda to jak
-    /// przypadek, a nie układ. `Grid` wyrównuje kolumny między wierszami —
-    /// `HStack` nie potrafi, bo każdy wiersz mierzy się osobno.
+    /// pozostałych sekcji.
+    ///
+    /// Pierwsza poprawka użyła `Grid` i było gorzej: `Grid` liczy szerokość
+    /// z zawartości kolumn i **nie ściska się** do tego, co dostaje. Panel ma
+    /// 400 punktów, a treść zażądała więcej i wylała się poza jego lewą
+    /// krawędź — obcięło etykiety sekcji i „Pasuje" w stopce. Stała szerokość
+    /// etykiety daje to samo wyrównanie bez tego ryzyka.
     @ViewBuilder
     private var yearPickers: some View {
         #if os(macOS)
-        Grid(alignment: .leading, horizontalSpacing: 8, verticalSpacing: 8) {
-            GridRow {
-                Text("od").foregroundStyle(.secondary)
-                fromPicker.labelsHidden().frame(maxWidth: .infinity)
-            }
-            GridRow {
-                Text("do").foregroundStyle(.secondary)
-                toPicker.labelsHidden().frame(maxWidth: .infinity)
-            }
-        }
+        yearRow("od", fromPicker)
+        yearRow("do", toPicker)
         #else
         fromPicker
         toPicker
         #endif
     }
+
+    #if os(macOS)
+    @ViewBuilder
+    private func yearRow<P: View>(_ label: String, _ picker: P) -> some View {
+        HStack(spacing: 8) {
+            Text(label)
+                .foregroundStyle(.secondary)
+                .frame(width: 22, alignment: .leading)
+            picker
+                .labelsHidden()
+                .frame(maxWidth: .infinity, alignment: .leading)
+        }
+    }
+    #endif
 
     private var fromPicker: some View {
         Picker("od", selection: $filters.fromYear) {
