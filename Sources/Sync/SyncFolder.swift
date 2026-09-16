@@ -94,6 +94,17 @@ enum SyncFolder {
         #endif
     }
 
+    /// Nazwa **celowo nie idzie za nazwą aplikacji**.
+    ///
+    /// Plik wymiany leży w chmurze i ma po drugiej stronie drugie urządzenie,
+    /// które o żadnym przemianowaniu nie wie. Zmiana nazwy pliku znaczyłaby,
+    /// że każde urządzenie zaczyna pisać drugi plik obok swojego starego,
+    /// a stary czyta odtąd jako cudzy — i tak w kółko, po kilkadziesiąt
+    /// megabajtów na synchronizację.
+    ///
+    /// To samo dotyczy rozszerzenia `ibsync`. Format jest ten sam, więc
+    /// przemianowanie kupowałoby wyłącznie spójność nazw, a kosztowałoby
+    /// zgodność z tym, co już leży w folderze wymiany.
     static var fileName: String {
         "ibrowse-\(deviceID).\(SyncFile.fileExtension)"
     }

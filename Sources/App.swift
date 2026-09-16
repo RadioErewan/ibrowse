@@ -2,8 +2,8 @@ import SwiftData
 import SwiftUI
 
 @main
-struct IbrowseApp: App {
-    private let container = IbrowseApp.makeContainer()
+struct LightbraryApp: App {
+    private let container = LightbraryApp.makeContainer()
 
     var body: some Scene {
         WindowGroup {
@@ -37,6 +37,13 @@ struct IbrowseApp: App {
     /// pewność, że dotykamy wyłącznie swoich danych.
     private static var storeURL: URL {
         URL.applicationSupportDirectory
+            .appending(path: "pl.3210.lightbrary", directoryHint: .isDirectory)
+            .appending(path: "lightbrary.store")
+    }
+
+    /// Skład spod poprzedniej nazwy aplikacji, `ibrowse`.
+    private static var legacyStoreURL: URL {
+        URL.applicationSupportDirectory
             .appending(path: "pl.3210.ibrowse", directoryHint: .isDirectory)
             .appending(path: "ibrowse.store")
     }
@@ -52,6 +59,10 @@ struct IbrowseApp: App {
         try? FileManager.default.createDirectory(
             at: url.deletingLastPathComponent(), withIntermediateDirectories: true
         )
+        adoptLegacyStore(into: url)
+        #if os(macOS)
+        adoptLegacySettings()
+        #endif
 
         let configuration = ModelConfiguration(schema: schema, url: url)
         do {
@@ -61,6 +72,65 @@ struct IbrowseApp: App {
             return try! ModelContainer(for: schema, configurations: configuration)
         }
     }
+
+    /// Przygarnia skład spod poprzedniej nazwy, **przenosząc go, nie kopiując**.
+    ///
+    /// Zmiana nazwy aplikacji zmienia identyfikator pakietu, a ten wyznacza
+    /// katalog składu. Bez tego kroku aplikacja po przemianowaniu zastałaby
+    /// pustkę: wszystkie oceny i wszystkie cechy zostałyby pod starą ścieżką,
+    /// nietknięte i niewidoczne. Wygląda to jak utrata całej pracy, choć nic
+    /// nie ginie — i właśnie dlatego trzeba to zrobić za użytkownika.
+    ///
+    /// Przenosimy tylko wtedy, gdy nowego składu **jeszcze nie ma**. Inaczej
+    /// nowa praca zostałaby przykryta starą przy każdym uruchomieniu.
+    ///
+    /// Idą wszystkie trzy pliki: SQLite trzyma dziennik zapisu obok bazy
+    /// i sam plik główny bez `-wal` to skład sprzed ostatnich zapisów.
+    private static func adoptLegacyStore(into url: URL) {
+        let files = FileManager.default
+        guard !files.fileExists(atPath: url.path) else { return }
+
+        let legacy = legacyStoreURL
+        guard files.fileExists(atPath: legacy.path) else { return }
+
+        for suffix in ["", "-shm", "-wal"] {
+            let from = URL(fileURLWithPath: legacy.path + suffix)
+            let to = URL(fileURLWithPath: url.path + suffix)
+            guard files.fileExists(atPath: from.path) else { continue }
+            try? files.moveItem(at: from, to: to)
+        }
+    }
+
+    #if os(macOS)
+    /// Przygarnia ustawienia spod poprzedniej nazwy.
+    ///
+    /// Domena ustawień to identyfikator pakietu, więc razem z nazwą zmienia się
+    /// i ona. Dwie rzeczy naprawdę bolą przy jej utracie: **zakładka do folderu
+    /// wymiany**, bo trzeba by go wskazywać od nowa, i **identyfikator
+    /// urządzenia**, bo z nowym Mac zacząłby pisać drugi plik wymiany, a stary
+    /// czytałby odtąd jako cudzy — 59 MB przy każdej synchronizacji, bez końca.
+    ///
+    /// Bierzemy tylko klucze z naszych przedrostków. Domena niesie też
+    /// ustawienia okien dopisane przez sam system i nie ma powodu ich ruszać.
+    ///
+    /// Na iOS tego nie ma i nie może być: tam stara aplikacja to osobny
+    /// kontener, do którego nowa nie ma dostępu. Telefon odzyskuje wszystko
+    /// synchronizacją.
+    private static func adoptLegacySettings() {
+        let defaults = UserDefaults.standard
+        guard !defaults.bool(forKey: "settings.adoptedFromIbrowse") else { return }
+        guard let legacy = UserDefaults(suiteName: "pl.3210.ibrowse") else { return }
+
+        let ours = ["library.", "sync.", "cull.", "pair.", "filters.", "features."]
+        for (key, value) in legacy.dictionaryRepresentation()
+        where ours.contains(where: key.hasPrefix) {
+            // Nie nadpisujemy niczego, co nowa nazwa zdążyła już zapisać.
+            guard defaults.object(forKey: key) == nil else { continue }
+            defaults.set(value, forKey: key)
+        }
+        defaults.set(true, forKey: "settings.adoptedFromIbrowse")
+    }
+    #endif
 
     /// Przenosi stary skład obok, ze znacznikiem czasu. Operujemy wyłącznie
     /// wewnątrz własnego katalogu i tylko na plikach o naszej nazwie.
@@ -145,7 +215,7 @@ struct RootView: View {
             case .notDetermined:
                 Permission(
                     title: "Dostęp do biblioteki zdjęć",
-                    message: "ibrowse czyta zdjęcia bezpośrednio z Twojej biblioteki. Nic nie opuszcza urządzenia.",
+                    message: "lightbrary czyta zdjęcia bezpośrednio z Twojej biblioteki. Nic nie opuszcza urządzenia.",
                     action: ("Poproś o dostęp", { Task { await library.requestAccess() } })
                 )
             default:

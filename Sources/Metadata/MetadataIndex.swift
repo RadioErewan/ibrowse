@@ -264,7 +264,7 @@ actor MetadataStore {
         if search == nil && library == nil {
             failure = """
                 Brak dostępu do baz biblioteki Zdjęć. Ustawienia systemowe → \
-                Prywatność i bezpieczeństwo → Pełny dostęp do dysku → dodaj ibrowse.
+                Prywatność i bezpieczeństwo → Pełny dostęp do dysku → dodaj lightbrary.
                 """
         }
     }

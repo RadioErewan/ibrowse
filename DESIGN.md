@@ -1,4 +1,4 @@
-# ibrowse — brief projektowy
+# lightbrary — brief projektowy
 
 Dokument dla kogoś, kto ma projektować interfejs tej aplikacji. Opisuje, co
 aplikacja robi, dla kogo, co jest już rozstrzygnięte i dlaczego, oraz gdzie

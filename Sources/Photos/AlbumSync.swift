@@ -21,7 +21,7 @@ final class AlbumSync: ObservableObject {
     @Published private(set) var isSyncing = false
     @Published private(set) var lastSummary: String?
 
-    private let prefix = "ibrowse ★"
+    private let prefix = "lightbrary ★"
 
     private func title(forStars stars: Int) -> String { "\(prefix)\(stars)" }
 

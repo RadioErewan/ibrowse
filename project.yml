@@ -1,4 +1,4 @@
-name: ibrowse
+name: lightbrary
 configFiles:
   Debug: Local.xcconfig
   Release: Local.xcconfig
@@ -18,7 +18,7 @@ settings:
     CURRENT_PROJECT_VERSION: "1"
 
 targets:
-  ibrowse-mac:
+  lightbrary-mac:
     type: application
     platform: macOS
     # Każda platforma ma własny katalog zasobów, bo ikona to na Macu rysunek
@@ -31,16 +31,16 @@ targets:
     info:
       path: Generated/Info-mac.plist
       properties:
-        CFBundleDisplayName: ibrowse
+        CFBundleDisplayName: lightbrary
         LSMinimumSystemVersion: "14.0"
         NSHumanReadableCopyright: ""
         # Bez tego klucza system nie pokaże pytania o dostęp do biblioteki.
         NSPhotoLibraryUsageDescription: >-
-          ibrowse czyta bibliotekę zdjęć, żeby pozwolić Ci je przeglądać,
+          lightbrary czyta bibliotekę zdjęć, żeby pozwolić Ci je przeglądać,
           oceniać i usuwać. Nic nie jest wysyłane poza ten komputer.
     settings:
       base:
-        PRODUCT_BUNDLE_IDENTIFIER: pl.3210.ibrowse
+        PRODUCT_BUNDLE_IDENTIFIER: pl.3210.lightbrary
         INFOPLIST_KEY_NSHumanReadableCopyright: ""
         ENABLE_HARDENED_RUNTIME: "NO"
         # Podpisujemy prawdziwym certyfikatem, choć aplikacja nie opuszcza tego
@@ -49,11 +49,11 @@ targets:
         # kompilacji — trzeba by nadawać uprawnienie po każdej przebudowie.
         CODE_SIGN_STYLE: Manual
         CODE_SIGN_IDENTITY: "Apple Development"
-        DEVELOPMENT_TEAM: $(IBROWSE_TEAM_ID)
+        DEVELOPMENT_TEAM: $(LIGHTBRARY_TEAM_ID)
         PROVISIONING_PROFILE_SPECIFIER: ""
         ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
 
-  ibrowse-ios:
+  lightbrary-ios:
     type: application
     platform: iOS
     sources:
@@ -63,24 +63,24 @@ targets:
     info:
       path: Generated/Info-ios.plist
       properties:
-        CFBundleDisplayName: ibrowse
+        CFBundleDisplayName: lightbrary
         UILaunchScreen: {}
         UISupportedInterfaceOrientations:
           - UIInterfaceOrientationPortrait
           - UIInterfaceOrientationLandscapeLeft
           - UIInterfaceOrientationLandscapeRight
         NSPhotoLibraryUsageDescription: >-
-          ibrowse czyta bibliotekę zdjęć, żeby pozwolić Ci je przeglądać,
+          lightbrary czyta bibliotekę zdjęć, żeby pozwolić Ci je przeglądać,
           oceniać i usuwać. Nic nie jest wysyłane poza to urządzenie.
     settings:
       base:
         # Identyfikator musi być unikalny w skali Apple — przy darmowym koncie
         # kolizja z cudzą aplikacją objawia się odmową rejestracji App ID.
-        PRODUCT_BUNDLE_IDENTIFIER: pl.3210.ibrowse
+        PRODUCT_BUNDLE_IDENTIFIER: pl.3210.lightbrary
         TARGETED_DEVICE_FAMILY: "1,2"
         # Podpisywanie automatyczne: Xcode sam wyrobi profil dla Personal Team.
         CODE_SIGN_STYLE: Automatic
-        DEVELOPMENT_TEAM: $(IBROWSE_TEAM_ID)
+        DEVELOPMENT_TEAM: $(LIGHTBRARY_TEAM_ID)
         # Podpis jest potrzebny tylko do wejścia na fizyczny telefon.
         # Symulator ma działać zawsze, także zanim skonfigurujesz Apple ID.
         "CODE_SIGN_IDENTITY[sdk=iphoneos*]": "Apple Development"

@@ -205,7 +205,7 @@ i przycięcie ich zakresem rozrywałoby je w połowie.
 ## Synchronizacja
 
 Dwa transporty obok siebie, bo robią co innego. **Albumy Photos
-`ibrowse ★1`…`★5`** pokazują gwiazdki w systemowych Zdjęciach — to jedyny
+`lightbrary ★1`…`★5`** pokazują gwiazdki w systemowych Zdjęciach — to jedyny
 sposób, żeby ocena była widoczna poza tą aplikacją. Jedzie przez nie
 **gwiazdka, nie pełna waga**: dwadzieścia albumów po 0,25 zaśmieciłoby
 bibliotekę. Słowa kluczowe odpadają, bo PhotoKit ich nie zna.
@@ -538,7 +538,7 @@ zestaw do wyboru, tylko jeden dobrze dobrany zestaw.
 
 Co stamtąd weszło: pasek miniatur jako jedyny sposób na skok dalej niż o jedno
 zdjęcie; podpis miary przy miniaturze; obraz idący za palcem z progiem
-i odbiciem (to akurat ibrowse miał już wcześniej, doszliśmy do tego osobno).
+i odbiciem (to akurat lightbrary miał już wcześniej, doszliśmy do tego osobno).
 
 Co świadomie **nie** weszło: `loop`. Przy 37 zdjęciach z zamku brak ściany jest
 miły, przy 26 tysiącach okrążenie archiwum bez ostrzeżenia rozbija całe
@@ -633,6 +633,44 @@ w jakim języku coś zapisano.
 Tak samo plakietki na kafelkach: „zrzut" mieści się w kapsule na 92 punktach,
 dłuższe tłumaczenie nie. Dla przypadków binarnych odpowiedzią jest symbol
 zamiast słowa; liczby zostają liczbami, bo są międzynarodowe.
+
+## Nazwa
+
+Aplikacja nazywała się `ibrowse` — nazwa robocza, generyczna i zajęta
+w kilkunastu miejscach naraz. Od września 2026 nazywa się **lightbrary**.
+
+Nazwa niesie dwa czytania i dopiero drugie jest właściwe. Pierwsze, od którego
+wyszła, to „odchudzacz biblioteki" — ale to opis etapu, z którego aplikacja
+właśnie wyszła. Drugie to **biblioteka światła**, z echem podświetlarki: mebla,
+na którym od stu lat rozkłada się klatki obok siebie i wybiera lepsze. To jest
+dokładnie opis parowania i paska miniatur.
+
+### Co zmiana nazwy zabiera po drodze
+
+Identyfikator pakietu wyznacza katalog składu i domenę ustawień. Zmiana nazwy
+zmienia jedno i drugie, więc bez przygotowania aplikacja po przemianowaniu
+zastaje **pustkę**: oceny i cechy zostają pod starą ścieżką, nietknięte
+i niewidoczne. Wygląda to jak utrata całej pracy, choć nic nie ginie.
+
+Dlatego przy pierwszym uruchomieniu pod nową nazwą przenosimy skład — wszystkie
+trzy pliki, bo SQLite trzyma dziennik zapisu obok bazy — i przygarniamy
+ustawienia ze starej domeny. Z ustawień naprawdę bolą dwa: **zakładka do
+folderu wymiany**, bo trzeba by go wskazywać od nowa, i **identyfikator
+urządzenia**, bo z nowym Mac zacząłby pisać drugi plik wymiany, a stary czytał
+odtąd jako cudzy — kilkadziesiąt megabajtów przy każdej synchronizacji, bez
+końca.
+
+Na iOS przygarnięcia nie ma i być nie może: stara aplikacja to osobny kontener,
+do którego nowa nie ma dostępu. Telefon odzyskuje wszystko synchronizacją,
+o ile przed przemianowaniem zdążył wysłać swoją pracę.
+
+### Czego nazwa celowo nie dotknęła
+
+**Nazw plików wymiany i rozszerzenia `ibsync`.** Plik leży w chmurze i ma po
+drugiej stronie urządzenie, które o przemianowaniu nie wie. Zmiana nazwy
+znaczyłaby, że każde urządzenie zaczyna pisać drugi plik obok swojego starego,
+a stary czyta odtąd jako cudzy. Format jest ten sam, więc przemianowanie
+kupowałoby wyłącznie spójność nazw, a kosztowało zgodność.
 
 ## Ikona
 

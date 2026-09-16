@@ -1,4 +1,4 @@
-# ibrowse
+# lightbrary
 
 Narzędzie do **wielokrotnego przeglądania archiwum zdjęć**: ocenianie,
 porównywanie i usuwanie. Nie katalog i nie tagger — sortownik.
