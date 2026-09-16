@@ -405,6 +405,48 @@ Znaczenia nie da się odkryć — to jest ta sama lekcja, co przy
 `ZBLURRINESSSCORE`, tylko w większej skali. **Dynamiczna jest obecność
 i kształt, kurowane jest znaczenie.**
 
+### Kolumna milcząca milczy z trzech różnych powodów
+
+Doprecyzowanie od Radka, bez którego cała rzecz byłaby o połowę mniej warta:
+w schemacie leżą **wymiary kiedyś zaimplementowane i porzucone** oraz takie,
+**które Apple dopiero planuje wdrożyć**. Jedne i drugie wyglądają identycznie:
+kolumna jest, wartości nie ma.
+
+Rozróżnia je jedno pytanie — `count(distinct)`:
+
+| kolumna | różnych wartości | co to jest |
+|---|---|---|
+| `ZRATING` | 1 (samo zero) | gwiazdki z iPhoto i Aperture, martwe od lat |
+| `ZPROMOTIONSCORE` | 1 (samo zero) | istnieje, nigdy nie wypełniona |
+| `ZHIDDEN` | 1 (samo zero) | kolumna żywa — to **ta biblioteka** nic nie ukrywa |
+| `ZFAVORITE` | 2 | żywa, 26 zdjęć |
+| `ZSTICKERCONFIDENCESCORE` | 2 375 | naklejki: świeża funkcja systemu, **już zapalona** |
+
+Jedna wartość w całym archiwum znaczy „brak sygnału" i to da się zmierzyć.
+Ale **dlaczego** go nie ma — bo funkcję porzucono, bo jej jeszcze nie wdrożono,
+czy bo ten użytkownik po prostu takich zdjęć nie ma — tego z danych nie wynika.
+
+Najważniejsze jest to, że **ten stan się zmienia w czasie**.
+`ZSTICKERCONFIDENCESCORE` byłby dwa lata temu martwy; dziś niesie 2 375 różnych
+wartości. Kolumna milcząca dziś może odezwać się po aktualizacji systemu albo
+po tym, jak analiza po stronie Apple dogoni archiwum.
+
+Z tego wynikają dwie rzeczy, których pierwsza wersja tego rozdziału nie miała:
+
+- **sonda ma chodzić przy każdym wczytaniu cech**, nie raz na zawsze przy
+  pisaniu kodu — inaczej zapalona kolumna nigdy się nie ujawni;
+- **sonda ma umieć zgłaszać kolumny, których nie zna**. Gdy w schemacie
+  pojawi się nowa miara z realnym rozkładem, aplikacja powinna o tym
+  powiedzieć, a nie czekać, aż ktoś zajrzy do bazy z ciekawości. Wtedy
+  „artefakt przyszłości" zamienia się w nową oś przeglądu bez wydawania nowej
+  wersji — wystarczy dopisać mu nazwę i kierunek.
+
+Odwrotna strona tej samej reguły: miara pusta **w tej bibliotece**, a nie
+w ogóle — jak zrzuty ekranu u kogoś, kto ich nie robi — ma zostać widoczna
+z licznikiem zero. Brak wyników jest informacją. Dlatego spis kurowany dzieli
+miary na **rdzenne**, pokazywane zawsze, i **znalezione**, pokazywane tylko
+wtedy, gdy mają rozkład.
+
 ### Konsekwencja dla przechowywania
 
 Dziś cechy to sześć pól w `Review` i dwanaście kolumn w pliku wymiany. Przy
