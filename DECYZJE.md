@@ -339,84 +339,89 @@ gotowe i **za darmo** — dokładnie te rzeczy, które sami liczylibyśmy tygodn
 Stąd czwarty tryb: przeglądy poprzeczne cudzą miarą. Nie ocena — **zestawienie**.
 Żadna z tych liczb nie dotyka wagi zdjęcia.
 
-### Sekcja cech musi być otwarta
+### Sekcja cech musi być otwarta — i musi się sama dowiadywać
 
-Powód jest wprost od Radka i mocniejszy niż ten, od którego zaczęliśmy:
-**nie wiemy, co jeszcze da się wyciągnąć z tej bazy, a cały sens tej aplikacji
-to ponadstandardowe przekroje przez bibliotekę.** Zamknięcie sekcji do czterech
-pozycji zabiłoby dokładnie to, co jest w niej najciekawsze.
+Powód jest od Radka: **nie wiemy, co jeszcze da się wyciągnąć z tej bazy,
+a ponadstandardowe przekroje przez bibliotekę są tym, po co ta aplikacja
+istnieje.** Do tego kolumny to po części artefakty przeszłości, po części
+zapowiedzi przyszłości, i będzie się to zmieniać z każdą wersją systemu.
 
-Żeby to przestało być przypuszczeniem, przejrzeliśmy schemat i policzyliśmy
-pokrycie na archiwum 26 123 zdjęć.
+### Najpierw pomyłka, bo ona jest tu argumentem
 
-### Miary ciągłe, które są naprawdę wypełnione
+Pierwszy spis zrobiliśmy pytaniem „ile zdjęć ma wartość **większą od zera**"
+i wyszło, że pokrycie jest bardzo różne: kompozycja 11 517, ikoniczność 7 709,
+a szum, „nieudane ujęcie" i „natrętny obiekt" **zerowe**, czyli nieużywane.
 
-| miara | kolumna | ile ma pomiar |
-|---|---|---|
-| kuracja | `ZASSET.ZCURATIONSCORE` | 26 009 |
-| symetria | `ZPLEASANTSYMMETRYSCORE` | 25 989 |
-| słabe światło | `ZLOWLIGHT` | 25 941 |
-| aktywność w kadrze | `ZACTIVITYSCORE` | 25 891 |
-| estetyka ogólna | `ZASSET.ZOVERALLAESTHETICSCORE` | 25 783 |
-| dobry moment ujęcia | `ZWELLTIMEDSHOTSCORE` | 19 316 |
-| dobre skadrowanie | `ZWELLFRAMEDSUBJECTSCORE` | 15 198 |
-| żywe kolory | `ZLIVELYCOLORSCORE` | 15 101 |
-| przyjemne oświetlenie | `ZPLEASANTLIGHTINGSCORE` | 11 851 |
-| przyjemna kompozycja | `ZPLEASANTCOMPOSITIONSCORE` | 11 517 |
-| ładne rozmycie tła | `ZTASTEFULLYBLURREDSCORE` | 10 428 |
-| ciekawy temat | `ZINTERESTINGSUBJECTSCORE` | 9 960 |
-| ikoniczność | `ZASSET.ZICONICSCORE` | 7 709 |
-| przechył kadru | `ZPLEASANTCAMERATILTSCORE` | 3 539 |
+To było fałszywe od początku do końca. Te kolumny są **znakowane**, a trzy
+rzekomo puste są wypełnione w całości wartościami **ujemnymi**: szum ma zakres
+−0,942…0, „nieudane ujęcie" −0,712…0, „natrętny obiekt" −0,989…0. Zero jest
+tam najlepszym możliwym wynikiem, nie brakiem wyniku.
 
-Miary bez prefiksu tabeli leżą w `ZCOMPUTEDASSETATTRIBUTES`.
+Po poprawnym zmierzeniu obraz jest odwrotny do pierwszego: **prawie wszystko
+jest wypełnione dla całej biblioteki** — 26 028 do 26 129 zdjęć z 26 123.
+Jedyną naprawdę pustą kolumną jest `ZPROMOTIONSCORE`.
 
-### Warunki dwustanowe
+### Co naprawdę różni te kolumny
 
-| warunek | ile zdjęć |
-|---|---|
-| **nigdy nieoglądane** (`ZVIEWCOUNT = 0`) | **20 605** |
-| ma lokalizację | 19 161 |
-| osoby w kadrze, pewne rozpoznanie | 9 799 |
-| twarze w kadrze (`ZFACECOUNT > 0`) | 6 422 |
-| obejrzane choć raz | 5 518 |
-| zrzuty ekranu | 4 077 |
-| HDR | 2 621 |
-| portret / mapa głębi | 771 |
-| wideo | 750 |
-| kiedyś udostępnione | 553 |
-| seria aparatu (burst) | 46 |
-| ulubione | 26 |
-| duplikat wg systemu | 24 |
+Nie pokrycie, tylko **konwencja**. A ta jest za każdym razem inna:
 
-### Czego w tej bazie nie ma, choć kolumny są
+- **0…1**, wyżej znaczy lepiej: kuracja, estetyka ogólna, widoczność
+  we wspomnieniach, aktywność, immersyjność, wzory, symetria, ostrość tematu,
+  przydatność na tapetę;
+- **0…1, ale nazwa kłamie**: `ZBLURRINESSSCORE` rośnie wraz z **ostrością**
+  (osobny rozdział wyżej);
+- **−1…1**, symetryczne: kompozycja, oświetlenie, ciekawy temat, żywe kolory,
+  ładne rozmycie tła, dobrze wybrany i dobrze skadrowany temat, dobry moment,
+  perspektywa, odbicia, obróbka, harmonia kolorów;
+- **−2…1**, niesymetryczne: ikoniczność;
+- **tylko ujemne, zero najlepsze**: szum, nieudane ujęcie, natrętny obiekt
+  w kadrze, przechył kadru (−0,217…0,076);
+- **−1 jako znacznik „nie dotyczy"**: `ZSETTLINGEFFECTSCORE`
+  i `ZVIDEOSTICKERSUGGESTIONSCORE` mają −1 dla 25 921 zdjęć, bo dotyczą wideo.
 
-`ZPROMOTIONSCORE`, `ZNOISESCORE`, `ZFAILURESCORE`,
-`ZINTRUSIVEOBJECTPRESENCESCORE` — wszystkie zerowe w całym archiwum. Schemat
-Apple niesie więcej pojęć, niż system faktycznie liczy, więc **każdą kolumnę
-trzeba przed użyciem policzyć, a nie założyć**.
+Czyli **„brak danych" ma w tej bazie trzy różne zapisy**: brak wiersza, zero
+i minus jeden. Którą konwencję ma dana kolumna, nie wynika z niczego, co da się
+odczytać z danych.
 
-### Dwa wnioski, które zmieniają plany
+### Stąd podział: sonda dynamiczna, znaczenie kurowane
 
-**„Nigdy nieoglądane" to prawdopodobnie najmocniejsza z tych osi** i nie było
-jej w żadnej rozmowie. Dwadzieścia tysięcy zdjęć, na które nikt nie spojrzał od
-zaimportowania, to dosłowny opis problemu, dla którego ta aplikacja powstała
-— patrz pierwszy akapit README.
+Czego aplikacja **może dowiedzieć się sama**, przy każdym wczytaniu cech:
 
-**`ZFACECOUNT` unieważnia wcześniejsze zastrzeżenie.** Nasz import liczy twarze
-przez zliczenie wierszy `ZDETECTEDFACE`, więc zero znaczy tam i „nie ma twarzy",
-i „nie analizowano". Ale baza ma jawną kolumnę z liczbą twarzy, wypełnioną dla
-całej biblioteki: 6 422 z twarzami, 19 701 z policzonym zerem, razem komplet.
-Po przejściu na nią warunek „bez twarzy w kadrze" jest dokładny. To jest jedyny
-przypadek, w którym pułapka „zero znaczy nie policzono" **daje się obejść
-u źródła**, a nie tylko obudować zastrzeżeniem.
+- czy kolumna w ogóle istnieje w tej wersji systemu — dzięki temu zniknięcie
+  kolumny przestaje być awarią, a pojawienie się nowej daje się zauważyć;
+- ile zdjęć ma wartość, ile zer, ile wartości ujemnych;
+- rzeczywisty zakres i rozkład — a z tego **granice suwaka progu**, zamiast
+  sztywnych 0,1–1,0, które dla kolumny o zakresie −0,217…0,076 nie znaczą nic;
+- czy warto pokazać wiersz: kolumna stała w całym archiwum nie jest przekrojem.
 
-### Co z tego wynika dla interfejsu
+Czego aplikacja **nie ma jak zgadnąć** i co musi być zapisane ręcznie:
 
-Pozycji jest co najmniej dwadzieścia kilka i będą przybywać z każdą wersją
-systemu. Roleta „rzadziej używane" z przypinaniem jest więc rozwiązaniem
-właściwym, a nie zapasowym — z jednym zastrzeżeniem: przy dwudziestu pozycjach
-sama roleta przestanie wystarczać i lista rozwinięta będzie potrzebowała
-podziału albo szukania.
+- nazwa po ludzku — `ZPLEASANTCAMERATILTSCORE` to nie jest etykieta;
+- kierunek: czy wyżej znaczy lepiej, czy gorzej;
+- co znaczy zero i czy istnieje wartość-znacznik;
+- czy miara jest ciągła, licznikiem, czy przełącznikiem.
+
+Znaczenia nie da się odkryć — to jest ta sama lekcja, co przy
+`ZBLURRINESSSCORE`, tylko w większej skali. **Dynamiczna jest obecność
+i kształt, kurowane jest znaczenie.**
+
+### Konsekwencja dla przechowywania
+
+Dziś cechy to sześć pól w `Review` i dwanaście kolumn w pliku wymiany. Przy
+czterdziestu miarach, z których część przybędzie po aktualizacji systemu, każde
+dołożenie znaczyłoby migrację składu i podbicie formatu wymiany. To się nie
+skaluje.
+
+Właściwym kształtem jest **jeden blob na zdjęcie**: spakowany słownik
+`klucz → wartość`, dokładnie tak jak `Fingerprint.vector` trzyma wektor
+w half-floatach. Zgodność idzie wtedy w obie strony — starsza wersja czyta
+nowszy plik i pomija nieznane klucze, nowsza czyta starszy i widzi ich mniej.
+Koszt: czterdzieści miar na 26 tysięcy zdjęć to około 2 MB w half-floatach,
+wobec 39 MB odcisków, które i tak jeżdżą w każdym pliku wymiany.
+
+Uboczny zysk: klucz cechy przestaje być `rawValue` polskiego enuma, więc znika
+problem zapisany niżej — nazwa wyświetlana może się tłumaczyć, bo nie jest już
+kluczem zapisu.
 
 ## Nazwa kolumny potrafi znaczyć odwrotność
 
