@@ -447,6 +447,55 @@ z licznikiem zero. Brak wyników jest informacją. Dlatego spis kurowany dzieli
 miary na **rdzenne**, pokazywane zawsze, i **znalezione**, pokazywane tylko
 wtedy, gdy mają rozkład.
 
+### Które wymiary są na wierzchu, zależy od człowieka i od zadania
+
+Roleta nie jest sposobem na schowanie nadmiaru. Jest sposobem na to, żeby na
+wierzchu stało to, czego **ten** użytkownik używa — a to co innego u kogoś, kto
+przegląda wakacje, co innego u drugiego fotografa, i co innego przy sesji
+sprzątania. Wymiar rdzenny dla jednej osoby jest dla drugiej martwy.
+
+Stąd kolejność ma być **ręczna, nie samoucząca**. Automatyczne wypychanie
+najczęściej używanych na wierzch jest kuszące i byłoby błędem: lista, po której
+chodzi się z pamięci, nie może się przestawiać sama. Najwyżej podpowiedź
+przy często używanym wierszu.
+
+### Miara dotyczy albo obrazu, albo jego historii
+
+Przy dwudziestu kilku pozycjach lista potrzebuje podziału, a naturalny podział
+nie idzie wzdłuż typu danych, tylko wzdłuż tego, **czego miara dotyczy**:
+
+- **właściwości zdjęcia** — ostrość, naświetlenie, kompozycja, kolor, twarze,
+  przechył kadru. Trwałe: zdjęcie nieostre będzie nieostre zawsze;
+- **stan w archiwum** — nigdy nieoglądane, kiedyś udostępnione, ulubione,
+  w serii, duplikat, zrzut ekranu. To nie są cechy obrazu, tylko jego historii;
+- **technika** — HDR, portret, wideo, rozdzielczość, brak lokalizacji.
+
+Podział jest praktyczny, bo grupy odpowiadają różnym zadaniom: pierwsza służy
+ocenianiu jakości, druga sprzątaniu, trzecia szukaniu konkretnego materiału.
+
+### Niektóre warunki starzeją się razem ze zdjęciem
+
+Obserwacja Radka po wieczorze kasowania zrzutów ekranu: **zrzut ma wartość
+głównie wokół daty powstania**. Sprzed tygodnia to notatka, sprzed pięciu lat
+śmieć. To samo dotyczy „nigdy nieoglądanych" — świeże zdjęcie jeszcze
+nieobejrzane nie znaczy nic, sprzed dziesięciu lat znaczy wszystko.
+
+Takie warunki chcą domyślnie wchodzić **razem z warunkiem wieku**. Inaczej
+trzeba ustawić dwie rzeczy naraz, a nikt tego nie zrobi, dopóki sam na to nie
+wpadnie.
+
+### Poziom wyżej: zapisany zestaw warunków
+
+Sesja kasowania zrzutów to nie jeden wymiar, tylko kombinacja: zrzuty, starsze
+niż jakiś czas, po dacie, z operacją na całej puli na końcu. Takich
+powtarzalnych zestawów będzie kilka i będą różne u różnych osób — czyli roleta
+rozwiązuje warstwę niżej, niż leży prawdziwa potrzeba.
+
+Do rozstrzygnięcia przy następnej turze projektu: czy zapisany zestaw warunków
+to osobne pojęcie, czy część „przestrzeni roboczej" razem z układem paneli.
+Jedna kontrolka mniej to zysk, ale zlepienie dwóch różnych pojęć mści się
+później.
+
 ### Konsekwencja dla przechowywania
 
 Dziś cechy to sześć pól w `Review` i dwanaście kolumn w pliku wymiany. Przy
