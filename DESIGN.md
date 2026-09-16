@@ -4,6 +4,11 @@ Dokument dla kogoś, kto ma projektować interfejs tej aplikacji. Opisuje, co
 aplikacja robi, dla kogo, co jest już rozstrzygnięte i dlaczego, oraz gdzie
 naprawdę potrzeba pomocy.
 
+> **Wersja druga.** Zmiany wobec pierwszej: aplikacja nazywa się teraz
+> **lightbrary** (było `ibrowse`); pytanie o rozkład okna z §9 **ma odpowiedź**
+> i sekcja to odnotowuje; sekcja cech przestaje być listą pięciu pozycji i staje
+> się **listą otwartą, sondowaną w bazie** — powód i pomiary w §6.
+
 ---
 
 ## 1. Czym to jest
@@ -109,9 +114,12 @@ Sekcje, w kolejności:
    telefonie mówi wprost, że indeksu tam nie ma.
 2. **Ocena** — cztery wiersze z licznikami: wszystkie / nieocenione /
    ocenione / do usunięcia. Pod nimi, gdy wybrane „ocenione", skala gwiazdek.
-3. **Cechy systemu** — pięć wierszy z licznikami: bez warunku / poruszone /
-   źle naświetlone / zamknięte oczy / zrzuty ekranu. Przy dwóch pierwszych
-   pojawia się suwak progu.
+3. **Cechy systemu** — **lista otwarta**, nie zamknięty zestaw. Dziś zapięte
+   są cztery miary (poruszone, źle naświetlone, zamknięte oczy, zrzuty ekranu)
+   plus „bez warunku", ale dostępnych jest ich około trzydziestu i będzie
+   przybywać. Na wierzchu stoją najczęściej używane, reszta pod roletą.
+   Szczegóły i pomiary w §6 — to jest najważniejsza część tego briefu.
+   Przy miarach ciągłych pojawia się suwak progu.
 4. **Kolejność** — sześć wierszy bez liczników: jak w bibliotece / od
    poruszonych / od niedoświetlonych / od zamkniętych oczu / od najlepszych /
    od najgorszych.
@@ -202,7 +210,117 @@ Ręczna po obu stronach — świadomie, ale to jest miejsce z problemem
 ergonomicznym: po powrocie z podróży trzeba pamiętać o kliknięciu na drugim
 urządzeniu, a dopóki się nie kliknie, wygląda to jak utrata pracy.
 
-## 6. Język wizualny dzisiaj
+## 6. Cechy systemu: lista otwarta, nie zestaw
+
+To jest część briefu, która zmieniła się najmocniej, i najważniejsza dla
+projektu panelu filtru.
+
+### Dlaczego otwarta
+
+Bo **nie wiemy, ile da się z tej biblioteki wyciągnąć**, a ponadstandardowe
+przekroje przez archiwum są tym, po co ta aplikacja istnieje. Zamknięcie sekcji
+do czterech pozycji zabiłoby dokładnie to, co jest w niej najciekawsze.
+
+Do tego w schemacie bazy leżą wymiary **kiedyś zaimplementowane i porzucone**
+oraz takie, **które system dopiero zacznie wypełniać**. Zestaw dostępnych miar
+zmienia się więc z każdą wersją systemu operacyjnego, bez naszego udziału.
+
+### Ile ich naprawdę jest
+
+Zmierzone na archiwum 26 123 zdjęć. Poniżej skrót; pełne liczby są
+w `DECYZJE.md`.
+
+**Miary ciągłe** — nadają się na sortowanie i na próg. Kuracja, estetyka
+ogólna, widoczność we wspomnieniach, ikoniczność, aktywność w kadrze,
+symetria, immersyjność, wzory, ostrość tematu, przydatność na tapetę,
+kompozycja, oświetlenie, ciekawy temat, żywe kolory, harmonia kolorów, ładne
+rozmycie tła, dobrze wybrany temat, dobre skadrowanie, dobry moment ujęcia,
+perspektywa, odbicia, obróbka, przechył kadru, szum, nieudane ujęcie, natrętny
+obiekt w kadrze. Do tego trzy już używane: poruszenie, naświetlenie, słabe
+światło.
+
+**Warunki dwustanowe** — nadają się na wiersz z licznikiem: nigdy nieoglądane
+(20 605 zdjęć), ma lokalizację, osoby w kadrze, twarze w kadrze, obejrzane choć
+raz, zrzuty ekranu, HDR, portret z mapą głębi, wideo, kiedyś udostępnione,
+seria aparatu, ulubione, duplikat wskazany przez system.
+
+Czyli **około trzydziestu**, a nie cztery. Prawie wszystkie wypełnione dla
+całej biblioteki.
+
+### Pułapka, na którą trzeba uważać przy projektowaniu warunków
+
+Te kolumny nie mają wspólnej konwencji i **nie da się jej odgadnąć**:
+
+- część jest w zakresie 0–1, wyżej znaczy lepiej;
+- część jest symetryczna, −1 do 1;
+- ikoniczność ma zakres −2 do 1;
+- szum, nieudane ujęcie i natrętny obiekt **mają wyłącznie wartości ujemne**,
+  gdzie **zero jest wynikiem najlepszym**;
+- dwie kolumny używają −1 jako znacznika „nie dotyczy";
+- jedna kolumna nazywa się `BLURRINESSSCORE`, a rośnie wraz z **ostrością** —
+  nazwa znaczy odwrotność tego, co mierzy.
+
+Praktyczny wniosek dla interfejsu: **suwak progu nie może mieć sztywnego
+zakresu 0–1**. Dla miary o zakresie −0,217 do 0,076 taki suwak nie znaczy nic.
+Granice muszą pochodzić z rzeczywistego rozkładu, mierzonego przy każdym
+wczytaniu cech.
+
+### Co aplikacja robi sama, a co jest opisane ręcznie
+
+**Sama, przy każdym wczytaniu:** sprawdza, które kolumny istnieją w tej wersji
+systemu, ile mają wartości, jaki mają rozkład, i czy w ogóle niosą sygnał.
+Kolumna o jednej wartości w całym archiwum nie jest przekrojem.
+
+**Ręcznie, raz:** nazwa po ludzku, kierunek (czy wyżej znaczy lepiej), co
+znaczy zero. Tego nie da się odkryć — patrz `BLURRINESSSCORE` wyżej.
+
+Skutek dla projektu: aplikacja może **odkryć nową miarę** po aktualizacji
+systemu i o niej powiedzieć. Warto przewidzieć, jak to zakomunikować.
+
+### Trzy powody, dla których miara może być pusta
+
+Wyglądają identycznie, a znaczą co innego i wymagają innego zachowania:
+
+1. **wymiar porzucony** — kolumna została po funkcji, której już nie ma;
+2. **wymiar jeszcze niewdrożony** — kolumna jest, system jej nie wypełnia;
+3. **pusta w tej bibliotece** — miara działa, tylko ten użytkownik nie ma
+   takich zdjęć.
+
+Pierwsze dwa mają **zniknąć z listy**. Trzeci ma **zostać z licznikiem zero**,
+bo brak wyników jest informacją. Rozróżnienia nie da się zmierzyć, więc spis
+dzieli miary na **rdzenne** (pokazywane zawsze) i **znalezione** (pokazywane,
+gdy niosą sygnał).
+
+### Co ma być na wierzchu, a co pod roletą
+
+**To nie jest fakt o bazie, tylko fakt o człowieku.** Miary używane przez jedną
+osobę są martwe dla drugiej, a sesja sprzątania potrzebuje innych niż przegląd
+wakacji.
+
+Stąd dwie zasady:
+
+- **kolejność ręczna, nie samoucząca.** Automatyczne wypychanie najczęściej
+  używanych na wierzch jest kuszące i byłoby błędem: lista, po której chodzi
+  się z pamięci, nie może się przestawiać sama. Najwyżej podpowiedź przy
+  często używanym wierszu;
+- **podział listy rozwiniętej wedle tego, czego miara dotyczy**, a nie wedle
+  typu danych — bo grupy odpowiadają wtedy różnym zadaniom:
+  **właściwości zdjęcia** (ostrość, kolor, kompozycja, twarze — trwałe),
+  **stan w archiwum** (nigdy nieoglądane, udostępnione, w serii, duplikat,
+  zrzut ekranu — historia, nie obraz), **technika** (HDR, portret, wideo,
+  rozdzielczość, brak lokalizacji).
+
+### Warunki, które starzeją się razem ze zdjęciem
+
+Zrzut ekranu sprzed tygodnia to notatka; ten sam sprzed pięciu lat to śmieć.
+Tak samo „nigdy nieoglądane": świeże zdjęcie jeszcze nieobejrzane nie znaczy
+nic, sprzed dziesięciu lat znaczy wszystko.
+
+Warunki z grupy „stan w archiwum" chcą więc domyślnie wchodzić **razem
+z warunkiem wieku**. Inaczej trzeba ustawić dwie rzeczy naraz, a nikt tego nie
+zrobi, dopóki sam na to nie wpadnie.
+
+## 7. Język wizualny dzisiaj
 
 Systemowy ciemny motyw, akcent systemowy (niebieski), żółte gwiazdki, czerwień
 zarezerwowana dla usuwania. Typografia systemowa, cyfry zawsze tabelaryczne
@@ -215,7 +333,7 @@ Liczniki: `caption`, monospaced, drugorzędne; zero jest wyszarzone bardziej.
 Ćwiartki zostają czytelne przy 16 px, spektrum robi się wtedy jedną barwną
 plamą — i tak ma być.
 
-## 7. Skala i jej konsekwencje
+## 8. Skala i jej konsekwencje
 
 Archiwum rzędu 25 tysięcy zdjęć to nie jest liczba dekoracyjna. Wynikają z niej
 ograniczenia, o które łatwo się potknąć projektując:
@@ -231,7 +349,7 @@ ograniczenia, o które łatwo się potknąć projektując:
 - **Miniatury ładują się asynchronicznie.** Każdy projekt musi wyglądać
   sensownie, gdy połowa kafelków jest jeszcze szara.
 
-## 8. Kierunek: bliżej Adobe Bridge
+## 9. Kierunek: bliżej Adobe Bridge
 
 **To jest główna wskazówka projektowa i ona porządkuje całą listę poniżej.**
 
@@ -268,58 +386,65 @@ Bridge.
   kokpit. To narzędzie ma dawać zdjęciu ekran; panele mają się chować.
 - **Nie ma edycji, eksportu, wsadowego przetwarzania, publikacji.**
 
-### Pytanie, od którego zależy reszta
+### Odpowiedź, która już padła
 
-**Czy okno na macOS staje się trzykolumnowe** — filtr / siatka / podgląd
-z metadanymi — z pojedynczym zdjęciem jako powiększeniem zaznaczonego kafelka,
-a nie osobnym trybem?
+Pytanie brzmiało: czy okno na macOS staje się trzykolumnowe — filtr / siatka /
+podgląd z metadanymi — z pojedynczym zdjęciem jako powiększeniem zaznaczonego
+kafelka, a nie osobnym trybem?
 
-Za: to jest właśnie Bridge, znika przełączanie, zaznaczenie jednego kafelka
-od razu pokazuje duży podgląd i metadane.
+**Tak.** Trzy kolumny jednocześnie na ekranie, a ocenianie z klawiatury zostaje
+jako **pełny ekran na żądanie** (dwuklik albo `⏎`), nie jako tryb do
+przełączania. To rozwiązuje obawę, która stała za tym pytaniem: pełny ekran się
+nie traci, przestaje tylko być jedynym sposobem oglądania jednego zdjęcia.
 
-Przeciw: ocenianie z klawiatury na pełnym ekranie jest dziś bardzo dobre
-i utrata pełnego ekranu byłaby realną stratą. Bridge rozwiązuje to osobnym
-trybem przeglądu na pełnym ekranie — być może to jest odpowiedź: siatka
-z podglądem jako stan domyślny, pełny ekran na żądanie.
+Zaznaczanie na macOS: **pojedynczy klik zaznacza i karmi podgląd**, `⌘` i `⇧`
+rozszerzają, dwuklik wchodzi w pełny ekran. Na iOS bez zmian — pojedyncze
+stuknięcie otwiera zdjęcie.
 
 Na iOS trzy kolumny nie wchodzą w grę i tam zostaje dzisiejszy podział. iPad
 jest gdzieś pośrodku i zasługuje na własną odpowiedź.
 
-## 9. Czego brakuje i gdzie potrzeba projektu
+## 10. Czego brakuje i gdzie potrzeba projektu
 
-To jest właściwa lista zadań.
+### Rozstrzygnięte w drugiej turze
 
-Uporządkowane wedle kierunku z §8, najważniejsze najpierw.
+Rozkład okna, zaznaczanie kafelków, stosy serii w siatce, kolejność wyprowadzona
+na belkę nad siatką, żetony aktywnych warunków, grupowanie po dniu / serii /
+osobie, swobodne porównywanie dwóch kadrów poza turniejem. Szczegóły w osobnym
+przekazaniu projektowym, nie w tym dokumencie.
 
-**Rozkład okna na macOS** — patrz pytanie na końcu §8. Od tej odpowiedzi
-zależy wszystko poniżej, więc to jest pierwsze zadanie.
+Jedna rzecz z tamtej tury pozostaje otwarta i blokuje implementację:
+**grupowanie kłóci się z kolejnością**. Jeśli grupuję po dniu, a sortuję po
+poruszeniu, to co znaczy „następne zdjęcie"? §4 mówi, że musi znaczyć jedno.
+Propozycja: grupowanie **jest** kolejnością, tylko z nagłówkami — czyli kolejne
+pozycje tej samej listy, wykluczające się z pozostałymi.
 
-**Zaznaczanie pojedynczych kafelków.** Dziś operacje na grupie działają na
-całym filtrze, bo zaznaczania nie ma w ogóle. Bridge to ma i to jest
-odczuwalna dziura. Pytanie: jak pogodzić zaznaczanie z tym, że pojedyncze
-stuknięcie na telefonie otwiera zdjęcie, a na Macu otwiera dwuklik.
+### Otwarte
 
-**Serie widoczne w siatce.** Bridge robi z serii stos: jeden kafelek
-z licznikiem, rozwijalny. Mamy wykryte serie i turniej, który je rozstrzyga,
-ale w siatce nie widać ich w ogóle.
+**Zapisane zestawy warunków.** Sesja sprzątania to nie jeden wymiar, tylko
+kombinacja: zrzuty ekranu, starsze niż jakiś czas, po dacie, z operacją na
+całej puli na końcu. Takich przepisów będzie kilka i będą różne u różnych osób.
+Do rozstrzygnięcia, czy to osobne pojęcie, czy część „przestrzeni roboczej"
+razem z układem paneli.
 
-**Sortowanie na wierzchu.** Kolejność jest dziś w panelu filtru, a w Bridge
-siedzi nad siatką i przestawia się jednym ruchem.
+**Roleta cech przy dwudziestu pozycjach.** Podział na trzy grupy z §6 pomaga,
+ale dwadzieścia jednakowych wierszy to nadal ściana. Czy lista rozwinięta
+potrzebuje własnego szukania?
 
-**Żetony aktywnych warunków w belce** — `(zrzuty ekranu ×) (2018–2019 ×)` nad
-siatką. Na macOS z paskiem bocznym może być zbędne; na telefonie, gdzie filtr
-jest arkuszem, prawdopodobnie konieczne.
-
-**Grupowanie.** Po dniu, po serii, po osobie. System ma policzone momenty
-i siedem tysięcy klastrów osób — dane są, sposobu pokazania nie ma.
-
-**Swobodne porównywanie obok siebie**, poza turniejem. Dwa dowolne zdjęcia,
-wybrane ręcznie.
+**Komunikat o nowej mierze.** Sonda potrafi zauważyć, że system zaczął liczyć
+coś, czego wcześniej nie liczył (§6). Nie wiadomo, jak o tym powiedzieć, żeby
+nie było to ani natrętne, ani niewidoczne.
 
 **Lokalizacja.** Interfejs jest dziś tylko polski. Żadne rozwiązanie nie może
 zakładać długości słów ani zamkniętej liczby kategorii — segmentowane
 przełączniki zostały z tego powodu usunięte z panelu filtru i nie powinny
 wracać.
+
+**iOS.** Świadomie odłożony: porządkujemy jedną platformę, potem tłumaczymy na
+trudniejszą. Ale zaznaczanie, grupowanie, stosy i porównywanie nie mają tam
+żadnej historii, a telefon jest urządzeniem, na którym aplikacja jest używana
+w podróży i bez sieci. Model danych ma być wspólny, żeby to było tłumaczenie,
+a nie przepisywanie.
 
 **iPad.** Aplikacja działa, ale jest projektowana jako telefon na dużym
 ekranie. Pasek boczny z macOS pasowałby tam znacznie lepiej niż arkusz.
@@ -328,7 +453,11 @@ ekranie. Pasek boczny z macOS pasowałby tam znacznie lepiej niż arkusz.
 uruchomienie — prośba o dostęp do biblioteki, potem wczytanie cech, potem
 wskazanie folderu wymiany — jest ciągiem, którego nikt nie zaprojektował.
 
-## 10. Słownik
+**Widoczny stan synchronizacji.** Synchronizacja jest ręczna po obu stronach
+i łatwo nie wiedzieć, że drugie urządzenie ma nowszą pracę. Dopóki tego nie
+widać, wygląda to jak utrata pracy.
+
+## 11. Słownik
 
 | termin | znaczenie |
 |---|---|
@@ -340,7 +469,7 @@ wskazanie folderu wymiany — jest ciągiem, którego nikt nie zaprojektował.
 | **plik wymiany** | baza przewożąca oceny i cechy między urządzeniami |
 | **wskaźnik miejsca** | zdjęcie, na którym stoi praca; wspólne dla wszystkich trybów |
 
-## 11. Czego nie robić
+## 12. Czego nie robić
 
 - Nie dodawać drugiej listy zdjęć obok głównego zbioru roboczego.
 - Nie robić trybu z pytania o zbiór.
@@ -349,3 +478,7 @@ wskazanie folderu wymiany — jest ciągiem, którego nikt nie zaprojektował.
   (segmentowane przełączniki) — liczba kategorii nie jest zamknięta.
 - Nie ukrywać krańców zbioru ani stanu „nic nie pasuje".
 - Nie dokładać kroków między znalezieniem zdjęcia a decyzją o nim.
+- Nie zakładać, że kolumna w bazie jest pusta, bez zmierzenia jej — trzy
+  z czterech, które na to wyglądały, były wypełnione wartościami ujemnymi (§6).
+- Nie przestawiać listy cech automatycznie wedle częstości używania (§6).
+- Nie dawać suwakom progu sztywnego zakresu 0–1; granice pochodzą z pomiaru.
