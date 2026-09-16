@@ -20,11 +20,14 @@ ma serwera.
 
 ## 2. Dla kogo
 
-Jeden użytkownik, fotograf z archiwum **25 tysięcy zdjęć** zbieranym od 2007
-roku. Zna się na narzędziach tej klasy (Adobe Bridge, Lightroom, Capture One)
-i porównuje do nich. Sam o sobie mówi „zboczeniec ergonomiczny" w kwestii
-interfejsów do oglądania obrazków — co znaczy tyle, że drobiazgi są tu
-treścią, a nie wykończeniem.
+Fotograf z archiwum rzędu **kilkudziesięciu tysięcy zdjęć**, zbieranym
+kilkanaście lat. Zna narzędzia tej klasy — Adobe Bridge, Lightroom,
+Capture One — i porównuje do nich.
+
+To nie jest odbiorca, któremu wystarczy, że się da. Drobiazgi obsługi są tu
+treścią, a nie wykończeniem: opór gestu, to czy kadr dojeżdża do końca, czy
+licznik skacze przy przewijaniu. Projekt, który działa, ale jest o pół kroku
+za wolny albo o jedno kliknięcie za długi, zostanie odrzucony.
 
 ### Sytuacje użycia, na które to jest projektowane
 
@@ -214,8 +217,8 @@ plamą — i tak ma być.
 
 ## 7. Skala i jej konsekwencje
 
-25 tysięcy zdjęć to nie jest liczba dekoracyjna. Wynikają z niej ograniczenia,
-o które łatwo się potknąć projektując:
+Archiwum rzędu 25 tysięcy zdjęć to nie jest liczba dekoracyjna. Wynikają z niej
+ograniczenia, o które łatwo się potknąć projektując:
 
 - **Licznik pozycji `3 / 37` nie działa.** `1447 / 25 191` nie odpowiada na
   pytanie „gdzie jestem". Odpowiedzią jest raczej data i ile zostało
