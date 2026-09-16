@@ -7,3 +7,8 @@ Generated/
 .DS_Store
 # Affinity zostawia plik blokady, kiedy dokument jest otwarty
 *~lock~
+
+# Klucz App Store Connect. Repozytorium jest publiczne, a ten plik daje dostęp
+# do konta deweloperskiego — pobiera się go dokładnie raz i nie da się odzyskać.
+*.p8
+AuthKey_*.p8
