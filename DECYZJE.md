@@ -339,7 +339,86 @@ gotowe i **za darmo** — dokładnie te rzeczy, które sami liczylibyśmy tygodn
 Stąd czwarty tryb: przeglądy poprzeczne cudzą miarą. Nie ocena — **zestawienie**.
 Żadna z tych liczb nie dotyka wagi zdjęcia.
 
-### Nazwa kolumny potrafi znaczyć odwrotność
+### Sekcja cech musi być otwarta
+
+Powód jest wprost od Radka i mocniejszy niż ten, od którego zaczęliśmy:
+**nie wiemy, co jeszcze da się wyciągnąć z tej bazy, a cały sens tej aplikacji
+to ponadstandardowe przekroje przez bibliotekę.** Zamknięcie sekcji do czterech
+pozycji zabiłoby dokładnie to, co jest w niej najciekawsze.
+
+Żeby to przestało być przypuszczeniem, przejrzeliśmy schemat i policzyliśmy
+pokrycie na archiwum 26 123 zdjęć.
+
+### Miary ciągłe, które są naprawdę wypełnione
+
+| miara | kolumna | ile ma pomiar |
+|---|---|---|
+| kuracja | `ZASSET.ZCURATIONSCORE` | 26 009 |
+| symetria | `ZPLEASANTSYMMETRYSCORE` | 25 989 |
+| słabe światło | `ZLOWLIGHT` | 25 941 |
+| aktywność w kadrze | `ZACTIVITYSCORE` | 25 891 |
+| estetyka ogólna | `ZASSET.ZOVERALLAESTHETICSCORE` | 25 783 |
+| dobry moment ujęcia | `ZWELLTIMEDSHOTSCORE` | 19 316 |
+| dobre skadrowanie | `ZWELLFRAMEDSUBJECTSCORE` | 15 198 |
+| żywe kolory | `ZLIVELYCOLORSCORE` | 15 101 |
+| przyjemne oświetlenie | `ZPLEASANTLIGHTINGSCORE` | 11 851 |
+| przyjemna kompozycja | `ZPLEASANTCOMPOSITIONSCORE` | 11 517 |
+| ładne rozmycie tła | `ZTASTEFULLYBLURREDSCORE` | 10 428 |
+| ciekawy temat | `ZINTERESTINGSUBJECTSCORE` | 9 960 |
+| ikoniczność | `ZASSET.ZICONICSCORE` | 7 709 |
+| przechył kadru | `ZPLEASANTCAMERATILTSCORE` | 3 539 |
+
+Miary bez prefiksu tabeli leżą w `ZCOMPUTEDASSETATTRIBUTES`.
+
+### Warunki dwustanowe
+
+| warunek | ile zdjęć |
+|---|---|
+| **nigdy nieoglądane** (`ZVIEWCOUNT = 0`) | **20 605** |
+| ma lokalizację | 19 161 |
+| osoby w kadrze, pewne rozpoznanie | 9 799 |
+| twarze w kadrze (`ZFACECOUNT > 0`) | 6 422 |
+| obejrzane choć raz | 5 518 |
+| zrzuty ekranu | 4 077 |
+| HDR | 2 621 |
+| portret / mapa głębi | 771 |
+| wideo | 750 |
+| kiedyś udostępnione | 553 |
+| seria aparatu (burst) | 46 |
+| ulubione | 26 |
+| duplikat wg systemu | 24 |
+
+### Czego w tej bazie nie ma, choć kolumny są
+
+`ZPROMOTIONSCORE`, `ZNOISESCORE`, `ZFAILURESCORE`,
+`ZINTRUSIVEOBJECTPRESENCESCORE` — wszystkie zerowe w całym archiwum. Schemat
+Apple niesie więcej pojęć, niż system faktycznie liczy, więc **każdą kolumnę
+trzeba przed użyciem policzyć, a nie założyć**.
+
+### Dwa wnioski, które zmieniają plany
+
+**„Nigdy nieoglądane" to prawdopodobnie najmocniejsza z tych osi** i nie było
+jej w żadnej rozmowie. Dwadzieścia tysięcy zdjęć, na które nikt nie spojrzał od
+zaimportowania, to dosłowny opis problemu, dla którego ta aplikacja powstała
+— patrz pierwszy akapit README.
+
+**`ZFACECOUNT` unieważnia wcześniejsze zastrzeżenie.** Nasz import liczy twarze
+przez zliczenie wierszy `ZDETECTEDFACE`, więc zero znaczy tam i „nie ma twarzy",
+i „nie analizowano". Ale baza ma jawną kolumnę z liczbą twarzy, wypełnioną dla
+całej biblioteki: 6 422 z twarzami, 19 701 z policzonym zerem, razem komplet.
+Po przejściu na nią warunek „bez twarzy w kadrze" jest dokładny. To jest jedyny
+przypadek, w którym pułapka „zero znaczy nie policzono" **daje się obejść
+u źródła**, a nie tylko obudować zastrzeżeniem.
+
+### Co z tego wynika dla interfejsu
+
+Pozycji jest co najmniej dwadzieścia kilka i będą przybywać z każdą wersją
+systemu. Roleta „rzadziej używane" z przypinaniem jest więc rozwiązaniem
+właściwym, a nie zapasowym — z jednym zastrzeżeniem: przy dwudziestu pozycjach
+sama roleta przestanie wystarczać i lista rozwinięta będzie potrzebowała
+podziału albo szukania.
+
+## Nazwa kolumny potrafi znaczyć odwrotność
 
 `ZMEDIAANALYSISASSETATTRIBUTES.ZBLURRINESSSCORE` brzmi jak rozmycie, a rośnie
 wraz z **ostrością**. Rozstrzygnęło dopiero obejrzenie zdjęć z obu krańców
