@@ -514,6 +514,55 @@ Uboczny zysk: klucz cechy przestaje być `rawValue` polskiego enuma, więc znika
 problem zapisany niżej — nazwa wyświetlana może się tłumaczyć, bo nie jest już
 kluczem zapisu.
 
+## Przygotowanie do App Store
+
+Wzorzec przepisany z `FlipClock` — aplikacji, która już przeszła przez sklep.
+Wymyślanie tego od nowa nie miało sensu.
+
+### Manifest prywatności jest warunkiem wgrania, nie ozdobą
+
+`Resources/PrivacyInfo.xcprivacy` idzie do obu targetów. Powód jest prozaiczny:
+aplikacja używa `UserDefaults` w czterech miejscach, a to jest API „wymagające
+podania powodu". Bez manifestu App Store Connect odbija wgranie komunikatem
+ITMS-91053, zanim jakakolwiek recenzja się zacznie.
+
+Zadeklarowane są dwa powody, `1C8F.1` i `CA92.1` — dostęp do własnych danych
+aplikacji. Sprawdziliśmy resztę listy: **żadne inne API z tej kategorii tu nie
+występuje**, w szczególności nie ma dat plików ani wolnego miejsca na dysku.
+Jedyne dotknięcie systemu plików to rozmiar pliku wymiany, a ten nie jest na
+liście.
+
+Manifest mówi też to, co jest prawdą i co trzeba powtórzyć w kwestionariuszu
+App Privacy: **nie śledzimy i nie zbieramy żadnych danych**.
+
+### `ITSAppUsesNonExemptEncryption`
+
+Bez tego klucza App Store Connect pyta o zgodność eksportową przy **każdym**
+wgraniu i build wisi, dopóki ktoś nie odpowie ręcznie w przeglądarce.
+Aplikacja nie ma własnej kryptografii ani sieci, więc odpowiedź brzmi „nie"
+i można ją zapisać raz, w `Info.plist`. Tylko iOS — wersja na Maca nie idzie
+przez sklep.
+
+### Numer buildu
+
+`CURRENT_PROJECT_VERSION` podnosi się ręcznie przed wysyłką, tak jak
+w `FlipClock`. Każde wgranie musi mieć inny numer, inaczej App Store Connect
+je odrzuca. Automat kusi, ale przy kilku wydaniach na rok ręczna liczba jest
+uczciwsza niż licznik commitów, który rośnie od rzeczy niezwiązanych
+z wydaniem.
+
+### Rekord w sklepie
+
+Założony 16 września 2026: **Lightbrary**, app id `6812906504`, bundle id
+`pl.3210.lightbrary`. Nazwa jest zarezerwowana, ale **jeśli do 90 dni nie
+pójdzie żaden build, Apple może ją zwolnić** — wystarczy cokolwiek, choćby do
+testowania wewnętrznego.
+
+Rekordu aplikacji nie da się założyć przez API; to jedyna operacja zostawiona
+wyłącznie w przeglądarce. Klucz API (Team Key, rola App Manager) leży poza
+repozytorium, w `~/.appstoreconnect/`, a `.gitignore` ma `*.p8` na wypadek,
+gdyby kiedyś znów tam trafił.
+
 ## Nazwa kolumny potrafi znaczyć odwrotność
 
 `ZMEDIAANALYSISASSETATTRIBUTES.ZBLURRINESSSCORE` brzmi jak rozmycie, a rośnie
