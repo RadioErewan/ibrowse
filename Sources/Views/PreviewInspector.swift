@@ -115,42 +115,53 @@ struct PreviewInspector: View {
     /// kafelek pokazuje przy najechaniu.
     private func measureNote(_ asset: PHAsset) -> String? { nil }
 
+    /// Ten sam rząd co w ocenianiu i ta sama kolejność co w skali filtru:
+    /// kosz, zero, pięć gwiazdek. Trzy miejsca, jeden rysunek.
     private func rating(_ asset: PHAsset) -> some View {
-        HStack(spacing: 10) {
-            ForEach(1...5, id: \.self) { value in
-                Image(systemName: value <= (review?.stars ?? 0) ? "star.fill" : "star")
-                    .font(.system(size: 16))
-                    .foregroundStyle(value <= (review?.stars ?? 0)
-                                     ? Color.yellow : Color.secondary.opacity(0.35))
-                    .onTapGesture {
-                        Review.upsert(assetID: asset.localIdentifier, in: context) {
-                            $0.set(Double(value))
-                        }
-                    }
+        HStack(spacing: 6) {
+            cell(symbol: review?.markedForDeletion == true ? "trash.fill" : "trash",
+                 tint: .red, isOn: review?.markedForDeletion == true, help: "do usunięcia") {
+                Review.upsert(assetID: asset.localIdentifier, in: context) {
+                    $0.markedForDeletion.toggle()
+                }
             }
+
+            let isZero = review?.isRated == true && review?.stars == 0
+            cell(symbol: isZero ? "star.slash.fill" : "star.slash",
+                 tint: .yellow, isOn: isZero, help: "zero") {
+                Review.upsert(assetID: asset.localIdentifier, in: context) { $0.set(0) }
+            }
+
+            ForEach(1...5, id: \.self) { value in
+                cell(symbol: value <= (review?.stars ?? 0) ? "star.fill" : "star",
+                     tint: .yellow, isOn: value <= (review?.stars ?? 0), help: "\(value)") {
+                    Review.upsert(assetID: asset.localIdentifier, in: context) {
+                        $0.set(Double(value))
+                    }
+                }
+            }
+
             if let review, review.isRated {
                 Text(String(format: "%.2f", review.weight))
                     .font(.callout.monospacedDigit())
                     .foregroundStyle(.secondary)
             }
-
-            Spacer(minLength: 8)
-
-            Button {
-                Review.upsert(assetID: asset.localIdentifier, in: context) {
-                    $0.markedForDeletion.toggle()
-                }
-            } label: {
-                Label("oznacz do usunięcia",
-                      systemImage: review?.markedForDeletion == true ? "trash.fill" : "trash")
-                    .font(.caption)
-            }
-            .buttonStyle(.bordered)
-            .controlSize(.small)
-            .tint(.red)
+            Spacer(minLength: 0)
         }
         .padding(.horizontal, 12)
         .padding(.vertical, 8)
+    }
+
+    private func cell(
+        symbol: String, tint: Color, isOn: Bool, help: String, action: @escaping () -> Void
+    ) -> some View {
+        Image(systemName: symbol)
+            .font(.system(size: 16))
+            .foregroundStyle(isOn ? tint : Color.secondary.opacity(0.35))
+            .padding(.vertical, 4)
+            .contentShape(Rectangle())
+            .onTapGesture(perform: action)
+            .help(help)
     }
 }
 #endif

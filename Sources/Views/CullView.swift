@@ -368,7 +368,6 @@ struct CullView: View {
         VStack(spacing: 6) {
             HStack(spacing: 14) {
                 stars
-                deletionMark
                 Spacer()
                 // Jedna ikona zamiast stałego panelu — kto chce liczby,
                 // ten po nie sięga. Ekran należy się fotografii.
@@ -394,7 +393,6 @@ struct CullView: View {
         #else
         HStack(spacing: 18) {
             stars
-            deletionMark
             Spacer()
             Text(hint)
                 .font(.caption)
@@ -410,21 +408,18 @@ struct CullView: View {
         #endif
     }
 
-    @ViewBuilder
-    private var deletionMark: some View {
-        if currentReview?.markedForDeletion == true {
-            Label("do usunięcia", systemImage: "trash.fill")
-                .font(.caption.weight(.semibold))
-                .foregroundStyle(.red)
-        }
-    }
-
     private var counter: some View {
         Text("\(workingSet.isEmpty ? 0 : index + 1) / \(workingSet.count)")
             .font(.callout.monospacedDigit())
             .foregroundStyle(.secondary)
     }
 
+    /// Cała ocena jednym rzędem, w tej samej kolejności co skala w filtrze:
+    /// kosz, zero, pięć gwiazdek.
+    ///
+    /// Kosz i zero były dotąd tylko pod klawiszami `X` i `0`, więc nie dało się
+    /// ich odkryć myszą — a to dwie najczęstsze decyzje przy odsiewie. Ten sam
+    /// rysunek w filtrze i w ocenianiu znaczy też, że jedno uczy drugiego.
     private var stars: some View {
         HStack(spacing: 3) {
             if let review = currentReview, review.isRated {
@@ -433,26 +428,46 @@ struct CullView: View {
                     .foregroundStyle(.secondary)
                     .padding(.trailing, 4)
             }
+
+            gradeButton(
+                symbol: currentReview?.markedForDeletion == true ? "trash.fill" : "trash",
+                tint: .red,
+                isOn: currentReview?.markedForDeletion == true,
+                help: "do usunięcia — X"
+            ) { toggleDeletion(advance: false) }
+
+            gradeButton(
+                symbol: currentReview?.stars == 0 && currentReview?.isRated == true
+                    ? "star.slash.fill" : "star.slash",
+                tint: .yellow,
+                isOn: currentReview?.stars == 0 && currentReview?.isRated == true,
+                help: "zero — 0"
+            ) { rate(0, advance: false) }
+
             ForEach(1...5, id: \.self) { value in
-                Image(systemName: value <= (currentReview?.stars ?? 0) ? "star.fill" : "star")
-                    .foregroundStyle(value <= (currentReview?.stars ?? 0)
-                                     ? Color.yellow : Color.secondary.opacity(0.35))
-                    // Pole trafienia większe niż sama gwiazdka: przy piętnastu
-                    // punktach i trzech odstępu trzeba by celować.
-                    .padding(.horizontal, 3)
-                    .padding(.vertical, 4)
-                    .contentShape(Rectangle())
-                    // Kliknięcie ocenia i **zostaje na zdjęciu**.
-                    //
-                    // Wcześniej przechodziło od razu dalej, tak jak klawisz —
-                    // i wyglądało to na brak reakcji, bo gwiazdki pokazywały
-                    // po chwili ocenę już innego kadru. Klawiatura idzie dalej,
-                    // bo tam o to chodzi: ocena i następne jednym ruchem. Mysz
-                    // celuje świadomie w konkretną gwiazdkę konkretnego zdjęcia.
-                    .onTapGesture { rate(Double(value), advance: false) }
+                gradeButton(
+                    symbol: value <= (currentReview?.stars ?? 0) ? "star.fill" : "star",
+                    tint: .yellow,
+                    isOn: value <= (currentReview?.stars ?? 0),
+                    help: "\(value) — klawisz \(value)"
+                ) { rate(Double(value), advance: false) }
             }
         }
         .font(.system(size: 15))
+    }
+
+    private func gradeButton(
+        symbol: String, tint: Color, isOn: Bool, help: String, action: @escaping () -> Void
+    ) -> some View {
+        Image(systemName: symbol)
+            .foregroundStyle(isOn ? tint : Color.secondary.opacity(0.35))
+            // Pole trafienia większe niż sam znak: przy piętnastu punktach
+            // i trzech odstępu trzeba by celować.
+            .padding(.horizontal, 3)
+            .padding(.vertical, 4)
+            .contentShape(Rectangle())
+            .onTapGesture(perform: action)
+            .help(help)
     }
 
     private var hint: String {
@@ -509,12 +524,12 @@ struct CullView: View {
         Review.upsert(assetID: asset.localIdentifier, in: context) { $0.nudge(direction) }
     }
 
-    private func toggleDeletion() {
+    private func toggleDeletion(advance: Bool = true) {
         guard let asset = current else { return }
         Review.upsert(assetID: asset.localIdentifier, in: context) {
             $0.markedForDeletion.toggle()
         }
-        step(1)
+        if advance { step(1) }
     }
 
     private func step(_ delta: Int) {
