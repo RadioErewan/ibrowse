@@ -557,20 +557,16 @@ struct RootView: View {
     #if os(macOS)
     @ViewBuilder
     private var featureControl: some View {
-        if importer.isWorking {
-            ProgressView().controlSize(.small)
-        } else {
-            Button {
-                Task {
-                    await importer.run(context: context, library: library)
-                    features.load(context: context)
-                }
-            } label: {
-                Label("wczytaj cechy", systemImage: "camera.metering.spot")
-                    .labelStyle(.iconOnly)
+        busyButton(
+            title: "wczytaj cechy",
+            icon: "camera.metering.spot",
+            busy: importer.isWorking,
+            help: importer.summary ?? "Czyta ostrość, ekspozycję i twarze z baz biblioteki Zdjęć"
+        ) {
+            Task {
+                await importer.run(context: context, library: library)
+                features.load(context: context)
             }
-            .help(importer.summary
-                  ?? "Czyta ostrość, ekspozycję i twarze z baz biblioteki Zdjęć")
         }
     }
     #endif
@@ -584,25 +580,41 @@ struct RootView: View {
     /// i zatłoczona, a inspektor wjeżdżał pod ten gąszcz.
     @ViewBuilder
     private var fingerprintControl: some View {
-        if similarity.isWorking {
-            // Postęp ma swoje miejsce w pasku stanu na dole okna — tu
-            // wystarczy znak, że coś trwa. Inaczej belka rozpycha się w trakcie
-            // liczenia i chowa resztę przycisków pod chevronem.
-            ProgressView()
-                .controlSize(.small)
-        } else {
-            Button {
-                Task {
-                    await similarity.computeFingerprints(
-                        for: library.assets, library: library, context: context
-                    )
-                }
-            } label: {
-                Label("policz odciski", systemImage: "wand.and.stars")
-                    .labelStyle(.iconOnly)
+        busyButton(
+            title: "policz odciski",
+            icon: "wand.and.stars",
+            busy: similarity.isWorking,
+            help: "Liczy odciski wizualne dla całej biblioteki"
+        ) {
+            Task {
+                await similarity.computeFingerprints(
+                    for: library.assets, library: library, context: context
+                )
             }
-            .help("Liczy odciski wizualne dla całej biblioteki")
         }
+    }
+
+    /// Przycisk, który w trakcie pracy **zostaje przyciskiem**.
+    ///
+    /// Wcześniej zamieniał się w sam kręciołek. Kręciołek jest węższy niż
+    /// przycisk z ikoną, więc cała grupa w belce kurczyła się po kliknięciu
+    /// i sąsiednie ikony podjeżdżały pod kursor — to, w co się celowało,
+    /// uciekało. Teraz kręciołek siedzi w miejscu ikony, w ramce tej samej
+    /// wielkości, a przycisk jest tylko wyłączony.
+    private func busyButton(
+        title: String, icon: String, busy: Bool, help: String,
+        action: @escaping () -> Void
+    ) -> some View {
+        Button(action: action) {
+            ZStack {
+                Image(systemName: icon).opacity(busy ? 0 : 1)
+                if busy { ProgressView().controlSize(.mini) }
+            }
+            .frame(width: 18, height: 16)
+            .accessibilityLabel(title)
+        }
+        .disabled(busy)
+        .help(help)
     }
 }
 
