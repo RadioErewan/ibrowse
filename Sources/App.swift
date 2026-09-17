@@ -392,19 +392,26 @@ struct RootView: View {
                         }
                         .help("esc")
                     } else {
+                        // Ikony zamiast napisów: dwa segmenty z tekstem stały
+                        // obok drugiego segmentowanego przełącznika i belka
+                        // robiła się z tego jarmarkiem. Ikona nie zmienia też
+                        // szerokości przy tłumaczeniu.
                         Picker("", selection: $mode) {
-                            ForEach(Mode.available) { Text($0.rawValue).tag($0) }
+                            ForEach(Mode.available) { item in
+                                Label(item.rawValue, systemImage: item.icon)
+                                    .labelStyle(.iconOnly)
+                                    .help(item.rawValue)
+                                    .tag(item)
+                            }
                         }
                         .pickerStyle(.segmented)
                         .labelsHidden()
-                        .frame(width: 180)
                     }
                 }
                 ToolbarItemGroup(placement: .primaryAction) {
-                    if !fullScreen && mode == .grid {
-                        layoutControl
+                    if !fullScreen && mode == .grid && comparePair == nil {
                         thumbSlider
-                        Divider()
+                        inspectorControl
                     }
                     fingerprintControl
                     featureControl
@@ -452,33 +459,35 @@ struct RootView: View {
                 set: { inspectorVisible = $0 })
     }
 
-    /// Trzy układy paneli zamiast dwóch osobnych przełączników — bo pytanie
-    /// brzmi „na czym się teraz skupiam", a nie „czy widzę panel X".
+    /// Tylko przełącznik podglądu — pasek filtru ma **systemowy** przycisk
+    /// zwijania po lewej stronie belki i drugi, własny, byłby powtórzeniem.
+    ///
+    /// Pierwsze podejście dało tu trzy przyciski układów paneli, zgodnie
+    /// z przekazaniem projektowym. W belce wyszły z tego trzy osobne bąble
+    /// dublujące systemowy przełącznik — projekt nie wiedział, że macOS jeden
+    /// już daje. Ta sama para co przy metadanych w `CullView`.
     @ViewBuilder
-    private var layoutControl: some View {
-        ControlGroup {
-            Button { sidebarVisible = true; inspectorVisible = true } label: {
-                Image(systemName: "rectangle.split.3x1")
-            }
-            .help("filtr, siatka i podgląd")
-            Button { sidebarVisible = true; inspectorVisible = false } label: {
-                Image(systemName: "rectangle.leadinghalf.inset.filled")
-            }
-            .help("filtr i siatka")
-            Button { sidebarVisible = false; inspectorVisible = true } label: {
-                Image(systemName: "rectangle.trailinghalf.inset.filled")
-            }
-            .help("siatka i podgląd")
+    private var inspectorControl: some View {
+        Button {
+            inspectorVisible.toggle()
+        } label: {
+            Label("podgląd", systemImage: "sidebar.trailing")
+                .labelStyle(.iconOnly)
         }
+        .help("Podgląd i metadane")
     }
 
     private var thumbSlider: some View {
-        HStack(spacing: 6) {
-            Image(systemName: "square.grid.3x3").font(.caption2).foregroundStyle(.secondary)
-            Slider(value: $thumbSize, in: 80...280) { Text("rozmiar") }
-                .frame(width: 120)
-                .help("rozmiar kafelka")
+        Slider(value: $thumbSize, in: 80...280) {
+            Text("rozmiar kafelka")
+        } minimumValueLabel: {
+            Image(systemName: "square.grid.3x3").font(.caption2)
+        } maximumValueLabel: {
+            Image(systemName: "square").font(.caption2)
         }
+        .labelsHidden()
+        .frame(width: 130)
+        .help("rozmiar kafelka")
     }
 
     /// `NavigationSplitView` mówi o widoczności trzema stanami, a nas
@@ -558,6 +567,7 @@ struct RootView: View {
                 }
             } label: {
                 Label("wczytaj cechy", systemImage: "camera.metering.spot")
+                    .labelStyle(.iconOnly)
             }
             .help(importer.summary
                   ?? "Czyta ostrość, ekspozycję i twarze z baz biblioteki Zdjęć")
@@ -575,14 +585,11 @@ struct RootView: View {
     @ViewBuilder
     private var fingerprintControl: some View {
         if similarity.isWorking {
-            HStack(spacing: 8) {
-                ProgressView(value: Double(similarity.progress),
-                             total: Double(max(similarity.total, 1)))
-                    .frame(width: 110)
-                Text("\(similarity.progress) / \(similarity.total)")
-                    .font(.caption.monospacedDigit())
-                    .foregroundStyle(.secondary)
-            }
+            // Postęp ma swoje miejsce w pasku stanu na dole okna — tu
+            // wystarczy znak, że coś trwa. Inaczej belka rozpycha się w trakcie
+            // liczenia i chowa resztę przycisków pod chevronem.
+            ProgressView()
+                .controlSize(.small)
         } else {
             Button {
                 Task {
@@ -592,6 +599,7 @@ struct RootView: View {
                 }
             } label: {
                 Label("policz odciski", systemImage: "wand.and.stars")
+                    .labelStyle(.iconOnly)
             }
             .help("Liczy odciski wizualne dla całej biblioteki")
         }
