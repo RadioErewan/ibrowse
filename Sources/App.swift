@@ -391,7 +391,6 @@ struct RootView: View {
                             Label("wróć do siatki", systemImage: "chevron.left")
                         }
                         .help("esc")
-                        .keyboardShortcut(.cancelAction)
                     } else {
                         // Ikony zamiast napisów: dwa segmenty z tekstem stały
                         // obok drugiego segmentowanego przełącznika i belka

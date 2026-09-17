@@ -186,10 +186,16 @@ struct CullView: View {
             if !open { focused = true }
         }
         #if os(macOS)
-        // `esc` obsłużone tu, a nie tylko skrótem przycisku w belce: ten widok
-        // ma focus, więc dostaje klawisz pierwszy i nie ma sensu liczyć na to,
-        // że przeleci wyżej.
-        .onExitCommand { onExit?() }
+        // `esc` przez `onKeyPress`, nie przez `onExitCommand`.
+        //
+        // `onExitCommand` deklaruje się jako obsłużone nawet wtedy, gdy nic nie
+        // robi, więc klawisz znikał bez dźwięku i bez skutku. `onKeyPress`
+        // w tym widoku działa na pewno — tą samą drogą chodzą oceny `1`–`5`,
+        // które nie przestały reagować.
+        .onKeyPress(.escape) {
+            onExit?()
+            return .handled
+        }
         #endif
         .onKeyPress(.leftArrow) { step(-1); return .handled }
         .onKeyPress(.rightArrow) { step(1); return .handled }
