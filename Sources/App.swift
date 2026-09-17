@@ -1,3 +1,4 @@
+import Photos
 import SwiftData
 import SwiftUI
 
@@ -169,7 +170,21 @@ struct RootView: View {
     /// Pasek filtru jest **widokiem**, nie czynnością, więc jego stan przeżywa
     /// zamknięcie aplikacji tak samo jak stan inspektora metadanych.
     @AppStorage("filters.sidebar") private var sidebarVisible = true
+    @AppStorage("preview.inspector") private var inspectorVisible = true
+    @AppStorage("grid.thumb") private var thumbSize = 140.0
+    @StateObject private var metadata = MetadataIndex()
+
+    /// Pełny ekran nie jest trybem, tylko **stanem** przestrzeni roboczej.
+    ///
+    /// Wchodzi się w niego dwuklikiem w kafelek, wychodzi klawiszem `esc` —
+    /// i wraca na to samo zdjęcie, bo wskaźnik miejsca jest wspólny. Gdyby był
+    /// trybem, trzeba by go wybierać z listy i pamiętać, że się w nim jest.
+    @State private var fullScreen = false
     #endif
+
+    /// Zaznaczone zdjęcia. Puste znaczy „operacje dotyczą całego filtru" —
+    /// to jest domyślny stan i celowo użyteczny sam w sobie.
+    @State private var selection: Set<String> = []
 
     /// Jedno miejsce, w którym stoi praca — wspólne dla wszystkich trybów.
     ///
@@ -191,7 +206,17 @@ struct RootView: View {
         case pair = "parowanie"
         var id: String { rawValue }
 
-        static var available: [Mode] { allCases }
+        /// Na Macu **ocenianie zniknęło z listy**, bo przestało być trybem:
+        /// przestrzeń robocza pokazuje zaznaczone zdjęcie w podglądzie, a pełny
+        /// ekran wywołuje się dwuklikiem i opuszcza `esc`. Na telefonie zostaje,
+        /// bo tam nie ma trzech kolumn i ocenianie **jest** osobnym ekranem.
+        static var available: [Mode] {
+            #if os(macOS)
+            [.grid, .pair]
+            #else
+            allCases
+            #endif
+        }
 
         var icon: String {
             switch self {
@@ -316,21 +341,46 @@ struct RootView: View {
                 .navigationSplitViewColumnWidth(min: 190, ideal: 230, max: 340)
         } detail: {
             VStack(spacing: 0) {
-                screen(mode)
+                if fullScreen {
+                    // Pełny ekran zabiera całą szerokość: obie kolumny znikają,
+                    // bo po to się w niego wchodzi. Wyjście `esc` przywraca je
+                    // razem ze zdjęciem, na którym stała praca.
+                    CullView(
+                        library: library, filters: filters, monitor: monitor,
+                        features: features, focusID: $focusID
+                    )
+                } else {
+                    workspace
+                }
                 StatusStrip(similarity: similarity, sync: sync, albums: albums)
             }
             .animation(.easeInOut(duration: 0.2), value: similarity.isWorking)
             .animation(.easeInOut(duration: 0.2), value: sync.isWorking)
+            .onExitCommand { fullScreen = false }
             .toolbar {
                 ToolbarItem(placement: .navigation) {
-                    Picker("", selection: $mode) {
-                        ForEach(Mode.available) { Text($0.rawValue).tag($0) }
+                    if fullScreen {
+                        Button {
+                            fullScreen = false
+                        } label: {
+                            Label("wróć do siatki", systemImage: "chevron.left")
+                        }
+                        .help("esc")
+                    } else {
+                        Picker("", selection: $mode) {
+                            ForEach(Mode.available) { Text($0.rawValue).tag($0) }
+                        }
+                        .pickerStyle(.segmented)
+                        .labelsHidden()
+                        .frame(width: 180)
                     }
-                    .pickerStyle(.segmented)
-                    .labelsHidden()
-                    .frame(width: 260)
                 }
                 ToolbarItemGroup(placement: .primaryAction) {
+                    if !fullScreen && mode == .grid {
+                        layoutControl
+                        thumbSlider
+                        Divider()
+                    }
                     fingerprintControl
                     featureControl
                     syncControl
@@ -346,14 +396,74 @@ struct RootView: View {
     }
 
     #if os(macOS)
+    /// Środek przestrzeni roboczej. Inspektor wisi **tutaj**, a nie na całym
+    /// detalu, bo w pełnym ekranie i w parowaniu nie ma czego w nim pokazywać,
+    /// a `CullView` ma własny panel metadanych pod klawiszem `I`.
+    @ViewBuilder
+    private var workspace: some View {
+        screen(mode)
+            .inspector(isPresented: inspectorBinding) {
+                PreviewInspector(
+                    asset: previewAsset,
+                    library: library,
+                    metadata: metadata,
+                    selectionCount: selection.count,
+                    onFullScreen: { fullScreen = true }
+                )
+                .inspectorColumnWidth(min: 300, ideal: 390, max: 520)
+            }
+    }
+
+    /// Podgląd pokazuje zdjęcie spod wskaźnika miejsca, bo każde kliknięcie
+    /// w kafelek ustawia go razem z zaznaczeniem. Dzięki temu nie trzeba
+    /// osobno pamiętać, które z zaznaczonych jest „tym pierwszym".
+    private var previewAsset: PHAsset? {
+        guard let focusID else { return nil }
+        return library.asset(id: focusID)
+    }
+
+    private var inspectorBinding: Binding<Bool> {
+        Binding(get: { inspectorVisible && mode == .grid },
+                set: { inspectorVisible = $0 })
+    }
+
+    /// Trzy układy paneli zamiast dwóch osobnych przełączników — bo pytanie
+    /// brzmi „na czym się teraz skupiam", a nie „czy widzę panel X".
+    @ViewBuilder
+    private var layoutControl: some View {
+        ControlGroup {
+            Button { sidebarVisible = true; inspectorVisible = true } label: {
+                Image(systemName: "rectangle.split.3x1")
+            }
+            .help("filtr, siatka i podgląd")
+            Button { sidebarVisible = true; inspectorVisible = false } label: {
+                Image(systemName: "rectangle.leadinghalf.inset.filled")
+            }
+            .help("filtr i siatka")
+            Button { sidebarVisible = false; inspectorVisible = true } label: {
+                Image(systemName: "rectangle.trailinghalf.inset.filled")
+            }
+            .help("siatka i podgląd")
+        }
+    }
+
+    private var thumbSlider: some View {
+        HStack(spacing: 6) {
+            Image(systemName: "square.grid.3x3").font(.caption2).foregroundStyle(.secondary)
+            Slider(value: $thumbSize, in: 80...280) { Text("rozmiar") }
+                .frame(width: 120)
+                .help("rozmiar kafelka")
+        }
+    }
+
     /// `NavigationSplitView` mówi o widoczności trzema stanami, a nas
     /// interesują dwa. `.all` i `.detailOnly` to jedyne, które ma sens przy
     /// dwóch kolumnach; `.automatic` zostawiamy systemowi przy pierwszym
     /// otwarciu i zapisujemy dopiero to, co użytkownik wybierze sam.
     private var sidebarBinding: Binding<NavigationSplitViewVisibility> {
         Binding(
-            get: { sidebarVisible ? .all : .detailOnly },
-            set: { sidebarVisible = $0 != .detailOnly }
+            get: { sidebarVisible && !fullScreen ? .all : .detailOnly },
+            set: { if !fullScreen { sidebarVisible = $0 != .detailOnly } }
         )
     }
     #endif
@@ -367,11 +477,17 @@ struct RootView: View {
                 monitor: monitor,
                 filters: filters,
                 features: features,
+                selection: $selection,
+                focusID: $focusID,
                 onOpen: { asset in
                     focusID = asset.localIdentifier
+                    #if os(macOS)
+                    // Na Macu dwuklik wchodzi w pełny ekran, nie w osobny tryb.
+                    fullScreen = true
+                    #else
                     self.mode = .cull
-                },
-                focusID: focusID
+                    #endif
+                }
             )
         case .cull:
             CullView(

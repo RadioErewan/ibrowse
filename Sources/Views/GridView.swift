@@ -22,19 +22,24 @@ struct GridView: View {
     /// każdym naciśnięciu klawisza.
     @ObservedObject var features: FeatureIndex
 
-    /// Stuknięcie w kafelek wchodzi w ocenianie od tego zdjęcia (na Macu
-    /// dwuklik). To jedyne zadanie siatki: nawigacja po archiwum i wejście
-    /// w wybranym miejscu. Sama przeglądarka miniatur nie służy do oceniania
-    /// — kusi do przewijania, a nie do decydowania.
-    var onOpen: (PHAsset) -> Void = { _ in }
+    /// Zaznaczone zdjęcia. Puste znaczy „operacje dotyczą całego filtru".
+    ///
+    /// Na Macu **pojedynczy klik zaznacza i karmi podgląd**, `⌘` dokłada
+    /// i zdejmuje pojedyncze, `⇧` zaznacza zakres od wskaźnika miejsca.
+    /// Na telefonie zaznaczania nie ma: tam stuknięcie otwiera zdjęcie, bo tak
+    /// działa każda galeria i nie ma czym zaznaczać.
+    @Binding var selection: Set<String>
 
-    /// Zdjęcie, na którym stoi praca w pozostałych trybach. Siatka przewija
-    /// się do niego przy wejściu i oznacza je ramką.
+    /// Zdjęcie, na którym stoi praca — wspólne dla całej aplikacji. Siatka
+    /// przewija się do niego przy wejściu, oznacza ramką i **ustawia przy
+    /// każdym kliknięciu**, bo to ono karmi podgląd w trzeciej kolumnie.
     ///
     /// Bez tego powrót z oceniania lądował na początku archiwum — po godzinie
-    /// pracy w 2019 roku dostawało się widok pierwszego zdjęcia z 2007
-    /// i trzeba było odnajdywać się ręcznie.
-    var focusID: String?
+    /// pracy w 2019 roku dostawało się widok pierwszego zdjęcia z 2007.
+    @Binding var focusID: String?
+
+    /// Wejście w pełny ekran: na Macu dwuklik, na telefonie stuknięcie.
+    var onOpen: (PHAsset) -> Void = { _ in }
 
     /// Siatka rysuje gwiazdki i filtruje po stanie oceny — puste rekordy
     /// niosące same cechy systemu nie zmieniają w niej nic, a jest ich
@@ -54,7 +59,9 @@ struct GridView: View {
     private var marked: [Review] { reviews.filter(\.markedForDeletion) }
 
     #if os(macOS)
-    @State private var thumbSize: Double = 140
+    /// Ten sam klucz, co suwak w belce narzędzi — `@AppStorage` trzyma oba
+    /// w zgodzie bez przekazywania wiązania przez pół aplikacji.
+    @AppStorage("grid.thumb") private var thumbSize = 140.0
     #else
     /// Na telefonie kafelek dobiera się sam — cztery kolumny mieszczą się
     /// wygodnie w kciuku i nie wymagają regulacji.
@@ -74,26 +81,27 @@ struct GridView: View {
             // dużym ekranie. Na telefonie zabierają jedną trzecią widoku
             // i nie dają nic w zamian — zdjęcia mają zajmować ekran.
             #if os(macOS)
-            HStack(spacing: 12) {
-                Image(systemName: "square.grid.2x2")
-                Slider(value: $thumbSize, in: 80...280) { Text("rozmiar") }
-                    .frame(width: 180)
-                Spacer()
-                if filters.axis != .none {
-                    Text(filters.feature == .any ? filters.order.rawValue : filters.feature.hint)
-                        .font(.caption)
-                        .foregroundStyle(.tertiary)
-                }
+            // Belka nad siatką. Suwak rozmiaru przeniósł się stąd do belki
+            // narzędzi okna — tam należy, bo dotyczy widoku, nie zbioru.
+            HStack(spacing: 10) {
+                orderMenu
+                Text(filters.order == .library
+                     ? "kolejność biblioteki"
+                     : "„następne” idzie tą samą kolejką")
+                    .font(.caption)
+                    .foregroundStyle(.tertiary)
+                    .lineLimit(1)
+                Spacer(minLength: 8)
                 PerfOverlay(monitor: monitor, total: shown.count)
             }
-            .padding(.horizontal, 14)
-            .padding(.vertical, 8)
+            .padding(.horizontal, 12)
+            .padding(.vertical, 6)
 
             Divider()
             #endif
 
             if filters.isActive {
-                selection(shown)
+                groupBar(shown)
                 Divider()
             }
 
@@ -111,18 +119,31 @@ struct GridView: View {
                                 side: thumbSize,
                                 rating: reviewIndex[asset.localIdentifier]?.stars ?? 0,
                                 badge: filters.badge(for: asset.localIdentifier, in: features),
-                                isFocus: asset.localIdentifier == focusID
+                                isFocus: asset.localIdentifier == focusID,
+                                isSelected: selection.contains(asset.localIdentifier)
                             )
                             // Na telefonie otwiera pojedyncze stuknięcie, bo
                             // tak działa każda galeria i nie ma tu czego
                             // zaznaczać. Przewijaniu to nie przeszkadza: gest
                             // dotknięcia nie odpala się, gdy palec wędruje.
-                            // Na Macu zostaje dwuklik — pojedyncze kliknięcie
-                            // należy się zaznaczaniu.
                             #if os(iOS)
                             .onTapGesture { onOpen(asset) }
                             #else
+                            // Kolejność ma znaczenie: dwuklik musi być wpięty
+                            // **przed** pojedynczym, inaczej pierwszy klik
+                            // zjada gest i druga połowa nigdy nie dochodzi.
                             .onTapGesture(count: 2) { onOpen(asset) }
+                            .simultaneousGesture(
+                                TapGesture().modifiers(.command).onEnded {
+                                    toggle(asset, in: shown)
+                                }
+                            )
+                            .simultaneousGesture(
+                                TapGesture().modifiers(.shift).onEnded {
+                                    extend(to: asset, in: shown)
+                                }
+                            )
+                            .onTapGesture { pick(asset) }
                             #endif
                         }
                     }
@@ -142,6 +163,54 @@ struct GridView: View {
         }
     }
 
+    #if os(macOS)
+    /// Kolejność wyprowadzona z panelu filtru **na belkę nad siatką**.
+    ///
+    /// Bo to nie jest warunek — nie odsiewa niczego, tylko rozstrzyga, co
+    /// znaczy „następne zdjęcie". Przestawia się w trakcie pracy dużo częściej
+    /// niż rok czy cecha, więc należy jej się miejsce pod ręką.
+    private var orderMenu: some View {
+        Picker("kolejność", selection: $filters.order) {
+            ForEach(Filters.Order.allCases) { Text($0.rawValue).tag($0) }
+        }
+        .pickerStyle(.menu)
+        .labelsHidden()
+        .fixedSize()
+    }
+
+    /// Zwykły klik zastępuje całe zaznaczenie i przestawia wskaźnik miejsca.
+    private func pick(_ asset: PHAsset) {
+        selection = [asset.localIdentifier]
+        focusID = asset.localIdentifier
+    }
+
+    /// `⌘` dokłada i zdejmuje pojedyncze zdjęcie.
+    private func toggle(_ asset: PHAsset, in shown: [PHAsset]) {
+        let id = asset.localIdentifier
+        if selection.contains(id) {
+            selection.remove(id)
+        } else {
+            selection.insert(id)
+            focusID = id
+        }
+    }
+
+    /// `⇧` zaznacza zakres od wskaźnika miejsca do klikniętego zdjęcia —
+    /// **w kolejności zbioru roboczego**, nie w kolejności biblioteki. To jest
+    /// ta sama kolejka, po której chodzi pełny ekran, więc zakres znaczy
+    /// dokładnie to, co widać między dwoma kafelkami.
+    private func extend(to asset: PHAsset, in shown: [PHAsset]) {
+        let id = asset.localIdentifier
+        guard let anchor = focusID,
+              let from = shown.firstIndex(where: { $0.localIdentifier == anchor }),
+              let to = shown.firstIndex(where: { $0.localIdentifier == id })
+        else { return pick(asset) }
+
+        let range = from <= to ? from...to : to...from
+        selection.formUnion(shown[range].map(\.localIdentifier))
+    }
+    #endif
+
     /// Pasek pojawia się **tylko przy założonym filtrze** i to jest cała jego
     /// logika. Filtr znalazł pulę — dopiero wtedy jest co robić z pulą jako
     /// całością. Bez filtru zabierałby wysokość na przycisk bez sensu, a na
@@ -152,11 +221,15 @@ struct GridView: View {
     /// a odkąd filtr potrafi wyciąć 208 zrzutów ekranu, klikanie ich po kolei
     /// przestaje mieć sens.
     @ViewBuilder
-    private func selection(_ shown: [PHAsset]) -> some View {
-        HStack(spacing: 10) {
-            Text("\(shown.count)")
+    private func groupBar(_ shown: [PHAsset]) -> some View {
+        let targets = selection.isEmpty ? shown.map(\.localIdentifier) : Array(selection)
+
+        return HStack(spacing: 10) {
+            Text("\(targets.count)")
                 .font(.callout.monospacedDigit().weight(.semibold))
-            Text(shown.count == 1 ? "zdjęcie w tym filtrze" : "zdjęć w tym filtrze")
+            Text(selection.isEmpty
+                 ? (shown.count == 1 ? "zdjęcie w tym filtrze" : "zdjęć w tym filtrze")
+                 : "zaznaczone · \(shown.count) w tym filtrze")
                 .foregroundStyle(.secondary)
                 .lineLimit(1)
 
@@ -184,12 +257,19 @@ struct GridView: View {
                 #endif
             }
 
+            if !selection.isEmpty {
+                Button { selection = [] } label: { Text("odznacz") }
+                    #if os(iOS)
+                    .font(.caption)
+                    #endif
+            }
+
             Button(role: .destructive) {
                 confirming = true
             } label: {
                 Label("oznacz do usunięcia", systemImage: "trash")
             }
-            .disabled(shown.isEmpty)
+            .disabled(targets.isEmpty)
             #if os(iOS)
             .font(.caption)
             #endif
@@ -204,14 +284,11 @@ struct GridView: View {
             DeletionReview(library: library, reviews: marked)
         }
         .confirmationDialog(
-            "Oznaczyć \(shown.count) zdjęć do usunięcia?",
+            "Oznaczyć \(targets.count) zdjęć do usunięcia?",
             isPresented: $confirming, titleVisibility: .visible
         ) {
-            Button("Oznacz \(shown.count)", role: .destructive) {
-                let changed = Review.mark(
-                    shown.map(\.localIdentifier), deleted: true, in: context
-                )
-                lastMarked = changed
+            Button("Oznacz \(targets.count)", role: .destructive) {
+                lastMarked = Review.mark(targets, deleted: true, in: context)
             }
             Button("Anuluj", role: .cancel) {}
         } message: {
@@ -268,12 +345,17 @@ struct Thumbnail: View {
     /// Patrz `Filters.badge(for:in:)`.
     var badge: String? = nil
 
-    /// Zdjęcie, od którego przyszliśmy z innego trybu. Samo przewinięcie nie
-    /// wystarcza — wśród setek podobnych kafelków środek ekranu nic nie znaczy.
+    /// Zdjęcie, na którym stoi praca. Samo przewinięcie nie wystarcza — wśród
+    /// setek podobnych kafelków środek ekranu nic nie znaczy.
     let isFocus: Bool
+
+    /// Zaznaczone do operacji na grupie. Rysowane inaczej niż wskaźnik
+    /// miejsca, bo to dwie różne rzeczy: tu stoję kontra to wybrałem.
+    var isSelected: Bool = false
 
     @State private var image: PlatformImage?
     @State private var request: PHImageRequestID?
+    @State private var hovering = false
 
     var body: some View {
         ZStack {
@@ -283,7 +365,7 @@ struct Thumbnail: View {
                     .resizable()
                     .scaledToFill()
             }
-            if let badge {
+            if let badge, showsBadge {
                 VStack {
                     HStack {
                         Text(badge)
@@ -317,11 +399,23 @@ struct Thumbnail: View {
         .frame(width: side, height: side)
         .clipped()
         .overlay {
+            if isSelected {
+                Rectangle().fill(Color.accentColor.opacity(0.22))
+            }
+        }
+        .overlay {
+            // Wskaźnik miejsca wygrywa rysunkowo z zaznaczeniem, bo jest
+            // jeden, a zaznaczonych bywa dwieście.
             if isFocus {
                 Rectangle().strokeBorder(.yellow, lineWidth: 3)
+            } else if isSelected {
+                Rectangle().strokeBorder(Color.accentColor, lineWidth: 2)
             }
         }
         .contentShape(Rectangle())
+        #if os(macOS)
+        .onHover { hovering = $0 }
+        #endif
         .onAppear { load() }
         .onDisappear { cancel() }
     }
@@ -342,6 +436,20 @@ struct Thumbnail: View {
             request = nil
             monitor.didFinishLoad()
         }
+    }
+
+    /// Plakietka miary **przy najechaniu**, nie na stałe.
+    ///
+    /// Sto kafelków z liczbą w rogu to ściana cyfr na zdjęciach, a to ma być
+    /// przeglądarka zdjęć. Miara nie jest potrzebna przy przeglądaniu — jest
+    /// potrzebna przy decyzji, czyli wtedy, gdy kursor już stoi na kafelku.
+    /// Na telefonie nie ma najechania, więc tam zostaje widoczna.
+    private var showsBadge: Bool {
+        #if os(macOS)
+        hovering || isFocus
+        #else
+        true
+        #endif
     }
 
     /// Skala **tego** ekranu, nie „głównego" — patrz komentarz w `Loupe`.
