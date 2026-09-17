@@ -9,6 +9,15 @@ struct AssetImage: View {
     let library: PhotoLibrary
     var targetSize: CGSize = CGSize(width: 2048, height: 2048)
 
+    /// Własne plakietki widoku — licznik pikseli i „dociągam z iCloud".
+    ///
+    /// Wyłączane tam, gdzie zdjęcie jest jednym z dwóch obok siebie i ma
+    /// własne podpisy: dwie warstwy kapsuł w tych samych rogach nakładają się
+    /// na siebie, a plakietka dociągania miga przy każdej kolejnej wersji
+    /// zdjęcia przysłanej przez PhotoKit. Przy jednym zdjęciu to sygnał,
+    /// przy dwóch — migotanie.
+    var chrome: Bool = true
+
     @State private var image: PlatformImage?
     @State private var isDegraded = true
     @State private var request: PHImageRequestID?
@@ -28,7 +37,7 @@ struct AssetImage: View {
             // z iCloud. Bez tego łatwo ocenić ostrość na podglądzie 360px.
             // Faktyczna rozdzielczość tego, co widzisz — żeby dało się
             // odróżnić lokalny podgląd od dociągniętego oryginału.
-            if let image {
+            if let image, chrome {
                 VStack {
                     HStack {
                         Text(Self.pixels(image))
@@ -43,7 +52,7 @@ struct AssetImage: View {
                 }
             }
 
-            if isDegraded && image != nil {
+            if isDegraded && image != nil && chrome {
                 VStack {
                     Spacer()
                     HStack {

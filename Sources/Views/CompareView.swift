@@ -26,10 +26,24 @@ struct CompareView: View {
     /// Bez tego porównanie ostrości nie działa: patrzy się wtedy na dwa różne
     /// wycinki dwóch różnych kadrów i wygrywa ten, który akurat trafił w oko.
     @AppStorage("compare.sharedZoom") private var sharedZoom = true
-    @State private var scale: Double = 1
-    @State private var offset: CGSize = .zero
-    @State private var settled: CGSize = .zero
-    @FocusState private var focused: Bool
+
+    /// Powiększenie jednego panelu. Przy wspólnym obie strony czytają i piszą
+    /// ten sam zestaw, przy osobnym każda swój — dlatego to jest struktura,
+    /// a nie trzy luźne pola.
+    struct Zoom {
+        var scale: Double = 1
+        var offset: CGSize = .zero
+        var settled: CGSize = .zero
+    }
+
+    @State private var left = Zoom()
+    @State private var right = Zoom()
+
+    /// Przy wspólnym powiększeniu prawa strona czyta stan lewej. To jest cały
+    /// mechanizm: jedno źródło zamiast dwóch zsynchronizowanych.
+    private var rightZoom: Binding<Zoom> {
+        sharedZoom ? $left : $right
+    }
 
     private var a: PHAsset? { pair.flatMap { library.asset(id: $0.a) } }
     private var b: PHAsset? { pair.flatMap { library.asset(id: $0.b) } }
@@ -40,8 +54,8 @@ struct CompareView: View {
             Divider()
 
             HStack(spacing: 2) {
-                pane(a, mark: "A", tint: .yellow)
-                pane(b, mark: "B", tint: .accentColor)
+                pane(a, mark: "A", tint: .yellow, zoom: $left)
+                pane(b, mark: "B", tint: .accentColor, zoom: rightZoom)
             }
             .frame(maxHeight: .infinity)
 
@@ -49,22 +63,35 @@ struct CompareView: View {
             strip
         }
         .background(Color.black)
-        .focusable()
-        .focusEffectDisabled()
-        .focused($focused)
-        .onAppear { focused = true }
-        .onExitCommand(perform: onClose)
-        .onKeyPress(.leftArrow) { step(-1, side: .b); return .handled }
-        .onKeyPress(.rightArrow) { step(1, side: .b); return .handled }
-        .onKeyPress(.tab) { swap(); return .handled }
-        .onKeyPress { press in
-            guard press.modifiers.contains(.shift) else { return .ignored }
-            switch press.key {
-            case .leftArrow: step(-1, side: .a); return .handled
-            case .rightArrow: step(1, side: .a); return .handled
-            default: return .ignored
-            }
+        .background { keys }
+        // Nowy kadr zawsze wchodzi dopasowany. Bez tego zdjęcie o innych
+        // proporcjach wjeżdża przesunięte poza panel i wygląda na puste.
+        .task(id: "\(pair?.a ?? "")|\(pair?.b ?? "")") {
+            left = Zoom()
+            right = Zoom()
         }
+    }
+
+    /// Klawiatura przez **skróty przycisków**, nie przez `onKeyPress`.
+    ///
+    /// `onKeyPress` wymaga, żeby widok miał focus, a w tym oknie zabierał go
+    /// przełącznik wspólnego powiększenia i pasek miniatur — strzałki i `esc`
+    /// milczały, i nie dało się stąd wyjść inaczej niż myszą. Skrót przycisku
+    /// idzie łańcuchem odpowiedzi i działa niezależnie od tego, co ma focus.
+    ///
+    /// Przyciski są niewidoczne, ale **nie** `hidden` — ukryte tracą skróty.
+    @ViewBuilder
+    private var keys: some View {
+        VStack {
+            Button("") { step(-1, side: .b) }.keyboardShortcut(.leftArrow, modifiers: [])
+            Button("") { step(1, side: .b) }.keyboardShortcut(.rightArrow, modifiers: [])
+            Button("") { step(-1, side: .a) }.keyboardShortcut(.leftArrow, modifiers: .shift)
+            Button("") { step(1, side: .a) }.keyboardShortcut(.rightArrow, modifiers: .shift)
+            Button("") { swap() }.keyboardShortcut("s", modifiers: [])
+        }
+        .opacity(0)
+        .allowsHitTesting(false)
+        .frame(width: 0, height: 0)
     }
 
     private var bar: some View {
@@ -77,6 +104,11 @@ struct CompareView: View {
 
             Spacer()
 
+            Text("← → zmienia B · ⇧← ⇧→ zmienia A · S zamienia strony")
+                .font(.caption.monospaced())
+                .foregroundStyle(.tertiary)
+                .lineLimit(1)
+
             Toggle("wspólne powiększenie", isOn: $sharedZoom)
                 .toggleStyle(.switch)
                 .controlSize(.small)
@@ -86,6 +118,7 @@ struct CompareView: View {
                 .buttonStyle(.plain)
                 .font(.caption.monospaced())
                 .foregroundStyle(.tertiary)
+                .keyboardShortcut(.cancelAction)
         }
         .padding(.horizontal, 14)
         .padding(.vertical, 10)
@@ -93,16 +126,19 @@ struct CompareView: View {
     }
 
     @ViewBuilder
-    private func pane(_ asset: PHAsset?, mark: String, tint: Color) -> some View {
+    private func pane(
+        _ asset: PHAsset?, mark: String, tint: Color, zoom: Binding<Zoom>
+    ) -> some View {
         ZStack {
             Color.black
             if let asset {
                 AssetImage(
                     asset: asset, library: library,
-                    targetSize: CGSize(width: 2048, height: 2048)
+                    targetSize: CGSize(width: 2048, height: 2048),
+                    chrome: false
                 )
-                .scaleEffect(scale)
-                .offset(offset)
+                .scaleEffect(zoom.wrappedValue.scale)
+                .offset(zoom.wrappedValue.offset)
                 .clipped()
             }
         }
@@ -113,15 +149,28 @@ struct CompareView: View {
         .gesture(
             DragGesture()
                 .onChanged { value in
-                    offset = CGSize(width: settled.width + value.translation.width,
-                                    height: settled.height + value.translation.height)
+                    zoom.wrappedValue.offset = CGSize(
+                        width: zoom.wrappedValue.settled.width + value.translation.width,
+                        height: zoom.wrappedValue.settled.height + value.translation.height
+                    )
                 }
-                .onEnded { _ in settled = offset }
+                .onEnded { _ in zoom.wrappedValue.settled = zoom.wrappedValue.offset }
         )
         .gesture(
             MagnifyGesture()
-                .onChanged { scale = max(1, $0.magnification) }
+                .onChanged { zoom.wrappedValue.scale = max(1, $0.magnification) }
         )
+        .overlay(alignment: .topTrailing) {
+            if zoom.wrappedValue.scale > 1.01 {
+                Text(String(format: "%.0f%%", zoom.wrappedValue.scale * 100))
+                    .font(.caption.monospacedDigit())
+                    .foregroundStyle(.white)
+                    .padding(.horizontal, 8)
+                    .padding(.vertical, 4)
+                    .background(.black.opacity(0.66), in: RoundedRectangle(cornerRadius: 6))
+                    .padding(8)
+            }
+        }
     }
 
     private func label(_ mark: String, tint: Color) -> some View {
@@ -155,9 +204,10 @@ struct CompareView: View {
                     .foregroundStyle(.white.opacity(0.7))
             }
         }
-        .padding(.horizontal, 10)
+        .fixedSize()
+        .padding(.horizontal, 12)
         .padding(.vertical, 6)
-        .background(.black.opacity(0.66), in: Capsule())
+        .background(.black.opacity(0.66), in: RoundedRectangle(cornerRadius: 8))
         .padding(10)
     }
 
