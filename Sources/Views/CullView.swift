@@ -421,7 +421,9 @@ struct CullView: View {
     /// ich odkryć myszą — a to dwie najczęstsze decyzje przy odsiewie. Ten sam
     /// rysunek w filtrze i w ocenianiu znaczy też, że jedno uczy drugiego.
     private var stars: some View {
-        HStack(spacing: 3) {
+        let isZero = currentReview?.isRated == true && currentReview?.stars == 0
+
+        return HStack(spacing: 3) {
             if let review = currentReview, review.isRated {
                 Text(String(format: "%.2f", review.weight))
                     .font(.caption.monospacedDigit())
@@ -431,23 +433,26 @@ struct CullView: View {
 
             gradeButton(
                 symbol: currentReview?.markedForDeletion == true ? "trash.fill" : "trash",
-                tint: .red,
+                tint: AnyShapeStyle(Color.red),
                 isOn: currentReview?.markedForDeletion == true,
                 help: "do usunięcia — X"
             ) { toggleDeletion(advance: false) }
 
+            // Zero to **gwiazdka bez żółtego**, nie przekreślona: kolor niesie
+            // ocenę wprost, więc brak koloru przy wypełnionym kształcie czyta
+            // się jako „oceniono na dno". Pusty obrys to co innego — zdjęcie,
+            // którego nikt jeszcze nie dotknął.
             gradeButton(
-                symbol: currentReview?.stars == 0 && currentReview?.isRated == true
-                    ? "star.slash.fill" : "star.slash",
-                tint: .yellow,
-                isOn: currentReview?.stars == 0 && currentReview?.isRated == true,
+                symbol: isZero ? "star.fill" : "star",
+                tint: AnyShapeStyle(.secondary),
+                isOn: isZero,
                 help: "zero — 0"
             ) { rate(0, advance: false) }
 
             ForEach(1...5, id: \.self) { value in
                 gradeButton(
                     symbol: value <= (currentReview?.stars ?? 0) ? "star.fill" : "star",
-                    tint: .yellow,
+                    tint: AnyShapeStyle(Color.yellow),
                     isOn: value <= (currentReview?.stars ?? 0),
                     help: "\(value) — klawisz \(value)"
                 ) { rate(Double(value), advance: false) }
@@ -457,10 +462,10 @@ struct CullView: View {
     }
 
     private func gradeButton(
-        symbol: String, tint: Color, isOn: Bool, help: String, action: @escaping () -> Void
+        symbol: String, tint: AnyShapeStyle, isOn: Bool, help: String, action: @escaping () -> Void
     ) -> some View {
         Image(systemName: symbol)
-            .foregroundStyle(isOn ? tint : Color.secondary.opacity(0.35))
+            .foregroundStyle(isOn ? tint : AnyShapeStyle(Color.secondary.opacity(0.35)))
             // Pole trafienia większe niż sam znak: przy piętnastu punktach
             // i trzech odstępu trzeba by celować.
             .padding(.horizontal, 3)

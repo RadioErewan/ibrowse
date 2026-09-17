@@ -120,21 +120,22 @@ struct PreviewInspector: View {
     private func rating(_ asset: PHAsset) -> some View {
         HStack(spacing: 6) {
             cell(symbol: review?.markedForDeletion == true ? "trash.fill" : "trash",
-                 tint: .red, isOn: review?.markedForDeletion == true, help: "do usunięcia") {
+                 tint: AnyShapeStyle(Color.red), isOn: review?.markedForDeletion == true, help: "do usunięcia") {
                 Review.upsert(assetID: asset.localIdentifier, in: context) {
                     $0.markedForDeletion.toggle()
                 }
             }
 
+            // Zero to gwiazdka bez żółtego — patrz komentarz w `CullView`.
             let isZero = review?.isRated == true && review?.stars == 0
-            cell(symbol: isZero ? "star.slash.fill" : "star.slash",
-                 tint: .yellow, isOn: isZero, help: "zero") {
+            cell(symbol: isZero ? "star.fill" : "star",
+                 tint: AnyShapeStyle(.secondary), isOn: isZero, help: "zero") {
                 Review.upsert(assetID: asset.localIdentifier, in: context) { $0.set(0) }
             }
 
             ForEach(1...5, id: \.self) { value in
                 cell(symbol: value <= (review?.stars ?? 0) ? "star.fill" : "star",
-                     tint: .yellow, isOn: value <= (review?.stars ?? 0), help: "\(value)") {
+                     tint: AnyShapeStyle(Color.yellow), isOn: value <= (review?.stars ?? 0), help: "\(value)") {
                     Review.upsert(assetID: asset.localIdentifier, in: context) {
                         $0.set(Double(value))
                     }
@@ -153,11 +154,12 @@ struct PreviewInspector: View {
     }
 
     private func cell(
-        symbol: String, tint: Color, isOn: Bool, help: String, action: @escaping () -> Void
+        symbol: String, tint: AnyShapeStyle, isOn: Bool, help: String,
+        action: @escaping () -> Void
     ) -> some View {
         Image(systemName: symbol)
             .font(.system(size: 16))
-            .foregroundStyle(isOn ? tint : Color.secondary.opacity(0.35))
+            .foregroundStyle(isOn ? tint : AnyShapeStyle(Color.secondary.opacity(0.35)))
             .padding(.vertical, 4)
             .contentShape(Rectangle())
             .onTapGesture(perform: action)
