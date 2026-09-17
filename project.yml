@@ -14,10 +14,10 @@ settings:
   base:
     SWIFT_VERSION: "5.0"
     SWIFT_STRICT_CONCURRENCY: minimal
-    MARKETING_VERSION: "0.1"
+    MARKETING_VERSION: "0.1.1"
     # Każde wgranie do App Store Connect musi mieć **inny** numer buildu.
     # Podnieś przed wysyłką; wersja marketingowa zmienia się rzadziej.
-    CURRENT_PROJECT_VERSION: "1"
+    CURRENT_PROJECT_VERSION: "2"
 
 targets:
   lightbrary-mac:
@@ -55,6 +55,12 @@ targets:
         DEVELOPMENT_TEAM: $(LIGHTBRARY_TEAM_ID)
         PROVISIONING_PROFILE_SPECIFIER: ""
         ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+      configs:
+        # Uprawnienia tylko w wydaniu, bo tylko tam włączamy hardened runtime.
+        # Codzienna kompilacja deweloperska podpisuje się bez nich i nic jej
+        # nie brakuje — patrz komentarz w samym pliku uprawnień.
+        Release:
+          CODE_SIGN_ENTITLEMENTS: Resources/lightbrary-mac.entitlements
 
   lightbrary-ios:
     type: application

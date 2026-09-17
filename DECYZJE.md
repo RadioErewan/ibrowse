@@ -1138,6 +1138,32 @@ dysku i dystrybucję poza sklepem.
 Czego **nie** brać: jasnego motywu w widokach ze zdjęciami. Powód się nie
 zmienił, choć oni się nim chwalą.
 
+## Wydanie poza sklepem ma inne prawa niż kompilacja u siebie
+
+Pierwsza instalacja na cudzym Macu skończyła się odmową dostępu do biblioteki
+zdjęć — bez pytania, bez wpisu na liście w Ustawieniach → Prywatność → Zdjęcia.
+Wyglądało to na zepsuty system po aktualizacji i przez chwilę tak właśnie było
+zdiagnozowane, błędnie. Zdjęcia działały; nie działała nasza aplikacja.
+
+Przyczyna siedziała w różnicy między tym, co się kompiluje u siebie, a tym, co
+się rozsyła. Wydanie ma włączony **hardened runtime**, bo bez niego nie przejdzie
+notaryzacja. Hardened runtime odcina dostęp do zasobów osobistych, dopóki program
+nie poprosi o nie **w podpisie**, uprawnieniem
+`com.apple.security.personal-information.photos-library`. Klucz
+`NSPhotoLibraryUsageDescription` w `Info.plist` to za mało: on mówi, co pokazać
+w pytaniu, a nie wolno w ogóle pytać.
+
+Odmowa jest przez to niema. `PHPhotoLibrary.requestAuthorization` wraca
+z `.denied` natychmiast, pytanie się nie pojawia, a program nie trafia na listę
+w Ustawieniach — bo z punktu widzenia systemu nigdy o nic nie poprosił.
+`tccutil reset` nie pomaga, bo nie ma czego resetować.
+
+Wniosek na przyszłość szerszy niż ten jeden klucz: **kompilacja deweloperska nie
+jest próbą wydania**. Hardened runtime wyłączony, podpis inny, uprawnienia inne —
+cała warstwa, która decyduje o dostępie do danych, jest u siebie nieaktywna.
+Każda rzecz, o którą aplikacja prosi system, musi być sprawdzona na pakiecie
+po notaryzacji, najlepiej na koncie, które nigdy jej nie widziało.
+
 ## Co czeka
 
 ### Przesunięcie zakresu: z sortownika w przeglądarkę
