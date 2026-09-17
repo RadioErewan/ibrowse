@@ -421,9 +421,7 @@ struct CullView: View {
     /// ich odkryć myszą — a to dwie najczęstsze decyzje przy odsiewie. Ten sam
     /// rysunek w filtrze i w ocenianiu znaczy też, że jedno uczy drugiego.
     private var stars: some View {
-        let isZero = currentReview?.isRated == true && currentReview?.stars == 0
-
-        return HStack(spacing: 3) {
+        HStack(spacing: 3) {
             if let review = currentReview, review.isRated {
                 Text(String(format: "%.2f", review.weight))
                     .font(.caption.monospacedDigit())
@@ -438,24 +436,24 @@ struct CullView: View {
                 help: "do usunięcia — X"
             ) { toggleDeletion(advance: false) }
 
-            // Zero to **gwiazdka bez żółtego**, nie przekreślona: kolor niesie
-            // ocenę wprost, więc brak koloru przy wypełnionym kształcie czyta
-            // się jako „oceniono na dno". Pusty obrys to co innego — zdjęcie,
-            // którego nikt jeszcze nie dotknął.
-            gradeButton(
-                symbol: isZero ? "star.fill" : "star",
-                tint: AnyShapeStyle(.secondary),
-                isOn: isZero,
-                help: "zero — 0"
-            ) { rate(0, advance: false) }
-
+            // Zera nie ma jako osobnej pozycji: **ocena zerowa to pięć
+            // zgaszonych gwiazdek**, bo tak się ją czyta bez tłumaczenia.
+            // Od nieocenionego odróżnia ją liczba obok — „0,00" pojawia się
+            // tylko wtedy, gdy ktoś faktycznie ocenił.
+            //
+            // Wyzerowanie: kliknięcie w **zapaloną jedynkę**. Tylko w nią,
+            // a nie w każdą zapaloną gwiazdkę — inaczej klik w piątkę przy
+            // ocenie pięć kasowałby ocenę zamiast ją potwierdzić.
             ForEach(1...5, id: \.self) { value in
+                let lit = value <= (currentReview?.stars ?? 0)
+                let clears = value == 1 && currentReview?.isRated == true
+                    && currentReview?.stars == 1
                 gradeButton(
-                    symbol: value <= (currentReview?.stars ?? 0) ? "star.fill" : "star",
+                    symbol: lit ? "star.fill" : "star",
                     tint: AnyShapeStyle(Color.yellow),
-                    isOn: value <= (currentReview?.stars ?? 0),
-                    help: "\(value) — klawisz \(value)"
-                ) { rate(Double(value), advance: false) }
+                    isOn: lit,
+                    help: clears ? "wyzeruj ocenę" : "\(value) — klawisz \(value)"
+                ) { rate(clears ? 0 : Double(value), advance: false) }
             }
         }
         .font(.system(size: 15))

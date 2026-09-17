@@ -126,18 +126,16 @@ struct PreviewInspector: View {
                 }
             }
 
-            // Zero to gwiazdka bez żółtego — patrz komentarz w `CullView`.
-            let isZero = review?.isRated == true && review?.stars == 0
-            cell(symbol: isZero ? "star.fill" : "star",
-                 tint: AnyShapeStyle(.secondary), isOn: isZero, help: "zero") {
-                Review.upsert(assetID: asset.localIdentifier, in: context) { $0.set(0) }
-            }
-
+            // Ocena zerowa to pięć zgaszonych gwiazdek, a wyzerowanie —
+            // kliknięcie w zapaloną jedynkę. Patrz komentarz w `CullView`.
             ForEach(1...5, id: \.self) { value in
-                cell(symbol: value <= (review?.stars ?? 0) ? "star.fill" : "star",
-                     tint: AnyShapeStyle(Color.yellow), isOn: value <= (review?.stars ?? 0), help: "\(value)") {
+                let lit = value <= (review?.stars ?? 0)
+                let clears = value == 1 && review?.isRated == true && review?.stars == 1
+                cell(symbol: lit ? "star.fill" : "star",
+                     tint: AnyShapeStyle(Color.yellow), isOn: lit,
+                     help: clears ? "wyzeruj ocenę" : "\(value)") {
                     Review.upsert(assetID: asset.localIdentifier, in: context) {
-                        $0.set(Double(value))
+                        $0.set(clears ? 0 : Double(value))
                     }
                 }
             }
