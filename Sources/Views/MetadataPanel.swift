@@ -31,10 +31,14 @@ struct MetadataPanel: View {
 
                 if let failure = index.failure {
                     Divider()
-                    Text(failure)
-                        .font(.caption)
-                        .foregroundStyle(.orange)
-                        .fixedSize(horizontal: false, vertical: true)
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text(failure)
+                            .font(.caption)
+                            .foregroundStyle(.orange)
+                            .fixedSize(horizontal: false, vertical: true)
+
+                        if index.needsFullDiskAccess { fullDiskAccess }
+                    }
                 }
             }
             .padding(14)
@@ -44,6 +48,28 @@ struct MetadataPanel: View {
     }
 
     private var data: AssetMetadata { index.current ?? AssetMetadata() }
+
+    /// Pełnego dostępu do dysku nie da się poprosić okienkiem — system wymaga,
+    /// żeby człowiek dodał program z listy sam. Możemy mu jednak otworzyć
+    /// właściwy panel zamiast dyktować drogę przez cztery poziomy ustawień,
+    /// i powiedzieć z góry to, co i tak zaraz zaskoczy: zgoda działa dopiero
+    /// po ponownym uruchomieniu.
+    private var fullDiskAccess: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            Button("Otwórz ustawienia dostępu…") {
+                let panel = "x-apple.systempreferences:com.apple.preference.security"
+                    + "?Privacy_AllFiles"
+                if let url = URL(string: panel) { NSWorkspace.shared.open(url) }
+            }
+            .controlSize(.small)
+
+            Text("Dodaj lightbrary przyciskiem **+**, a potem uruchom program "
+                 + "ponownie — zgoda zaczyna działać dopiero przy starcie.")
+                .font(.caption2)
+                .foregroundStyle(.secondary)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+    }
 
     // MARK: - Sekcje
 

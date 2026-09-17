@@ -60,6 +60,11 @@ actor MetadataStore {
     /// pokazać, co konkretnie zrobić.
     private(set) var failure: String?
 
+    /// Czy brak danych bierze się z nienadanego pełnego dostępu do dysku.
+    /// Wydzielone z komunikatu, bo ten jeden przypadek widok obsługuje
+    /// przyciskiem, a nie zdaniem — patrz `MetadataPanel`.
+    private(set) var needsFullDiskAccess = false
+
     deinit {
         sqlite3_close(search)
         sqlite3_close(library)
@@ -81,6 +86,11 @@ actor MetadataStore {
     func currentFailure() -> String? {
         openIfNeeded()
         return failure
+    }
+
+    func currentNeedsFullDiskAccess() -> Bool {
+        openIfNeeded()
+        return needsFullDiskAccess
     }
 
     /// Komplet cech jednego zdjęcia, tak jak je policzył system.
@@ -316,10 +326,12 @@ actor MetadataStore {
         library = Self.open(root.appending(path: "database/Photos.sqlite"))
 
         if search == nil && library == nil {
-            failure = """
-                Brak dostępu do baz biblioteki Zdjęć. Ustawienia systemowe → \
-                Prywatność i bezpieczeństwo → Pełny dostęp do dysku → dodaj lightbrary.
-                """
+            // Pełnego dostępu do dysku nie da się poprosić okienkiem — Apple
+            // wymaga, żeby człowiek dodał program ręcznie. Skoro tak, to
+            // przynajmniej otwieramy mu właściwy panel; patrz `MetadataPanel`.
+            needsFullDiskAccess = true
+            failure = "Techniki i miary czytamy wprost z baz biblioteki Zdjęć — "
+                + "PhotoKit ich nie wystawia. Wymaga to pełnego dostępu do dysku."
         }
     }
 
@@ -496,6 +508,7 @@ actor MetadataStore {
 final class MetadataIndex: ObservableObject {
     @Published private(set) var current: AssetMetadata?
     @Published private(set) var failure: String?
+    @Published private(set) var needsFullDiskAccess = false
 
     private let store = MetadataStore.shared
 
@@ -507,6 +520,7 @@ final class MetadataIndex: ObservableObject {
         guard identifier == asset.localIdentifier else { return }
         current = loaded
         failure = await store.currentFailure()
+        needsFullDiskAccess = await store.currentNeedsFullDiskAccess()
     }
 }
 
