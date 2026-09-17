@@ -94,6 +94,40 @@ final class FeatureIndex: ObservableObject {
         return rows[id]?.value(at: slot)
     }
 
+    /// Granica najgorszej dziesiątej części — **odporna na skoki**.
+    ///
+    /// Naiwnie to wartość na pozycji jednej dziesiątej. Ale kuracja ma 17 882
+    /// zdjęcia (prawie 70% biblioteki) z wartością dokładnie 0,5, najpewniej
+    /// zapisem „brak zdania" w środku skali. Dziesiąty centyl wpadał w ten
+    /// skok, a przedział „do 0,5 włącznie" zgarniał go w całości: zamiast
+    /// dwóch i pół tysiąca zdjęć dostawało się osiemnaście.
+    ///
+    /// Dlatego gdy wartość graniczna jest częścią remisu, który rozdmuchałby
+    /// wynik ponad dwukrotność celu, cięcie schodzi na najbliższą wartość
+    /// **przed** remisem. Wychodzi trochę mniej niż dziesiąta część, ale to
+    /// dziesiąta część zdjęć naprawdę gorszych, a nie wszystkich przeciętnych.
+    nonisolated static func tenthCut(_ sorted: [Float], higherIsBetter: Bool) -> Float {
+        let n = sorted.count
+        guard n > 0 else { return 0 }
+        let target = max(1, n / 10)
+
+        // Liczymy zawsze od gorszej strony: przy „wyżej gorzej" odwracamy.
+        let ordered = higherIsBetter ? sorted : sorted.reversed()
+        let cut = ordered[target - 1]
+        func worse(_ a: Float, _ b: Float) -> Bool { higherIsBetter ? a < b : a > b }
+
+        // Ile zdjęć jest „nie lepszych" od cięcia, razem z remisem.
+        var through = target
+        while through < n && !worse(cut, ordered[through]) { through += 1 }
+        guard through > target * 2 else { return cut }
+
+        // Pierwsze wystąpienie wartości granicznej — przed nim leży wartość
+        // ściśle gorsza, i tam kończymy, o ile w ogóle coś tam jest.
+        var first = target - 1
+        while first > 0 && !worse(ordered[first - 1], cut) { first -= 1 }
+        return first > 0 ? ordered[first - 1] : cut
+    }
+
     func load(context: ModelContext) {
         // Bez predykatu: rekordy niosące wyłącznie spakowane miary nie dają się
         // odsiać zapytaniem, bo długości bloba SwiftData nie przełoży na SQL.
@@ -135,9 +169,7 @@ final class FeatureIndex: ObservableObject {
             stat.max = values.max() ?? 0
             if measure.kind == .continuous {
                 let sorted = values.sorted()
-                let tenth = max(0, min(sorted.count - 1, sorted.count / 10))
-                let worst = measure.higherIsBetter ? sorted[tenth] : sorted[sorted.count - 1 - tenth]
-                stat.defaultThreshold = Double(worst)
+                stat.defaultThreshold = Double(Self.tenthCut(sorted, higherIsBetter: measure.higherIsBetter))
                 if stat.max > stat.min {
                     var bins = [Int](repeating: 0, count: 24)
                     let span = stat.max - stat.min

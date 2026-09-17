@@ -496,6 +496,26 @@ to osobne pojęcie, czy część „przestrzeni roboczej" razem z układem panel
 Jedna kontrolka mniej to zysk, ale zlepienie dwóch różnych pojęć mści się
 później.
 
+### Skoki w rozkładzie: czwarty zapis „braku zdania"
+
+Kuracja ma **17 882 zdjęcia — prawie 70% biblioteki — z wartością dokładnie
+0,5**. Ikoniczność ma 1 652 zdjęcia na samym minimum, −2. To wygląda na zapis
+„system nie ma zdania", tylko tym razem w środku skali albo na jej krańcu,
+a nie na zerze. Do trzech znanych zapisów braku danych (brak wiersza, zero,
+minus jeden) dochodzi więc czwarty: **wartość-wypełniacz w skoku rozkładu**.
+
+Wyszło to przez licznik: domyślny przedział „najgorsza dziesiąta część"
+kuracji obiecywał 18 847 zdjęć. Dziesiąty centyl wpadał w środek skoku,
+a przedział „do 0,5 włącznie" zgarniał go w całości.
+
+Cięcie domyślne jest teraz odporne na remisy: gdy wartość graniczna należy do
+skoku, który rozdmuchałby wynik ponad dwukrotność celu, schodzi na najbliższą
+wartość przed skokiem. Sprawdzone na bibliotece: kuracja 5,5% zamiast 72%,
+miary bez skoków bez zmian — równo 10%.
+
+Nie traktujemy tych wartości jako braku pomiaru, bo to byłoby zgadywanie.
+Histogram pod suwakiem pokazuje skok wprost i to wystarczy, żeby go ominąć.
+
 ### Konsekwencja dla przechowywania
 
 Dziś cechy to sześć pól w `Review` i dwanaście kolumn w pliku wymiany. Przy
