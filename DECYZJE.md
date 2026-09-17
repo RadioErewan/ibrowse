@@ -1075,6 +1075,69 @@ tam, gdzie Radek go szukał: należy przed biblioteką, nie w niej.
 
 To osobne narzędzie z tej samej rodziny. Zapisane jako pomysł, nie zaczęte.
 
+## Konkurencja: co robią inni, wrzesień 2026
+
+Pierwszy konkretny punkt odniesienia w tej kategorii — `cullibrate.com`, a przez
+ich stronę porównań także Photo Mechanic, Narrative, Aftershoot i FilterPixel.
+Warto to zapisać, bo dotąd projektowaliśmy bez wiedzy, co robią inni.
+
+### Jak wygląda ta kategoria
+
+Wszyscy robią **narzędzie do sesji zdjęciowej**: wciągnij RAW-y z karty,
+przejrzyj, wyślij zaznaczone do Lightrooma lub Capture One. Oś jest zawsze ta
+sama — ingest, cull, handoff. Zestaw trybów też: filmstrip, siatka, porównanie
+dwóch klatek ze sprzężonym powiększeniem, „survey" czyli kilku kandydatów naraz,
+panel twarzy i grupowanie prawie-duplikatów.
+
+Ceny: Photo Mechanic 149 dolarów rocznie, Cullibrate 29 w ofercie
+założycielskiej i 120 jako cena docelowa. Rynek istnieje i nie jest groszowy.
+
+Aftershoot i FilterPixel idą w automat — „auto-cull", własne oceny ostrości,
+przetwarzanie w chmurze. Cullibrate i Photo Mechanic zostają przy ręcznym
+wyborze i sprzedają szybkość oraz to, że decyzja należy do człowieka.
+
+### Co to potwierdza
+
+Trzy rzeczy, które mamy z własnych powodów, są u nich punktami sprzedażowymi:
+**porównanie ze sprzężonym powiększeniem**, **klawiatura na pierwszym miejscu**
+i **praca wyłącznie lokalnie, bez logowania i bez sieci**.
+
+### Gdzie przebiega prawdziwa różnica
+
+Nie w funkcjach, tylko w **jednostce pracy**. Oni obsługują wczorajszą sesję:
+800 RAW-ów z jednego ślubu, z których trzeba wybrać 60 do obróbki, a potem
+zapomnieć o narzędziu do następnego zlecenia. Tu jednostką jest **archiwum**
+zbierane latami, do którego się wraca — 26 tysięcy zdjęć, z czego 20 605 nikt
+nigdy nie otworzył.
+
+Z tego wynika cała reszta: oni czytają kartę pamięci, my bibliotekę systemową;
+oni kończą przekazaniem do edytora, my oceną, która zostaje, i kasowaniem.
+
+Dwie rzeczy nie mają u nikogo odpowiednika. **Telefon** — żaden z nich nie
+wychodzi poza komputer, a „przegląd w samolocie" to inny scenariusz niż stacja
+w studiu. I **zbieranie tego, co system już policzył** zamiast liczenia
+własnego: trzydzieści osiem wymiarów natychmiast, bez mielenia archiwum.
+
+### Czego pilnować
+
+**Cullibrate deklaruje obsługę Apple Photos**, a przy „ocenach ostrości" ma
+„wkrótce". Czyli źródło mamy wspólne, a miarę, którą my już bierzemy z bazy
+systemu, oni dopiero policzą sami. Gdyby kiedyś sięgnęli po `Photos.sqlite`,
+przewaga by stopniała — ale musieliby przyjąć to samo, co my: Pełny dostęp do
+dysku i dystrybucję poza sklepem.
+
+### Co warto od nich wziąć
+
+- **Survey, czyli porównanie więcej niż dwóch naraz.** Mamy dwa i turniej
+  parami; trzy albo cztery kandydatury z wyborem jednej to realna luka.
+- **Mapowanie klawiszy.** Przy naszym podejściu do ergonomii naturalne.
+- **Odpowiedź na pytanie „i co dalej".** U nich to przekazanie do edytora;
+  u nas kasowanie i gwiazdki w Zdjęciach. Może wystarczy — ale niech to będzie
+  decyzja, a nie przeoczenie.
+
+Czego **nie** brać: jasnego motywu w widokach ze zdjęciami. Powód się nie
+zmienił, choć oni się nim chwalą.
+
 ## Co czeka
 
 ### Przesunięcie zakresu: z sortownika w przeglądarkę
