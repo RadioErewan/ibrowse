@@ -35,7 +35,12 @@ struct SyncFile {
     /// ekspozycję, twarze. Czytane są tylko na macOS, ale jadą wszędzie, bo
     /// telefon nie ma jak ich policzyć. Starsza wersja aplikacji pominie taki
     /// plik w całości; to znaczy, że oba urządzenia trzeba zaktualizować razem.
-    static let schema = 3
+    /// Wersja 4 dołożyła spakowane miary. Czytamy 3 i 4 — starszy plik po
+    /// prostu ich nie niesie, a przy ścisłej równości telefon ze starszą wersją
+    /// i Mac z nowszą przestawały się widzieć, dopóki oba nie dostały
+    /// aktualizacji.
+    static let schema = 4
+    static let readable = 3...4
     static let fileExtension = "ibsync"
 
     // MARK: - Przenoszone dane
@@ -57,6 +62,7 @@ struct SyncFile {
         var eyesClosed: Int = 0
         var smiles: Int = 0
         var isScreenshot: Bool = false
+        var measures: Data = Data()
     }
 
     struct Print: Sendable {
@@ -118,7 +124,8 @@ struct SyncFile {
             CREATE TABLE rating(assetID TEXT PRIMARY KEY, weight REAL, isRated INT,
                                 judgements INT, marked INT, updatedAt REAL,
                                 sharpness REAL, exposure REAL, faces INT,
-                                eyesClosed INT, smiles INT, screenshot INT);
+                                eyesClosed INT, smiles INT, screenshot INT,
+                                measures BLOB);
             CREATE TABLE print(assetID TEXT PRIMARY KEY, vector BLOB, takenAt REAL);
             CREATE TABLE verdict(key TEXT PRIMARY KEY, resolvedAt REAL, wasRejected INT,
                                  championID TEXT, challengerIndex INT);
@@ -133,7 +140,7 @@ struct SyncFile {
         // Pierwsza wersja przygotowywała je w pętli i zapis 25 tysięcy
         // odcisków trwał pół minuty — to nie dysk był wąskim gardłem, tylko
         // dwadzieścia pięć tysięcy kompilacji tego samego SQL-a.
-        repeating(db, "INSERT OR REPLACE INTO rating VALUES(?,?,?,?,?,?,?,?,?,?,?,?)", payload.ratings) {
+        repeating(db, "INSERT OR REPLACE INTO rating VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?)", payload.ratings) {
             statement, rating in
             bind(statement, 1, rating.assetID)
             sqlite3_bind_double(statement, 2, rating.weight)
@@ -147,6 +154,12 @@ struct SyncFile {
             sqlite3_bind_int(statement, 10, Int32(rating.eyesClosed))
             sqlite3_bind_int(statement, 11, Int32(rating.smiles))
             sqlite3_bind_int(statement, 12, rating.isScreenshot ? 1 : 0)
+            _ = rating.measures.withUnsafeBytes { raw in
+                sqlite3_bind_blob(
+                    statement, 13, raw.baseAddress, Int32(rating.measures.count),
+                    unsafeBitCast(-1, to: sqlite3_destructor_type.self)
+                )
+            }
         }
 
         repeating(db, "INSERT OR REPLACE INTO print VALUES(?,?,?)", payload.prints) {
@@ -187,6 +200,11 @@ struct SyncFile {
 
     // MARK: - Odczyt
 
+    private static func blob(_ statement: OpaquePointer?, _ column: Int32) -> Data {
+        guard let bytes = sqlite3_column_blob(statement, column) else { return Data() }
+        return Data(bytes: bytes, count: Int(sqlite3_column_bytes(statement, column)))
+    }
+
     static func read(_ url: URL) -> Payload? {
         var db: OpaquePointer?
         guard sqlite3_open_v2(url.path, &db, SQLITE_OPEN_READONLY, nil) == SQLITE_OK else {
@@ -194,7 +212,9 @@ struct SyncFile {
         }
         defer { sqlite3_close(db) }
 
-        guard let version = meta(db, "schema"), Int(version) == schema else { return nil }
+        guard let raw = meta(db, "schema"), let version = Int(raw),
+              readable.contains(version) else { return nil }
+        let hasMeasures = version >= 4
 
         var payload = Payload()
         payload.deviceName = meta(db, "device") ?? "?"
@@ -204,7 +224,8 @@ struct SyncFile {
 
         query(db, """
             SELECT assetID, weight, isRated, judgements, marked, updatedAt,
-                   sharpness, exposure, faces, eyesClosed, smiles, screenshot FROM rating
+                   sharpness, exposure, faces, eyesClosed, smiles, screenshot\(hasMeasures ? ", measures" : "")
+            FROM rating
             """) {
             payload.ratings.append(Rating(
                 assetID: text($0, 0) ?? "",
@@ -218,7 +239,8 @@ struct SyncFile {
                 faces: Int(sqlite3_column_int($0, 8)),
                 eyesClosed: Int(sqlite3_column_int($0, 9)),
                 smiles: Int(sqlite3_column_int($0, 10)),
-                isScreenshot: sqlite3_column_int($0, 11) != 0
+                isScreenshot: sqlite3_column_int($0, 11) != 0,
+                measures: hasMeasures ? blob($0, 12) : Data()
             ))
         }
 

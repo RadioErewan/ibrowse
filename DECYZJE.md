@@ -514,6 +514,40 @@ Uboczny zysk: klucz cechy przestaje być `rawValue` polskiego enuma, więc znika
 problem zapisany niżej — nazwa wyświetlana może się tłumaczyć, bo nie jest już
 kluczem zapisu.
 
+### Jak to zostało zrobione
+
+**Spis w kodzie, obecność w bazie.** `Measure.all` trzyma 38 miar: kod, nazwę,
+grupę, rodzaj (ciągła albo przełącznik), kierunek i wyrażenie SQL. Przy
+wczytywaniu każde wyrażenie jest najpierw sprawdzane pustym zapytaniem —
+jeśli się nie kompiluje, kolumny nie ma w tej wersji systemu i miara po prostu
+wypada. Potem jedno zapytanie na całą bibliotekę, nie jedno na miarę.
+
+**Jedno pole w `Review`.** Miary jadą spakowane: pięć bajtów na wpis, kod
+i wartość. **Kody są stałe na zawsze** — starsza wersja pomija nieznane,
+nowsza przy starym pliku znajduje ich mniej, i nie trzeba żadnej migracji.
+Przełączniki zapisujemy tylko wtedy, gdy są prawdą.
+
+**Plik wymiany w wersji 4, czytający też 3.** Wcześniej odczyt wymagał
+dokładnej równości wersji, więc telefon ze starszą aplikacją i Mac z nowszą
+przestawały się widzieć, dopóki oba nie dostały aktualizacji.
+
+**Wartości w tablicy, nie w słowniku.** Liczniki w panelu sprawdzają wszystkie
+miary dla każdego zdjęcia przy każdej zmianie warunków — kilkaset tysięcy
+odczytów. Indeks w tablicy kosztuje tyle co nic, haszowanie klucza już nie.
+
+**Próg z pomiaru.** Domyślny próg każdej miary ciągłej to granica najgorszej
+dziesiątej części zdjęć tej biblioteki, a suwak ma końce z rzeczywistego
+minimum i maksimum. Dzięki temu licznik przy wierszu mówi coś, zanim ktoś
+ruszy suwak.
+
+**Cecha i miara to jedna lista wyboru**, tylko w dwóch miejscach panelu:
+wybranie jednej zdejmuje drugą. Gdyby mogły działać naraz, liczniki przy
+wierszach musiałyby odpowiadać na pytanie o kombinację, której nikt nie widzi.
+
+**Sprawdzone na prawdziwej bazie przed pierwszym uruchomieniem:** wszystkie 38
+wyrażeń się kompiluje i każde niesie sygnał.
+
+
 ## Przygotowanie do App Store
 
 Wzorzec przepisany z `FlipClock` — aplikacji, która już przeszła przez sklep.

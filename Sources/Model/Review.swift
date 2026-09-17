@@ -65,6 +65,13 @@ final class Review {
     /// trafiać do oceniania.
     var isScreenshot: Bool = false
 
+    /// Pozostałe miary systemu, spakowane — patrz `MeasurePacking`.
+    ///
+    /// Jedno pole zamiast osobnego na każdą miarę. Miar jest kilkadziesiąt
+    /// i przybywa ich z każdą wersją systemu; przy osobnych polach każda nowa
+    /// znaczyłaby migrację składu i podbicie formatu pliku wymiany.
+    var measures: Data = Data()
+
     init(assetID: String) {
         self.assetID = assetID
     }
@@ -88,7 +95,7 @@ extension Review {
     /// pojechałyby same oceny, a cechy zostałyby na Macu) i czy zdjęcie ma się
     /// w ogóle pojawić w zestawieniu cech.
     var hasFeatures: Bool {
-        sharpness > 0 || exposure > 0 || faces > 0 || isScreenshot
+        sharpness > 0 || exposure > 0 || faces > 0 || isScreenshot || !measures.isEmpty
     }
 
     /// Przepisuje cechy z drugiego urządzenia.
@@ -105,6 +112,7 @@ extension Review {
         eyesClosed = other.eyesClosed
         smiles = other.smiles
         isScreenshot = other.isScreenshot
+        if !other.measures.isEmpty { measures = other.measures }
     }
 
     func set(_ value: Double) {

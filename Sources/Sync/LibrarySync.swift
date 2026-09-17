@@ -340,6 +340,9 @@ final class LibrarySync: ObservableObject {
                 // skasowałaby ocenę postawioną wcześniej na telefonie. Zamiast
                 // tego obowiązuje „kto ma, ten daje": pusty pomiar nie nadpisuje
                 // niczego, a niepusty uzupełnia brak.
+                if !entry.measures.isEmpty {
+                    existing.measures = entry.measures
+                }
                 if entry.sharpness > 0 || entry.exposure > 0
                     || entry.faces > 0 || entry.isScreenshot {
                     existing.sharpness = entry.sharpness
@@ -372,6 +375,7 @@ final class LibrarySync: ObservableObject {
                 fresh.eyesClosed = entry.eyesClosed
                 fresh.smiles = entry.smiles
                 fresh.isScreenshot = entry.isScreenshot
+                fresh.measures = entry.measures
                 context.insert(fresh)
                 index[assetID] = fresh
             }
@@ -472,7 +476,8 @@ final class LibrarySync: ObservableObject {
                 updatedAt: review.updatedAt,
                 sharpness: review.sharpness, exposure: review.exposure,
                 faces: review.faces, eyesClosed: review.eyesClosed,
-                smiles: review.smiles, isScreenshot: review.isScreenshot
+                smiles: review.smiles, isScreenshot: review.isScreenshot,
+                measures: review.measures
             )
         }
 

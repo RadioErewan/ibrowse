@@ -39,9 +39,29 @@ struct FilterPanel: View {
     /// każdej klatce przeciągania suwakiem.
     @State private var tally = Filters.Tally()
 
+    /// Miary przypięte na wierzch, w kolejności przypięcia.
+    ///
+    /// **Ręcznie, nie samouczone.** Lista, po której chodzi się z pamięci, nie
+    /// może się przestawiać sama wedle tego, czego ostatnio używano — to znany
+    /// sposób na zepsucie dobrego menu. Co ma być na wierzchu, to fakt
+    /// o człowieku i o zadaniu, nie o bazie.
+    @AppStorage("features.pinned") private var pinnedRaw = ""
+    @AppStorage("features.expanded") private var expanded = false
+
+    /// Miary, o których użytkownik już wie. Nowa miara z sygnałem, której tu
+    /// nie ma, dostaje kartę zamiast wejść do listy po cichu.
+    @AppStorage("features.known") private var knownRaw = ""
+    @State private var measureQuery = ""
+
+    private var pinned: [UInt8] {
+        pinnedRaw.split(separator: ",").compactMap { UInt8($0) }
+    }
+
     private var trigger: String {
         "\(filters.baseStamp)|\(filters.standing.rawValue)|\(filters.feature.rawValue)"
         + "|\(filters.threshold)|\(reviews.count)|\(features.revision)"
+        + "|\(filters.measure.map(String.init) ?? "-")|\(filters.measureThresholds.description)"
+        + "|\(filters.stars.sorted())"
     }
 
     private func recount() {
@@ -53,6 +73,10 @@ struct FilterPanel: View {
 
     var body: some View {
         content
+            .task(id: features.revision) {
+                guard knownRaw.isEmpty, !features.available.isEmpty else { return }
+                knownRaw = features.available.map { String($0.code) }.joined(separator: ",")
+            }
             .task(id: trigger) {
                 try? await Task.sleep(for: .milliseconds(120))
                 guard !Task.isCancelled else { return }
@@ -92,8 +116,20 @@ struct FilterPanel: View {
         VStack(alignment: .leading, spacing: 18) {
             group("Szukaj w treści") { searchField; searchNote }
             group("Ocena") { standingRows; starRange }
-            group("Cechy systemu") { featureRows; thresholdSlider; featureNote }
+            group("Cechy systemu") {
+                featureRows
+                thresholdSlider
+                pinnedRows
+                measureSlider
+                rarelyUsed
+                newcomers
+                featureNote
+            }
+            #if os(iOS)
+            // Na Macu kolejność siedzi na belce nad siatką — to nie jest
+            // warunek, tylko sposób czytania zbioru. Na telefonie belki nie ma.
             group("Kolejność") { orderRows }
+            #endif
             if !library.years.isEmpty {
                 group("Zakres lat") { yearPickers }
             }
@@ -226,9 +262,14 @@ struct FilterPanel: View {
         ForEach(Filters.Feature.allCases) { value in
             // „Bez warunku" też ma licznik — to jest liczba, do której
             // wracasz, i bez niej nie widać, ile kosztuje każdy warunek.
+            // Cechy i miary są jedną listą wyboru, więc „bez warunku" świeci
+            // tylko wtedy, gdy nie jest wybrana ani cecha, ani miara.
             row(value.rawValue,
                 count: tally.feature[value] ?? 0,
-                isOn: filters.feature == value) { filters.feature = value }
+                isOn: filters.feature == value && (value != .any || filters.measure == nil)) {
+                filters.feature = value
+                if value == .any { filters.measure = nil }
+            }
         }
     }
 
@@ -263,7 +304,167 @@ struct FilterPanel: View {
         }
     }
 
-    // MARK: - Kolejność
+    // MARK: - Miary ze spisu
+
+    private func togglePin(_ code: UInt8) {
+        var list = pinned
+        if let index = list.firstIndex(of: code) { list.remove(at: index) } else { list.append(code) }
+        pinnedRaw = list.map(String.init).joined(separator: ",")
+    }
+
+    @ViewBuilder
+    private func measureRow(_ measure: Measure) -> some View {
+        row(measure.label,
+            count: tally.measures[measure.code] ?? 0,
+            isOn: filters.measure == measure.code) {
+            filters.measure = filters.measure == measure.code ? nil : measure.code
+        }
+        .contextMenu {
+            Button(pinned.contains(measure.code) ? "odepnij" : "przypnij na wierzch") {
+                togglePin(measure.code)
+            }
+        }
+    }
+
+    /// Przypięte miary stoją **pod** stałymi cechami, a nad roletą.
+    @ViewBuilder
+    private var pinnedRows: some View {
+        let shown = pinned.compactMap { code in features.available.first { $0.code == code } }
+        ForEach(shown) { measureRow($0) }
+    }
+
+    /// Suwak progu dla wybranej miary ciągłej. Końce pochodzą z **pomiaru tej
+    /// biblioteki**, nie z zakresu 0–1: przechył kadru mieści się tu między
+    /// −0,22 a 0,08 i suwak od zera do jedynki byłby przy nim bezużyteczny.
+    @ViewBuilder
+    private var measureSlider: some View {
+        if let active = filters.activeMeasure, active.kind == .continuous,
+           let stat = features.stats[active.code], stat.max > stat.min {
+            let binding = Binding<Double>(
+                get: { filters.threshold(for: active, in: features) },
+                set: { filters.measureThresholds[active.code] = $0 }
+            )
+            VStack(alignment: .leading, spacing: 2) {
+                Text("\(active.label) · \(active.worstSide) \(String(format: "%.2f", binding.wrappedValue))")
+                    .font(.caption.monospacedDigit())
+                    .foregroundStyle(.secondary)
+                Slider(value: binding, in: Double(stat.min)...Double(stat.max)) {
+                    Text("próg")
+                }
+                .labelsHidden()
+                HStack {
+                    Text(String(format: "%.2f", stat.min))
+                    Spacer()
+                    Text("zakres z pomiaru tej biblioteki")
+                    Spacer()
+                    Text(String(format: "%.2f", stat.max))
+                }
+                .font(.system(size: 9).monospacedDigit())
+                .foregroundStyle(.tertiary)
+            }
+            .padding(.top, 4)
+        }
+    }
+
+    /// Roleta z resztą miar. Startuje zwinięta; przy trzydziestu pozycjach
+    /// ma własne szukanie i dzieli się wedle tego, **czego miara dotyczy** —
+    /// bo grupy odpowiadają różnym zadaniom: ocenianiu jakości, sprzątaniu
+    /// i szukaniu konkretnego materiału.
+    @ViewBuilder
+    private var rarelyUsed: some View {
+        let rest = features.available.filter { !pinned.contains($0.code) }
+        if !rest.isEmpty {
+            Button {
+                withAnimation(.easeInOut(duration: 0.2)) { expanded.toggle() }
+            } label: {
+                HStack(spacing: 6) {
+                    Image(systemName: "chevron.right")
+                        .font(.system(size: 9, weight: .semibold))
+                        .rotationEffect(.degrees(expanded ? 90 : 0))
+                    Text("rzadziej używane")
+                    Spacer(minLength: 8)
+                    Text("\(rest.count)")
+                        .font(.caption.monospacedDigit())
+                }
+                .foregroundStyle(.secondary)
+                .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+            .padding(.top, 6)
+
+            if expanded {
+                let query = measureQuery.trimmingCharacters(in: .whitespaces).lowercased()
+                let matching = query.isEmpty ? rest : rest.filter { $0.label.lowercased().contains(query) }
+
+                HStack(spacing: 6) {
+                    Image(systemName: "magnifyingglass").font(.caption).foregroundStyle(.secondary)
+                    TextField("szukaj miary", text: $measureQuery)
+                        .textFieldStyle(.plain)
+                        .font(.callout)
+                    Text("\(matching.count) z \(rest.count)")
+                        .font(.caption.monospacedDigit())
+                        .foregroundStyle(.tertiary)
+                }
+                .padding(.vertical, 4)
+
+                ForEach(Measure.Group.allCases, id: \.self) { group in
+                    let items = matching.filter { $0.group == group }
+                    if !items.isEmpty {
+                        Text(group.rawValue)
+                            .font(.caption2)
+                            .foregroundStyle(.tertiary)
+                            .padding(.top, 6)
+                        ForEach(items) { measureRow($0) }
+                    }
+                }
+
+                Text("Prawy przycisk na wierszu przypina miarę na wierzch.")
+                    .font(.caption2)
+                    .foregroundStyle(.tertiary)
+                    .padding(.top, 4)
+            }
+        }
+    }
+
+    /// Karta nowo znalezionej miary.
+    ///
+    /// Spis jest pisany ręcznie, ale kolumny potrafią się **zapalić** — funkcja
+    /// systemu, która rok temu była pusta, zaczyna być liczona. Taka miara nie
+    /// wchodzi do listy po cichu i nie zmienia sama filtru: najpierw mówi, że
+    /// jest. Przy pierwszym wczytaniu wszystkie są „znane", żeby nie zasypać
+    /// panelu trzydziestoma kartami naraz.
+    @ViewBuilder
+    private var newcomers: some View {
+        let known = Set(knownRaw.split(separator: ",").compactMap { UInt8($0) })
+        let fresh = knownRaw.isEmpty ? [] : features.available.filter { !known.contains($0.code) }
+        if let first = fresh.first {
+            VStack(alignment: .leading, spacing: 6) {
+                Text("system zaczął liczyć **\(first.label)** · \(features.stats[first.code]?.count ?? 0) zdjęć ma pomiar")
+                    .font(.caption)
+                    .fixedSize(horizontal: false, vertical: true)
+                HStack(spacing: 12) {
+                    Button("pokaż") {
+                        filters.measure = first.code
+                        rememberKnown(first.code)
+                    }
+                    Button("ukryj") { rememberKnown(first.code) }
+                }
+                .buttonStyle(.borderless)
+                .font(.caption)
+            }
+            .padding(8)
+            .background(Color.accentColor.opacity(0.12), in: RoundedRectangle(cornerRadius: 6))
+            .padding(.top, 6)
+        }
+    }
+
+    private func rememberKnown(_ code: UInt8) {
+        var known = Set(knownRaw.split(separator: ",").compactMap { UInt8($0) })
+        known.insert(code)
+        knownRaw = known.sorted().map(String.init).joined(separator: ",")
+    }
+
+    // MARK: - Kolejność    // MARK: - Kolejność
 
     /// Porządek zbioru to nie ozdoba: decyduje, co znaczy „następne zdjęcie"
     /// po geście w ocenianiu. Bez licznika, bo kolejność niczego nie odsiewa.

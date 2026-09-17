@@ -73,6 +73,9 @@ final class Filters: ObservableObject {
         case eyes = "od zamkniętych oczu"
         case best = "od najlepszych"
         case worst = "od najgorszych"
+        /// Od najgorszych wedle miary wybranej w panelu cech. Bez wybranej
+        /// miary zachowuje się jak kolejność biblioteki.
+        case measure = "wg wybranej miary"
         var id: String { rawValue }
 
         /// Czy ta kolejność dzieli siatkę na nagłówki.
@@ -88,7 +91,55 @@ final class Filters: ObservableObject {
     @Published var feature: Feature = Feature(
         rawValue: UserDefaults.standard.string(forKey: "library.feature") ?? ""
     ) ?? .any {
-        didSet { UserDefaults.standard.set(feature.rawValue, forKey: "library.feature") }
+        didSet {
+            UserDefaults.standard.set(feature.rawValue, forKey: "library.feature")
+            // Cecha i miara to jedna lista wyboru, tylko w dwóch miejscach
+            // panelu — więc wybranie jednej zdejmuje drugą.
+            if feature != .any { measure = nil }
+        }
+    }
+
+    /// Miara ze spisu `Measure.all`, wybrana jako warunek. Kod, nie nazwa —
+    /// nazwa zmieni się przy tłumaczeniu, kod nie zmienia się nigdy.
+    @Published var measure: UInt8? = {
+        let raw = UserDefaults.standard.object(forKey: "library.measure") as? Int ?? -1
+        return raw >= 0 ? UInt8(raw) : nil
+    }() {
+        didSet {
+            UserDefaults.standard.set(measure.map(Int.init) ?? -1, forKey: "library.measure")
+            if measure != nil { feature = .any }
+        }
+    }
+
+    /// Progi ustawione ręcznie, osobno dla każdej miary. Miara bez wpisu
+    /// używa progu z pomiaru biblioteki — granicy najgorszej dziesiątej części.
+    @Published var measureThresholds: [UInt8: Double] = {
+        let stored = UserDefaults.standard.dictionary(forKey: "library.measureThresholds") as? [String: Double] ?? [:]
+        return Dictionary(uniqueKeysWithValues: stored.compactMap { key, value in
+            UInt8(key).map { ($0, value) }
+        })
+    }() {
+        didSet {
+            let stored = Dictionary(uniqueKeysWithValues: measureThresholds.map { (String($0.key), $0.value) })
+            UserDefaults.standard.set(stored, forKey: "library.measureThresholds")
+        }
+    }
+
+    var activeMeasure: Measure? { measure.flatMap { Measure.byCode[$0] } }
+
+    func threshold(for measure: Measure, in features: FeatureIndex) -> Double {
+        measureThresholds[measure.code] ?? features.stats[measure.code]?.defaultThreshold ?? 0
+    }
+
+    /// Czy zdjęcie leży po **gorszej** stronie progu. Brak pomiaru to nie
+    /// wynik — zdjęcie niezbadane nie trafia do żadnej miary.
+    func carries(_ row: FeatureIndex.Row?, slot: Int, measure: Measure, threshold: Double) -> Bool {
+        guard let value = row?.value(at: slot) else { return false }
+        switch measure.kind {
+        case .flag: return value > 0.5
+        case .continuous:
+            return measure.higherIsBetter ? Double(value) <= threshold : Double(value) >= threshold
+        }
     }
 
     @Published var order: Order = Order(
@@ -197,6 +248,7 @@ final class Filters: ObservableObject {
         let key = "\(baseStamp)|\(standing.rawValue)"
             + "|\(stars.sorted().map(String.init).joined(separator: ","))"
             + "|\(feature.rawValue)|\(threshold)|\(order.rawValue)"
+            + "|\(measure.map(String.init) ?? "-")|\(activeMeasure.map { threshold(for: $0, in: features) } ?? 0)"
             + "|\(reviews.count)|\(features.revision)"
         if key == cacheKey { return cached }
 
@@ -206,6 +258,12 @@ final class Filters: ObservableObject {
         }
         if feature != .any {
             result = result.filter { carries(features[$0.localIdentifier]) }
+        }
+        if let active = activeMeasure, let slot = features.slots[active.code] {
+            let limit = threshold(for: active, in: features)
+            result = result.filter {
+                carries(features[$0.localIdentifier], slot: slot, measure: active, threshold: limit)
+            }
         }
         result = sorted(result, reviews: reviews, features: features)
 
@@ -258,6 +316,20 @@ final class Filters: ObservableObject {
                 (features[$0.localIdentifier]?.eyesClosed ?? 0)
                     > (features[$1.localIdentifier]?.eyesClosed ?? 0)
             }
+        case .measure:
+            guard let active = activeMeasure, let slot = features.slots[active.code] else {
+                return assets
+            }
+            // Najgorsze pierwsze, brak pomiaru na końcu.
+            return assets.sorted { a, b in
+                let x = features[a.localIdentifier]?.value(at: slot)
+                let y = features[b.localIdentifier]?.value(at: slot)
+                switch (x, y) {
+                case (nil, nil), (nil, _): return false
+                case (_, nil): return true
+                case (let x?, let y?): return active.higherIsBetter ? x < y : x > y
+                }
+            }
         case .best, .worst:
             let ascending = order == .worst
             return assets.sorted { a, b in
@@ -291,6 +363,8 @@ final class Filters: ObservableObject {
     struct Tally {
         var standing: [Standing: Int] = [:]
         var feature: [Feature: Int] = [:]
+        /// Ile zdjęć dałaby każda miara ze spisu przy jej bieżącym progu.
+        var measures: [UInt8: Int] = [:]
         /// Ile zdjęć ma daną liczbę gwiazdek — liczone **bez** bieżącego
         /// wyboru gwiazdek, bo inaczej każda pozycja poza wybraną pokazywałaby
         /// zero i kontrolka przestawałaby cokolwiek mówić.
@@ -301,15 +375,30 @@ final class Filters: ObservableObject {
     func tally(_ reviews: [String: Review], features: FeatureIndex) -> Tally {
         var result = Tally()
 
+        // Progi i pozycje policzone raz, nie przy każdym zdjęciu.
+        let checks: [(Measure, Int, Double)] = features.available.compactMap { measure in
+            guard let slot = features.slots[measure.code] else { return nil }
+            return (measure, slot, threshold(for: measure, in: features))
+        }
+        let active = activeMeasure.flatMap { measure in
+            checks.first { $0.0.code == measure.code }
+        }
+
         for asset in base {
             let id = asset.localIdentifier
             let review = reviews[id]
             let row = features[id]
 
-            let passesFeature = carries(row, as: feature)
+            // Cecha i miara wykluczają się, więc warunek „z listy cech" to
+            // jedno albo drugie — nigdy oba naraz.
+            var passesCondition = carries(row, as: feature)
+            if let active {
+                passesCondition = passesCondition
+                    && carries(row, slot: active.1, measure: active.0, threshold: active.2)
+            }
             let passesStanding = accepts(review, as: standing)
 
-            if passesFeature {
+            if passesCondition {
                 for value in Standing.allCases where accepts(review, as: value) {
                     result.standing[value, default: 0] += 1
                 }
@@ -318,11 +407,17 @@ final class Filters: ObservableObject {
                 for value in Feature.allCases where carries(row, as: value) {
                     result.feature[value, default: 0] += 1
                 }
+                if row != nil {
+                    for (measure, slot, limit) in checks
+                    where carries(row, slot: slot, measure: measure, threshold: limit) {
+                        result.measures[measure.code, default: 0] += 1
+                    }
+                }
             }
-            if passesFeature, let review, review.isRated {
+            if passesCondition, let review, review.isRated {
                 result.stars[review.stars, default: 0] += 1
             }
-            if passesFeature && passesStanding { result.total += 1 }
+            if passesCondition && passesStanding { result.total += 1 }
         }
         return result
     }
@@ -334,6 +429,11 @@ final class Filters: ObservableObject {
         guard let row = features[id] else { return nil }
         switch axis {
         case .none: return nil
+        case .measure:
+            guard let active = activeMeasure, active.kind == .continuous,
+                  let slot = features.slots[active.code],
+                  let value = row.value(at: slot) else { return nil }
+            return String(format: "%.2f", value)
         case .sharpness: return row.sharpness > 0 ? String(format: "%.2f", row.sharpness) : nil
         case .exposure: return row.exposure > 0 ? String(format: "%.2f", row.exposure) : nil
         case .eyes:
@@ -345,9 +445,10 @@ final class Filters: ObservableObject {
 
     /// Miara, która jest akurat w grze. Warunek ma pierwszeństwo przed
     /// porządkiem: skoro oglądam same zrzuty, to podpis ma mówić o zrzutach.
-    enum Axis { case none, sharpness, exposure, eyes, screenshot }
+    enum Axis { case none, sharpness, exposure, eyes, screenshot, measure }
 
     var axis: Axis {
+        if measure != nil { return .measure }
         switch feature {
         case .blurry: return .sharpness
         case .dark: return .exposure
@@ -383,13 +484,14 @@ final class Filters: ObservableObject {
 
     var isActive: Bool {
         fromYear > 0 || toYear < 9999 || standing != .all || !query.isEmpty
-            || feature != .any || order != .library || !stars.isEmpty
+            || feature != .any || order != .library || !stars.isEmpty || measure != nil
     }
 
     func clear() {
         query = ""
         standing = .all
         feature = .any
+        measure = nil
         order = .library
         stars = []
         fromYear = 0

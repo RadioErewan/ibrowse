@@ -153,6 +153,60 @@ actor MetadataStore {
         return result
     }
 
+    /// Pozostałe miary ze spisu `Measure.all`, spakowane dla każdego zdjęcia.
+    ///
+    /// **Sonda i odczyt w jednym.** Najpierw każda miara jest sprawdzana
+    /// osobnym, pustym zapytaniem: jeśli wyrażenie się nie kompiluje, kolumny
+    /// nie ma w tej wersji systemu i miara po prostu wypada. Zniknięcie
+    /// kolumny po aktualizacji przestaje być awarią, a pojawienie się — jeśli
+    /// dopiszemy ją do spisu — nie wymaga niczego więcej.
+    ///
+    /// Potem jedno zapytanie na całą bibliotekę, nie jedno na miarę. Przy
+    /// czterdziestu miarach różnica to czterdzieści przebiegów po 26 tysiącach
+    /// wierszy kontra jeden.
+    func measures() -> [String: Data] {
+        openIfNeeded()
+        guard let library else { return [:] }
+
+        let from = """
+            FROM ZASSET a
+            LEFT JOIN ZCOMPUTEDASSETATTRIBUTES c ON c.ZASSET = a.Z_PK
+            LEFT JOIN ZMEDIAANALYSISASSETATTRIBUTES m ON m.ZASSET = a.Z_PK
+            LEFT JOIN ZADDITIONALASSETATTRIBUTES x ON x.ZASSET = a.Z_PK
+            """
+
+        var present: [Measure] = []
+        for measure in Measure.all {
+            var probe: OpaquePointer?
+            let sql = "SELECT \(measure.expression) \(from) LIMIT 0"
+            if sqlite3_prepare_v2(library, sql, -1, &probe, nil) == SQLITE_OK {
+                present.append(measure)
+            }
+            sqlite3_finalize(probe)
+        }
+        guard !present.isEmpty else { return [:] }
+
+        let columns = present.map(\.expression).joined(separator: ", ")
+        let sql = "SELECT a.ZUUID, \(columns) \(from) WHERE a.ZUUID IS NOT NULL"
+
+        var result: [String: Data] = [:]
+        var statement: OpaquePointer?
+        if sqlite3_prepare_v2(library, sql, -1, &statement, nil) == SQLITE_OK {
+            while sqlite3_step(statement) == SQLITE_ROW {
+                guard let uuid = Self.text(statement, 0) else { continue }
+                var values: [UInt8: Float] = [:]
+                for (offset, measure) in present.enumerated() {
+                    let column = Int32(offset + 1)
+                    guard sqlite3_column_type(statement, column) != SQLITE_NULL else { continue }
+                    values[measure.code] = Float(sqlite3_column_double(statement, column))
+                }
+                if !values.isEmpty { result[uuid] = MeasurePacking.pack(values) }
+            }
+        }
+        sqlite3_finalize(statement)
+        return result
+    }
+
     /// Ostrość policzona przez system, dla **całej biblioteki naraz**.
     ///
     /// Kolumna nazywa się `ZBLURRINESSSCORE`, ale nazwa kłamie: sprawdzone na
@@ -473,7 +527,8 @@ final class FeatureImport: ObservableObject {
         defer { isWorking = false }
 
         let features = await MetadataStore.shared.features()
-        guard !features.isEmpty else {
+        let measures = await MetadataStore.shared.measures()
+        guard !features.isEmpty || !measures.isEmpty else {
             summary = await MetadataStore.shared.currentFailure()
                 ?? "Baza biblioteki nie ma policzonych cech."
             return
@@ -490,9 +545,11 @@ final class FeatureImport: ObservableObject {
         var touched = 0
         for asset in library.assets {
             let id = asset.localIdentifier
-            guard let found = features[String(id.prefix(36))] else { continue }
+            let uuid = String(id.prefix(36))
+            let found = features[uuid] ?? MetadataStore.Features()
+            let packed = measures[uuid] ?? Data()
             guard found.sharpness > 0 || found.exposure > 0
-                    || found.faces > 0 || found.isScreenshot else { continue }
+                    || found.faces > 0 || found.isScreenshot || !packed.isEmpty else { continue }
 
             let review = existing[id] ?? {
                 let fresh = Review(assetID: id)
@@ -507,6 +564,7 @@ final class FeatureImport: ObservableObject {
             review.eyesClosed = found.eyesClosed
             review.smiles = found.smiles
             review.isScreenshot = found.isScreenshot
+            if !packed.isEmpty { review.measures = packed }
             touched += 1
         }
 
