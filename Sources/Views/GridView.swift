@@ -41,6 +41,11 @@ struct GridView: View {
     /// Wejście w pełny ekran: na Macu dwuklik, na telefonie stuknięcie.
     var onOpen: (PHAsset) -> Void = { _ in }
 
+    /// Wejście w porównanie. Siatka podaje **kolejkę i parę**, bo to ona zna
+    /// zbiór roboczy — porównanie jest narzędziem nad tym zbiorem, nie drugą
+    /// listą zdjęć.
+    var onCompare: ([PHAsset], String, String) -> Void = { _, _, _ in }
+
     /// Siatka rysuje gwiazdki i filtruje po stanie oceny — puste rekordy
     /// niosące same cechy systemu nie zmieniają w niej nic, a jest ich
     /// pięćdziesiąt razy więcej niż ocen. Patrz komentarz w `CullView`.
@@ -241,6 +246,39 @@ struct GridView: View {
     }
 
     #if os(macOS)
+    /// Dobór stron porównania. Reguła jest taka, żeby **zawsze coś dało się
+    /// porównać** — nawet gdy nic nie zaznaczono.
+    private func compare(in shown: [PHAsset]) {
+        guard shown.count >= 2 else { return }
+        let ordered = shown.map(\.localIdentifier)
+        let chosen = ordered.filter { selection.contains($0) }
+
+        let a: String
+        let b: String
+        switch chosen.count {
+        case 0:
+            // Nic nie zaznaczono: bierzemy zdjęcie spod wskaźnika miejsca
+            // i następne w kolejce.
+            a = focusID.flatMap { ordered.contains($0) ? $0 : nil } ?? ordered[0]
+            b = next(after: a, in: ordered)
+        case 1:
+            a = chosen[0]
+            b = next(after: a, in: ordered)
+        default:
+            // Dwa lub więcej: pierwsze dwa **w kolejności zbioru**, nie
+            // w kolejności klikania — inaczej A i B zależałyby od tego, który
+            // kafelek trafiło się pierwszy.
+            a = chosen[0]
+            b = chosen[1]
+        }
+        onCompare(shown, a, b)
+    }
+
+    private func next(after id: String, in ordered: [String]) -> String {
+        guard let index = ordered.firstIndex(of: id) else { return ordered[0] }
+        return ordered[min(index + 1, ordered.count - 1)]
+    }
+
     /// Kolejność wyprowadzona z panelu filtru **na belkę nad siatką**.
     ///
     /// Bo to nie jest warunek — nie odsiewa niczego, tylko rozstrzyga, co
@@ -333,6 +371,16 @@ struct GridView: View {
                 .font(.caption)
                 #endif
             }
+
+            #if os(macOS)
+            Button {
+                compare(in: shown)
+            } label: {
+                Label("porównaj zaznaczone", systemImage: "rectangle.on.rectangle")
+            }
+            .disabled(shown.count < 2)
+            .help("C")
+            #endif
 
             if !selection.isEmpty {
                 Button { selection = [] } label: { Text("odznacz") }

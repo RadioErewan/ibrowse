@@ -180,6 +180,11 @@ struct RootView: View {
     /// i wraca na to samo zdjęcie, bo wskaźnik miejsca jest wspólny. Gdyby był
     /// trybem, trzeba by go wybierać z listy i pamiętać, że się w nim jest.
     @State private var fullScreen = false
+
+    /// Kolejka i para do porównania. Kolejkę podaje siatka, bo to ona zna
+    /// zbiór roboczy; para to dwa wskaźniki na tę samą kolejkę.
+    @State private var compareQueue: [PHAsset] = []
+    @State private var comparePair: (a: String, b: String)?
     #endif
 
     /// Zaznaczone zdjęcia. Puste znaczy „operacje dotyczą całego filtru" —
@@ -346,7 +351,15 @@ struct RootView: View {
                 .navigationSplitViewColumnWidth(min: 190, ideal: 230, max: 340)
         } detail: {
             VStack(spacing: 0) {
-                if fullScreen {
+                if comparePair != nil {
+                    CompareView(
+                        queue: compareQueue,
+                        library: library,
+                        pair: $comparePair,
+                        orderName: filters.order.rawValue,
+                        onClose: { comparePair = nil }
+                    )
+                } else if fullScreen {
                     // Pełny ekran zabiera całą szerokość: obie kolumny znikają,
                     // bo po to się w niego wchodzi. Wyjście `esc` przywraca je
                     // razem ze zdjęciem, na którym stała praca.
@@ -435,7 +448,7 @@ struct RootView: View {
     }
 
     private var inspectorBinding: Binding<Bool> {
-        Binding(get: { inspectorVisible && mode == .grid },
+        Binding(get: { inspectorVisible && mode == .grid && comparePair == nil },
                 set: { inspectorVisible = $0 })
     }
 
@@ -474,8 +487,8 @@ struct RootView: View {
     /// otwarciu i zapisujemy dopiero to, co użytkownik wybierze sam.
     private var sidebarBinding: Binding<NavigationSplitViewVisibility> {
         Binding(
-            get: { sidebarVisible && !fullScreen ? .all : .detailOnly },
-            set: { if !fullScreen { sidebarVisible = $0 != .detailOnly } }
+            get: { sidebarVisible && !fullScreen && comparePair == nil ? .all : .detailOnly },
+            set: { if !fullScreen && comparePair == nil { sidebarVisible = $0 != .detailOnly } }
         )
     }
     #endif
@@ -498,6 +511,12 @@ struct RootView: View {
                     fullScreen = true
                     #else
                     self.mode = .cull
+                    #endif
+                },
+                onCompare: { queue, a, b in
+                    #if os(macOS)
+                    compareQueue = queue
+                    comparePair = (a: a, b: b)
                     #endif
                 }
             )
