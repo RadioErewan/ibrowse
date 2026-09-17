@@ -23,6 +23,11 @@ struct CullView: View {
     /// a każdy krok strzałką zapisuje go z powrotem, więc powrót do siatki
     /// trafia w to samo miejsce zamiast na początek biblioteki.
     @Binding var focusID: String?
+
+    /// Wyjście z pełnego ekranu. Trzymane jako domknięcie, bo o tym, czym jest
+    /// „wyjście", decyduje platforma: na Macu powrót do siatki, na telefonie
+    /// zmiana zakładki.
+    var onExit: (() -> Void)?
     @Environment(\.modelContext) private var context
     /// Tylko rekordy niosące **decyzję**, nie wszystkie.
     ///
@@ -167,6 +172,25 @@ struct CullView: View {
         // milczały, dopóki nie kliknęło się w zdjęcie.
         .focused($focused)
         .onAppear { focused = true }
+        // Arkusz zabiera focus i **nie oddaje go sam**. Po zamknięciu lupy
+        // milkły więc wszystkie klawisze, nie tylko `esc`: ocena, strzałki
+        // i przewijanie. Objawiało się to jako „drugie esc nie działa", ale
+        // martwa była cała klawiatura.
+        .onChange(of: showingLoupe) { _, open in
+            if !open { focused = true }
+        }
+        .onChange(of: showingMetadata) { _, open in
+            if !open { focused = true }
+        }
+        .onChange(of: showingDeletions) { _, open in
+            if !open { focused = true }
+        }
+        #if os(macOS)
+        // `esc` obsłużone tu, a nie tylko skrótem przycisku w belce: ten widok
+        // ma focus, więc dostaje klawisz pierwszy i nie ma sensu liczyć na to,
+        // że przeleci wyżej.
+        .onExitCommand { onExit?() }
+        #endif
         .onKeyPress(.leftArrow) { step(-1); return .handled }
         .onKeyPress(.rightArrow) { step(1); return .handled }
         .onKeyPress(.space) { step(1); return .handled }

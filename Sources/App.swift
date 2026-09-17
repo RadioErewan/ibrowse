@@ -365,7 +365,8 @@ struct RootView: View {
                     // razem ze zdjęciem, na którym stała praca.
                     CullView(
                         library: library, filters: filters, monitor: monitor,
-                        features: features, focusID: $focusID
+                        features: features, focusID: $focusID,
+                        onExit: { fullScreen = false }
                     )
                 } else {
                     workspace
