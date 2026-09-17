@@ -21,6 +21,7 @@ struct CompareView: View {
 
     @Query(filter: #Predicate<Review> { $0.isRated || $0.markedForDeletion })
     private var reviews: [Review]
+    @Environment(\.modelContext) private var context
 
     /// Wspólne powiększenie to **ten sam współczynnik i to samo przesunięcie**.
     /// Bez tego porównanie ostrości nie działa: patrzy się wtedy na dwa różne
@@ -205,11 +206,22 @@ struct CompareView: View {
     private func footer(_ asset: PHAsset) -> some View {
         let review = reviews.first { $0.assetID == asset.localIdentifier }
         return HStack(spacing: 8) {
+            // Gwiazdki klikalne także tutaj. Porównanie samo niczego nie
+            // ocenia — to nie turniej — ale skoro właśnie patrzysz na dwa kadry
+            // obok siebie, to jest moment, w którym wniosek zapada. Odsyłanie
+            // po ocenę do siatki kazałoby wyjść z jedynego widoku, w którym
+            // widać, dlaczego ocena ma być taka, a nie inna.
             ForEach(1...5, id: \.self) { value in
                 Image(systemName: value <= (review?.stars ?? 0) ? "star.fill" : "star")
-                    .font(.system(size: 11))
+                    .font(.system(size: 13))
                     .foregroundStyle(value <= (review?.stars ?? 0)
                                      ? Color.yellow : Color.white.opacity(0.35))
+                    .contentShape(Rectangle())
+                    .onTapGesture {
+                        Review.upsert(assetID: asset.localIdentifier, in: context) {
+                            $0.set(Double(value))
+                        }
+                    }
             }
             if let review, review.isRated {
                 Text(String(format: "%.2f", review.weight))
