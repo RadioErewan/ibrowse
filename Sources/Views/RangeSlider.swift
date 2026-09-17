@@ -13,6 +13,9 @@ import SwiftUI
 /// końcówka, po którą zwykle się sięga. Słupki w wybranym przedziale są
 /// podświetlone, więc od razu widać, ile archiwum się bierze.
 ///
+/// Chwyty są trzy: każdy znacznik z osobna zmienia jeden koniec, a wybrany
+/// odcinek między nimi przesuwa oba naraz, zachowując szerokość.
+///
 /// Własna kontrolka, bo system nie ma suwaka z dwoma znacznikami. Rysowana
 /// kolorami systemowymi i w proporcjach zwykłego suwaka, żeby nie wyglądała
 /// na obcą.
@@ -47,9 +50,18 @@ struct RangeSlider: View {
                     .frame(width: width, height: 3)
                     .offset(x: knob / 2, y: trackY)
 
+                // Wybrany odcinek jest chwytem sam w sobie: ciągnięcie za
+                // środek przesuwa oba końce naraz, bez zmiany szerokości.
+                // Z używania wyszło, że raz dobrany przedział chce się potem
+                // wozić po skali — szukając, gdzie robi się ciekawie — a nie
+                // ustawiać za każdym razem od nowa dwoma znacznikami.
                 Capsule()
                     .fill(Color.accentColor)
                     .frame(width: max(highX - lowX, 0), height: 3)
+                    // Sama kreska ma trzy punkty wysokości, więc pole trafienia
+                    // musi być grubsze od tego, co widać.
+                    .contentShape(Rectangle().inset(by: -7))
+                    .gesture(dragBand(width: width))
                     .offset(x: lowX + knob / 2, y: trackY)
 
                 // Lewy znacznik **pod** kreską, czubkiem w górę; prawy **nad**
@@ -126,6 +138,23 @@ struct RangeSlider: View {
                 } else {
                     range = range.lowerBound...max(moved, range.lowerBound)
                 }
+            }
+            .onEnded { _ in dragStart = nil }
+    }
+
+    /// Przesunięcie całego przedziału. Szerokość zostaje ta sama, a przy
+    /// dojściu do krańca skali przedział się o niego zatrzymuje, zamiast
+    /// zwężać — inaczej powrót od krawędzi wracałby węższy, niż się wyjechało.
+    private func dragBand(width: CGFloat) -> some Gesture {
+        DragGesture(minimumDistance: 0)
+            .onChanged { gesture in
+                let start = dragStart ?? range
+                if dragStart == nil { dragStart = range }
+                let span = start.upperBound - start.lowerBound
+                let origin = position(start.lowerBound, width: width)
+                let moved = value(at: origin + gesture.translation.width, width: width)
+                let low = min(max(moved, bounds.lowerBound), bounds.upperBound - span)
+                range = low...(low + span)
             }
             .onEnded { _ in dragStart = nil }
     }
