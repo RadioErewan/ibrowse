@@ -268,7 +268,8 @@ struct GridView: View {
             rating: index[asset.localIdentifier]?.stars ?? 0,
             badge: filters.badge(for: asset.localIdentifier, in: features),
             isFocus: asset.localIdentifier == focusID,
-            isSelected: selection.contains(asset.localIdentifier)
+            isSelected: selection.contains(asset.localIdentifier),
+            fillsColumn: true
         )
         // Na telefonie otwiera pojedyncze stuknięcie, bo tak działa każda
         // galeria i nie ma tu czego zaznaczać. Przewijaniu to nie przeszkadza:
@@ -562,6 +563,22 @@ struct GridView: View {
     }
 }
 
+/// Rama kafelka: kwadrat wypełniający kolumnę albo sztywny bok.
+private struct TileFrame: ViewModifier {
+    let side: Double
+    let fills: Bool
+
+    func body(content: Content) -> some View {
+        if fills {
+            content
+                .frame(minWidth: 0, maxWidth: .infinity)
+                .aspectRatio(1, contentMode: .fit)
+        } else {
+            content.frame(width: side, height: side)
+        }
+    }
+}
+
 /// Jedna komórka siatki. Zgłasza start i koniec ładowania do monitora, więc
 /// widać, ile żądań wisi jednocześnie przy szybkim scrollu.
 ///
@@ -587,6 +604,15 @@ struct Thumbnail: View {
     /// miejsca, bo to dwie różne rzeczy: tu stoję kontra to wybrałem.
     var isSelected: Bool = false
 
+    /// Czy kafelek wypełnia szerokość kolumny siatki zamiast trzymać sztywny bok.
+    ///
+    /// Kolumny adaptacyjne są szersze niż minimalny bok — dzielą między siebie
+    /// resztę szerokości wiersza. Kafelek o sztywnym boku zostawiał tę resztę
+    /// jako szerszą szczelinę w poziomie niż w pionie, więc siatka wyglądała na
+    /// rozstrzeloną w bok. Kwadrat wypełniający kolumnę daje równe odstępy
+    /// w obie strony. W pasku miniatur zostaje sztywny bok, bo tam nie ma kolumn.
+    var fillsColumn: Bool = false
+
     @State private var image: PlatformImage?
     @State private var request: PHImageRequestID?
     @State private var hovering = false
@@ -595,9 +621,14 @@ struct Thumbnail: View {
         ZStack {
             Rectangle().fill(.quaternary)
             if let image {
-                Image(platformImage: image)
-                    .resizable()
-                    .scaledToFill()
+                // Obraz jako nakładka na prostokąt, nie jako jego sąsiad
+                // w stosie: `scaledToFill` rozpycha własną ramkę i przy
+                // kafelku wypełniającym kolumnę rozsadzałby kwadrat.
+                Color.clear.overlay {
+                    Image(platformImage: image)
+                        .resizable()
+                        .scaledToFill()
+                }
             }
             if let badge, showsBadge {
                 VStack {
@@ -630,7 +661,7 @@ struct Thumbnail: View {
                 }
             }
         }
-        .frame(width: side, height: side)
+        .modifier(TileFrame(side: side, fills: fillsColumn))
         .clipped()
         .overlay {
             if isSelected {
@@ -660,7 +691,9 @@ struct Thumbnail: View {
 
         // Skala ekranu, a nie sztywne ×2 — inaczej na Retinie prosimy
         // o za mało pikseli i kafelek jest rozmyty mimo ostrego źródła.
-        let px = side * screenScale
+        // Kafelek rozciągnięty do kolumny bywa szerszy niż minimalny bok,
+        // więc prosimy o zapas — inaczej miniatura wychodzi miękka.
+        let px = side * screenScale * (fillsColumn ? 1.6 : 1)
 
         request = library.thumbnail(for: asset, side: px) { loaded, degraded in
             if let loaded { image = loaded }

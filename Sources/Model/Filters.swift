@@ -111,34 +111,45 @@ final class Filters: ObservableObject {
         }
     }
 
-    /// Progi ustawione ręcznie, osobno dla każdej miary. Miara bez wpisu
-    /// używa progu z pomiaru biblioteki — granicy najgorszej dziesiątej części.
-    @Published var measureThresholds: [UInt8: Double] = {
-        let stored = UserDefaults.standard.dictionary(forKey: "library.measureThresholds") as? [String: Double] ?? [:]
-        return Dictionary(uniqueKeysWithValues: stored.compactMap { key, value in
-            UInt8(key).map { ($0, value) }
+    /// Przedziały ustawione ręcznie, osobno dla każdej miary.
+    ///
+    /// **Przedział, nie próg z kierunkiem.** Przy miarach znakowanych nie
+    /// wiadomo z góry, która strona jest ciekawa — ikoniczność ma zakres od −2
+    /// do 1 i pytanie „mniejsze czy większe od progu" nie ma oczywistej
+    /// odpowiedzi. Dwa znaczniki obejmują oba przypadki bez pytania: „poniżej x"
+    /// to lewy znacznik na krańcu, „powyżej x" to prawy, a przy okazji da się
+    /// wziąć środek skali. Miara bez wpisu używa najgorszej dziesiątej części.
+    @Published var measureRanges: [UInt8: ClosedRange<Double>] = {
+        let stored = UserDefaults.standard.dictionary(forKey: "library.measureRanges") as? [String: [Double]] ?? [:]
+        return Dictionary(uniqueKeysWithValues: stored.compactMap { key, pair in
+            guard let code = UInt8(key), pair.count == 2, pair[0] <= pair[1] else { return nil }
+            return (code, pair[0]...pair[1])
         })
     }() {
         didSet {
-            let stored = Dictionary(uniqueKeysWithValues: measureThresholds.map { (String($0.key), $0.value) })
-            UserDefaults.standard.set(stored, forKey: "library.measureThresholds")
+            let stored = Dictionary(uniqueKeysWithValues: measureRanges.map {
+                (String($0.key), [$0.value.lowerBound, $0.value.upperBound])
+            })
+            UserDefaults.standard.set(stored, forKey: "library.measureRanges")
         }
     }
 
     var activeMeasure: Measure? { measure.flatMap { Measure.byCode[$0] } }
 
-    func threshold(for measure: Measure, in features: FeatureIndex) -> Double {
-        measureThresholds[measure.code] ?? features.stats[measure.code]?.defaultThreshold ?? 0
+    func range(for measure: Measure, in features: FeatureIndex) -> ClosedRange<Double> {
+        if let chosen = measureRanges[measure.code] { return chosen }
+        guard let stat = features.stats[measure.code] else { return 0...0 }
+        return stat.defaultRange(higherIsBetter: measure.higherIsBetter)
     }
 
-    /// Czy zdjęcie leży po **gorszej** stronie progu. Brak pomiaru to nie
-    /// wynik — zdjęcie niezbadane nie trafia do żadnej miary.
-    func carries(_ row: FeatureIndex.Row?, slot: Int, measure: Measure, threshold: Double) -> Bool {
+    /// Czy zdjęcie mieści się w przedziale. Brak pomiaru to nie wynik —
+    /// zdjęcie niezbadane nie trafia do żadnej miary.
+    func carries(_ row: FeatureIndex.Row?, slot: Int, measure: Measure,
+                 range: ClosedRange<Double>) -> Bool {
         guard let value = row?.value(at: slot) else { return false }
         switch measure.kind {
         case .flag: return value > 0.5
-        case .continuous:
-            return measure.higherIsBetter ? Double(value) <= threshold : Double(value) >= threshold
+        case .continuous: return range.contains(Double(value))
         }
     }
 
@@ -248,7 +259,7 @@ final class Filters: ObservableObject {
         let key = "\(baseStamp)|\(standing.rawValue)"
             + "|\(stars.sorted().map(String.init).joined(separator: ","))"
             + "|\(feature.rawValue)|\(threshold)|\(order.rawValue)"
-            + "|\(measure.map(String.init) ?? "-")|\(activeMeasure.map { threshold(for: $0, in: features) } ?? 0)"
+            + "|\(measure.map(String.init) ?? "-")|\(activeMeasure.map { range(for: $0, in: features).description } ?? "")"
             + "|\(reviews.count)|\(features.revision)"
         if key == cacheKey { return cached }
 
@@ -260,9 +271,9 @@ final class Filters: ObservableObject {
             result = result.filter { carries(features[$0.localIdentifier]) }
         }
         if let active = activeMeasure, let slot = features.slots[active.code] {
-            let limit = threshold(for: active, in: features)
+            let limit = range(for: active, in: features)
             result = result.filter {
-                carries(features[$0.localIdentifier], slot: slot, measure: active, threshold: limit)
+                carries(features[$0.localIdentifier], slot: slot, measure: active, range: limit)
             }
         }
         result = sorted(result, reviews: reviews, features: features)
@@ -376,9 +387,9 @@ final class Filters: ObservableObject {
         var result = Tally()
 
         // Progi i pozycje policzone raz, nie przy każdym zdjęciu.
-        let checks: [(Measure, Int, Double)] = features.available.compactMap { measure in
+        let checks: [(Measure, Int, ClosedRange<Double>)] = features.available.compactMap { measure in
             guard let slot = features.slots[measure.code] else { return nil }
-            return (measure, slot, threshold(for: measure, in: features))
+            return (measure, slot, range(for: measure, in: features))
         }
         let active = activeMeasure.flatMap { measure in
             checks.first { $0.0.code == measure.code }
@@ -394,7 +405,7 @@ final class Filters: ObservableObject {
             var passesCondition = carries(row, as: feature)
             if let active {
                 passesCondition = passesCondition
-                    && carries(row, slot: active.1, measure: active.0, threshold: active.2)
+                    && carries(row, slot: active.1, measure: active.0, range: active.2)
             }
             let passesStanding = accepts(review, as: standing)
 
@@ -409,7 +420,7 @@ final class Filters: ObservableObject {
                 }
                 if row != nil {
                     for (measure, slot, limit) in checks
-                    where carries(row, slot: slot, measure: measure, threshold: limit) {
+                    where carries(row, slot: slot, measure: measure, range: limit) {
                         result.measures[measure.code, default: 0] += 1
                     }
                 }

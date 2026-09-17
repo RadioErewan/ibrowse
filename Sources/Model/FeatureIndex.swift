@@ -52,6 +52,19 @@ final class FeatureIndex: ObservableObject {
         /// licznik przy wierszu mówił coś, zanim ktoś ruszy suwak.
         var defaultThreshold: Double = 0
 
+        /// Rozkład na 24 przedziały między minimum a maksimum. Rysowany pod
+        /// suwakiem, bo przy miarach znakowanych — ikoniczność od −2 do 1 —
+        /// dopiero kształt rozkładu pokazuje, gdzie w ogóle leżą zdjęcia i która
+        /// strona skali jest tą rzadką.
+        var histogram: [Int] = []
+
+        /// Przedział domyślny: najgorsza dziesiąta część zdjęć, od właściwej
+        /// strony skali.
+        func defaultRange(higherIsBetter: Bool) -> ClosedRange<Double> {
+            let lo = Double(min), hi = Double(max)
+            let t = Swift.min(Swift.max(defaultThreshold, lo), hi)
+            return higherIsBetter ? lo...t : t...hi
+        }
     }
 
     @Published private(set) var rows: [String: Row] = [:]
@@ -125,6 +138,15 @@ final class FeatureIndex: ObservableObject {
                 let tenth = max(0, min(sorted.count - 1, sorted.count / 10))
                 let worst = measure.higherIsBetter ? sorted[tenth] : sorted[sorted.count - 1 - tenth]
                 stat.defaultThreshold = Double(worst)
+                if stat.max > stat.min {
+                    var bins = [Int](repeating: 0, count: 24)
+                    let span = stat.max - stat.min
+                    for value in values {
+                        let bin = Int(((value - stat.min) / span) * 23.999)
+                        bins[Swift.min(Swift.max(bin, 0), 23)] += 1
+                    }
+                    stat.histogram = bins
+                }
             }
             computed[measure.code] = stat
         }

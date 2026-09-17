@@ -60,7 +60,7 @@ struct FilterPanel: View {
     private var trigger: String {
         "\(filters.baseStamp)|\(filters.standing.rawValue)|\(filters.feature.rawValue)"
         + "|\(filters.threshold)|\(reviews.count)|\(features.revision)"
-        + "|\(filters.measure.map(String.init) ?? "-")|\(filters.measureThresholds.description)"
+        + "|\(filters.measure.map(String.init) ?? "-")|\(filters.measureRanges.description)"
         + "|\(filters.stars.sorted())"
     }
 
@@ -333,29 +333,57 @@ struct FilterPanel: View {
         ForEach(shown) { measureRow($0) }
     }
 
-    /// Suwak progu dla wybranej miary ciągłej. Końce pochodzą z **pomiaru tej
-    /// biblioteki**, nie z zakresu 0–1: przechył kadru mieści się tu między
-    /// −0,22 a 0,08 i suwak od zera do jedynki byłby przy nim bezużyteczny.
+    /// Przedział dla wybranej miary ciągłej — dwa znaczniki nad histogramem.
+    ///
+    /// Końce pochodzą z **pomiaru tej biblioteki**, nie z zakresu 0–1: przechył
+    /// kadru mieści się tu między −0,22 a 0,08, a ikoniczność między −2 a 1.
+    /// Przy takich miarach zwykły próg zmuszał do zgadywania, w którą stronę
+    /// odsiewa; przedział o to nie pyta.
     @ViewBuilder
     private var measureSlider: some View {
         if let active = filters.activeMeasure, active.kind == .continuous,
            let stat = features.stats[active.code], stat.max > stat.min {
-            let binding = Binding<Double>(
-                get: { filters.threshold(for: active, in: features) },
-                set: { filters.measureThresholds[active.code] = $0 }
+            let bounds = Double(stat.min)...Double(stat.max)
+            let binding = Binding<ClosedRange<Double>>(
+                get: { filters.range(for: active, in: features) },
+                set: { filters.measureRanges[active.code] = $0 }
             )
-            VStack(alignment: .leading, spacing: 2) {
-                Text("\(active.label) · \(active.worstSide) \(String(format: "%.2f", binding.wrappedValue))")
-                    .font(.caption.monospacedDigit())
-                    .foregroundStyle(.secondary)
-                Slider(value: binding, in: Double(stat.min)...Double(stat.max)) {
-                    Text("próg")
+            let current = binding.wrappedValue
+
+            VStack(alignment: .leading, spacing: 4) {
+                HStack(spacing: 4) {
+                    Text("od \(String(format: "%.2f", current.lowerBound)) do \(String(format: "%.2f", current.upperBound))")
+                        .font(.caption.monospacedDigit())
+                        .foregroundStyle(.secondary)
+                    Spacer(minLength: 6)
+                    Menu {
+                        Button("najgorsza dziesiąta część") {
+                            filters.measureRanges[active.code] = nil
+                        }
+                        Button("najlepsza dziesiąta część") {
+                            let worst = stat.defaultRange(higherIsBetter: active.higherIsBetter)
+                            let mirrored = active.higherIsBetter
+                                ? mirror(worst.upperBound, in: bounds, stat: stat, higherIsBetter: true)
+                                : mirror(worst.lowerBound, in: bounds, stat: stat, higherIsBetter: false)
+                            filters.measureRanges[active.code] = mirrored
+                        }
+                        Button("cały zakres") {
+                            filters.measureRanges[active.code] = bounds
+                        }
+                    } label: {
+                        Image(systemName: "ellipsis.circle")
+                    }
+                    .menuStyle(.borderlessButton)
+                    .fixedSize()
+                    .help("szybkie przedziały")
                 }
-                .labelsHidden()
+
+                RangeSlider(range: binding, bounds: bounds, histogram: stat.histogram)
+
                 HStack {
                     Text(String(format: "%.2f", stat.min))
                     Spacer()
-                    Text("zakres z pomiaru tej biblioteki")
+                    Text(active.higherIsBetter ? "← gorzej · lepiej →" : "← lepiej · gorzej →")
                     Spacer()
                     Text(String(format: "%.2f", stat.max))
                 }
@@ -364,6 +392,34 @@ struct FilterPanel: View {
             }
             .padding(.top, 4)
         }
+    }
+
+    /// Najlepsza dziesiąta część jako lustro najgorszej: tyle samo zdjęć,
+    /// z drugiego końca rozkładu. Liczone z histogramu, bo sam indeks nie niesie
+    /// już posortowanych wartości.
+    private func mirror(_ edge: Double, in bounds: ClosedRange<Double>,
+                        stat: FeatureIndex.Stat, higherIsBetter: Bool) -> ClosedRange<Double> {
+        let total = stat.histogram.reduce(0, +)
+        guard total > 0 else { return bounds }
+        let target = max(1, total / 10)
+        let step = (bounds.upperBound - bounds.lowerBound) / Double(stat.histogram.count)
+        var sum = 0
+        if higherIsBetter {
+            for index in stat.histogram.indices.reversed() {
+                sum += stat.histogram[index]
+                if sum >= target {
+                    return (bounds.lowerBound + Double(index) * step)...bounds.upperBound
+                }
+            }
+        } else {
+            for index in stat.histogram.indices {
+                sum += stat.histogram[index]
+                if sum >= target {
+                    return bounds.lowerBound...(bounds.lowerBound + Double(index + 1) * step)
+                }
+            }
+        }
+        return bounds
     }
 
     /// Roleta z resztą miar. Startuje zwinięta; przy trzydziestu pozycjach
