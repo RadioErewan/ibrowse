@@ -58,7 +58,7 @@ struct FilterPanel: View {
     }
 
     private var trigger: String {
-        "\(filters.baseStamp)|\(filters.grades.map(\.rawValue).sorted())|\(filters.onlyMarked)|\(filters.feature.rawValue)"
+        "\(filters.baseStamp)|\(filters.grades.map(\.rawValue).sorted())|\(filters.feature.rawValue)"
         + "|\(filters.threshold)|\(reviews.count)|\(features.revision)"
         + "|\(filters.measure.map(String.init) ?? "-")|\(filters.measureRanges.description)"
 
@@ -115,7 +115,7 @@ struct FilterPanel: View {
     private var sections: some View {
         VStack(alignment: .leading, spacing: 18) {
             group("Szukaj w treści") { searchField; searchNote }
-            group("Ocena") { gradeScale; markedRow }
+            group("Ocena") { gradeScale }
             group("Cechy systemu") {
                 featureRows
                 thresholdSlider
@@ -198,6 +198,9 @@ struct FilterPanel: View {
     /// których tamten układ nie umiał: sam dół skali albo oceny bez dna.
     private var gradeScale: some View {
         VStack(alignment: .leading, spacing: 6) {
+            // Osiem pozycji w wąskiej kolumnie: ikona mniejsza, odstępy zerowe,
+            // a liczby skrócone. Przy panelu rozciągniętym do 340 punktów
+            // robi się luźno, przy 190 nadal się mieści.
             HStack(spacing: 0) {
                 ForEach(Filters.Grade.allCases) { gradeCell($0) }
             }
@@ -217,6 +220,7 @@ struct FilterPanel: View {
         // punkt na skali, tylko jego brak. Zero dostaje gwiazdkę przekreśloną:
         // ocena najniższa z możliwych, czyli dno, na które wypycha się zdjęcia
         // przeznaczone do skasowania.
+        case .deleted: symbol = isOn ? "trash.fill" : "trash"
         case .unrated: symbol = isOn ? "circle.slash.fill" : "circle.slash"
         case .zero: symbol = isOn ? "star.slash.fill" : "star.slash"
         default: symbol = isOn ? "star.fill" : "star"
@@ -224,10 +228,9 @@ struct FilterPanel: View {
 
         return VStack(spacing: 1) {
             Image(systemName: symbol)
-                .font(.system(size: 13))
-                .foregroundStyle(isOn ? (grade.isUnrated ? Color.accentColor : Color.yellow)
-                                      : Color.secondary.opacity(0.35))
-            Text((tally.grades[grade] ?? 0).formatted())
+                .font(.system(size: 12))
+                .foregroundStyle(isOn ? tint(grade) : Color.secondary.opacity(0.35))
+            Text(compact(tally.grades[grade] ?? 0))
                 .font(.system(size: 9).monospacedDigit())
                 .foregroundStyle(isOn ? .secondary : .tertiary)
                 .lineLimit(1)
@@ -240,22 +243,37 @@ struct FilterPanel: View {
         }
     }
 
+    /// Liczba skrócona, bo osiem pozycji skali dzieli szerokość panelu na
+    /// dwudziestopięciopunktowe komórki, a `18 847` się w takiej nie mieści.
+    /// Przy odsiewie i tak liczy się rząd wielkości, nie ostatnia cyfra —
+    /// dokładną liczbę mówi stopka „pasuje N z M".
+    private func compact(_ value: Int) -> String {
+        guard value >= 1000 else { return String(value) }
+        let thousands = Double(value) / 1000
+        return thousands >= 10
+            ? String(format: "%.0fk", thousands)
+            : String(format: "%.1fk", thousands).replacingOccurrences(of: ".", with: ",")
+    }
+
+    private func tint(_ grade: Filters.Grade) -> Color {
+        switch grade {
+        case .deleted: return .red
+        case .unrated: return .accentColor
+        default: return .yellow
+        }
+    }
+
     private var gradeSummary: String {
         guard !filters.grades.isEmpty else {
             return "Wszystkie zdjęcia. Stuknij pozycję, żeby zawęzić."
         }
         let sorted = filters.grades.sorted { $0.rawValue < $1.rawValue }
-        let names = sorted.map { $0.isUnrated ? "bez oceny" : String($0.rawValue) }
+        let names = sorted.map { grade -> String in
+            if grade.isDeleted { return "do usunięcia" }
+            if grade.isUnrated { return "bez oceny" }
+            return String(grade.rawValue)
+        }
         return "Tylko: \(names.joined(separator: ", ")). Stuknij ponownie, żeby odznaczyć."
-    }
-
-    /// Znacznik „do usunięcia" osobno, bo to nie ocena, tylko decyzja o losie
-    /// zdjęcia — i zwykle towarzyszy jakiejś ocenie, zamiast ją zastępować.
-    private var markedRow: some View {
-        row("do usunięcia",
-            count: tally.marked,
-            isOn: filters.onlyMarked) { filters.onlyMarked.toggle() }
-            .padding(.top, 2)
     }
 
     // MARK: - Cechy

@@ -205,7 +205,6 @@ struct CullView: View {
         // na początek — inaczej po zawężeniu lądujesz w przypadkowym miejscu
         // albo poza zakresem.
         .onChange(of: filters.grades) { _, _ in index = 0 }
-        .onChange(of: filters.onlyMarked) { _, _ in index = 0 }
         .onChange(of: filters.base.count) { _, _ in index = 0 }
         .onChange(of: filters.feature) { _, _ in index = 0 }
         .onChange(of: filters.order) { _, _ in index = 0 }

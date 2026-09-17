@@ -638,11 +638,13 @@ extension RootView {
 
         if !filters.query.isEmpty { parts.append("„\(filters.query)”") }
 
-        if filters.onlyMarked { parts.append("do usunięcia") }
         if !filters.grades.isEmpty {
             let sorted = filters.grades.sorted { $0.rawValue < $1.rawValue }
-            parts.append(sorted.map { $0.isUnrated ? "bez oceny" : "★\($0.rawValue)" }
-                .joined(separator: ","))
+            parts.append(sorted.map { grade -> String in
+                if grade.isDeleted { return "do usunięcia" }
+                if grade.isUnrated { return "bez oceny" }
+                return "★\(grade.rawValue)"
+            }.joined(separator: ","))
         }
 
         let from = filters.fromYear, to = filters.toYear
