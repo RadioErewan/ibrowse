@@ -437,7 +437,19 @@ struct CullView: View {
                 Image(systemName: value <= (currentReview?.stars ?? 0) ? "star.fill" : "star")
                     .foregroundStyle(value <= (currentReview?.stars ?? 0)
                                      ? Color.yellow : Color.secondary.opacity(0.35))
-                    .onTapGesture { rate(Double(value)) }
+                    // Pole trafienia większe niż sama gwiazdka: przy piętnastu
+                    // punktach i trzech odstępu trzeba by celować.
+                    .padding(.horizontal, 3)
+                    .padding(.vertical, 4)
+                    .contentShape(Rectangle())
+                    // Kliknięcie ocenia i **zostaje na zdjęciu**.
+                    //
+                    // Wcześniej przechodziło od razu dalej, tak jak klawisz —
+                    // i wyglądało to na brak reakcji, bo gwiazdki pokazywały
+                    // po chwili ocenę już innego kadru. Klawiatura idzie dalej,
+                    // bo tam o to chodzi: ocena i następne jednym ruchem. Mysz
+                    // celuje świadomie w konkretną gwiazdkę konkretnego zdjęcia.
+                    .onTapGesture { rate(Double(value), advance: false) }
             }
         }
         .font(.system(size: 15))
@@ -484,10 +496,10 @@ struct CullView: View {
         }
     }
 
-    private func rate(_ value: Double) {
+    private func rate(_ value: Double, advance: Bool = true) {
         guard let asset = current else { return }
         Review.upsert(assetID: asset.localIdentifier, in: context) { $0.set(value) }
-        step(1)
+        if advance { step(1) }
     }
 
     /// Przesunięcie wagi bez opuszczania zdjęcia — odpowiednik swipe'a
