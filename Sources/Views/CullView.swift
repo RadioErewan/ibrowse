@@ -204,7 +204,8 @@ struct CullView: View {
         // Zmiana warunków przestawia zbiór pod nogami, więc indeks musi wrócić
         // na początek — inaczej po zawężeniu lądujesz w przypadkowym miejscu
         // albo poza zakresem.
-        .onChange(of: filters.standing) { _, _ in index = 0 }
+        .onChange(of: filters.grades) { _, _ in index = 0 }
+        .onChange(of: filters.onlyMarked) { _, _ in index = 0 }
         .onChange(of: filters.base.count) { _, _ in index = 0 }
         .onChange(of: filters.feature) { _, _ in index = 0 }
         .onChange(of: filters.order) { _, _ in index = 0 }
@@ -337,13 +338,12 @@ struct CullView: View {
             // Stan oceny zostaje pod ręką, mimo że mieszka teraz w filtrze:
             // to jedyny warunek, który przestawia się w trakcie pracy, a nie
             // przed nią. Reszta warunków siedzi w panelu i tam się nie spieszy.
-            Picker("", selection: $filters.standing) {
-                ForEach(Filters.Standing.allCases) { Text($0.rawValue).tag($0) }
-            }
-            .pickerStyle(.segmented)
-            .labelsHidden()
-            .frame(maxWidth: 380)
-
+            // Segmentowany przełącznik stanu oceny **zniknął stąd**.
+            //
+            // Ocena jest teraz jedną skalą w panelu filtru — brak oceny, zero
+            // i pięć gwiazdek w jednym rzędzie — a nie czterema stanami plus
+            // ukrytą skalą. Dwie kontrolki na jedno pytanie zastąpiła jedna,
+            // więc nie ma czego dublować w nagłówku.
             Spacer()
 
             if markedCount > 0 {

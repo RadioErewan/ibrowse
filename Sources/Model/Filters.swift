@@ -24,14 +24,42 @@ import SwiftUI
 @MainActor
 final class Filters: ObservableObject {
 
-    /// Stan oceny. Rozdzielony od zakresu gwiazdek, bo „nieocenione" nie jest
-    /// punktem na skali — to brak punktu.
-    enum Standing: String, CaseIterable, Identifiable {
-        case all = "wszystkie"
-        case unrated = "nieocenione"
-        case rated = "ocenione"
-        case marked = "do usunięcia"
-        var id: String { rawValue }
+    /// Ocena jako **jedna skala z siedmioma pozycjami**, nie dwie kontrolki.
+    ///
+    /// Wcześniej były cztery wiersze stanu — wszystkie, nieocenione, ocenione,
+    /// do usunięcia — a pod nimi, ukryta do czasu wybrania „ocenionych", skala
+    /// gwiazdek. Dwie kontrolki na jedno pytanie, przy czym drugiej nie dało
+    /// się znaleźć, dopóki nie trafiło się w pierwszą.
+    ///
+    /// Pomysł Radka: **to jest ten sam wybór**. „Nieocenione" to pozycja
+    /// `brak`, „ocenione" to wszystkie sześć gwiazdek naraz, „wszystkie" to
+    /// nic niezaznaczonego. A przy okazji dochodzi to, czego tamten układ nie
+    /// umiał wyrazić: sam dół skali, albo oceny bez dna, albo nieocenione
+    /// razem z zerami.
+    enum Grade: Int, CaseIterable, Identifiable, Hashable {
+        case unrated = -1
+        case zero = 0, one, two, three, four, five
+        var id: Int { rawValue }
+
+        var isUnrated: Bool { self == .unrated }
+    }
+
+    /// Wybrane pozycje skali. **Pusty zbiór znaczy „bez zawężania"**, nie
+    /// „nic" — inaczej odznaczenie ostatniej pozycji kasowałoby cały widok.
+    @Published var grades: Set<Grade> = {
+        let stored = UserDefaults.standard.array(forKey: "library.grades") as? [Int] ?? []
+        return Set(stored.compactMap(Grade.init(rawValue:)))
+    }() {
+        didSet {
+            UserDefaults.standard.set(grades.map(\.rawValue).sorted(), forKey: "library.grades")
+        }
+    }
+
+    /// Znacznik „do usunięcia" **nie jest** punktem na skali — to nie ocena,
+    /// tylko decyzja o losie zdjęcia. Zdjęcie oznaczone ma zwykle też ocenę,
+    /// więc gdyby dzieliło z nią jedną kontrolkę, jedno wykluczałoby drugie.
+    @Published var onlyMarked: Bool = UserDefaults.standard.bool(forKey: "library.onlyMarked") {
+        didSet { UserDefaults.standard.set(onlyMarked, forKey: "library.onlyMarked") }
     }
 
     /// Cecha policzona przez system, użyta jako warunek.
@@ -172,23 +200,6 @@ final class Filters: ObservableObject {
         didSet { UserDefaults.standard.set(toYear, forKey: "library.toYear"); rebuild() }
     }
 
-    @Published var standing: Standing = .all
-    /// Które liczby gwiazdek przepuszczamy — **zbiór, nie zakres**.
-    ///
-    /// Zakres z dwoma końcami wymuszał regułę „pierwsze stuknięcie zwija,
-    /// drugie rozciąga", której nie dało się odgadnąć z wyglądu kontrolki.
-    /// Gorzej: nie pozwalał wybrać trójki i piątki z pominięciem czwórki,
-    /// a to jest normalne pytanie przy przeglądzie.
-    ///
-    /// Pusty zbiór znaczy **bez zawężania**, nie „nic". Inaczej wyłączenie
-    /// ostatniej gwiazdki kasowałoby cały widok i wyglądało jak awaria.
-    ///
-    /// Zero jest pełnoprawną pozycją, bo `Review.stars` to zaokrąglona waga
-    /// z zakresu 0–5, a wypchnięcie zdjęcia na samo dno to sposób oznaczania
-    /// go do skasowania. Poprzedni zakres zaczynał się od jedynki i te zdjęcia
-    /// były niewidoczne.
-    @Published var stars: Set<Int> = []
-
     /// Szukanie po tym, co widzi system: etykiety scen, imiona, nazwy miejsc
     /// i słowa odczytane ze zdjęć.
     @Published var query: String = "" {
@@ -256,15 +267,14 @@ final class Filters: ObservableObject {
     /// zbiór przestawiałby się pod palcem przy każdej ocenie i zdjęcie
     /// uciekałoby spod kursora w trakcie pracy.
     func apply(_ reviews: [String: Review], features: FeatureIndex) -> [PHAsset] {
-        let key = "\(baseStamp)|\(standing.rawValue)"
-            + "|\(stars.sorted().map(String.init).joined(separator: ","))"
+        let key = "\(baseStamp)|\(grades.map(\.rawValue).sorted())|\(onlyMarked)"
             + "|\(feature.rawValue)|\(threshold)|\(order.rawValue)"
             + "|\(measure.map(String.init) ?? "-")|\(activeMeasure.map { range(for: $0, in: features).description } ?? "")"
             + "|\(reviews.count)|\(features.revision)"
         if key == cacheKey { return cached }
 
         var result = base
-        if standing != .all {
+        if !grades.isEmpty || onlyMarked {
             result = result.filter { accepts(reviews[$0.localIdentifier]) }
         }
         if feature != .any {
@@ -372,14 +382,13 @@ final class Filters: ObservableObject {
     /// cechą, przy cechach z nałożonym stanem oceny. Inaczej wiersz obiecywałby
     /// tysiąc zdjęć i dawał trzy, bo reszta odpadłaby na drugim warunku.
     struct Tally {
-        var standing: [Standing: Int] = [:]
+        /// Ile zdjęć leży na każdej pozycji skali.
+        var grades: [Grade: Int] = [:]
+        /// Ile zdjęć jest oznaczonych do usunięcia.
+        var marked = 0
         var feature: [Feature: Int] = [:]
         /// Ile zdjęć dałaby każda miara ze spisu przy jej bieżącym progu.
         var measures: [UInt8: Int] = [:]
-        /// Ile zdjęć ma daną liczbę gwiazdek — liczone **bez** bieżącego
-        /// wyboru gwiazdek, bo inaczej każda pozycja poza wybraną pokazywałaby
-        /// zero i kontrolka przestawałaby cokolwiek mówić.
-        var stars: [Int: Int] = [:]
         var total = 0
     }
 
@@ -407,12 +416,14 @@ final class Filters: ObservableObject {
                 passesCondition = passesCondition
                     && carries(row, slot: active.1, measure: active.0, range: active.2)
             }
-            let passesStanding = accepts(review, as: standing)
+            let passesStanding = accepts(review)
 
             if passesCondition {
-                for value in Standing.allCases where accepts(review, as: value) {
-                    result.standing[value, default: 0] += 1
-                }
+                // Licznik pozycji skali liczy się **bez** bieżącego wyboru na
+                // skali, inaczej każda pozycja poza wybraną pokazywałaby zero
+                // i kontrolka przestawałaby cokolwiek mówić.
+                result.grades[grade(of: review), default: 0] += 1
+                if review?.markedForDeletion == true { result.marked += 1 }
             }
             if passesStanding {
                 for value in Feature.allCases where carries(row, as: value) {
@@ -424,9 +435,6 @@ final class Filters: ObservableObject {
                         result.measures[measure.code, default: 0] += 1
                     }
                 }
-            }
-            if passesCondition, let review, review.isRated {
-                result.stars[review.stars, default: 0] += 1
             }
             if passesCondition && passesStanding { result.total += 1 }
         }
@@ -475,36 +483,34 @@ final class Filters: ObservableObject {
         }
     }
 
-    func accepts(_ review: Review?) -> Bool { accepts(review, as: standing) }
+    /// Czy zdjęcie przechodzi warunek oceny — skalę i znacznik naraz.
+    func accepts(_ review: Review?) -> Bool {
+        if onlyMarked && review?.markedForDeletion != true { return false }
+        guard !grades.isEmpty else { return true }
+        return grades.contains(grade(of: review))
+    }
 
-    func accepts(_ review: Review?, as standing: Standing) -> Bool {
-        switch standing {
-        case .all:
-            return true
-        case .unrated:
-            return review?.isRated != true
-        case .rated:
-            guard let review, review.isRated else { return false }
-            return stars.isEmpty || stars.contains(review.stars)
-        case .marked:
-            return review?.markedForDeletion == true
-        }
+    /// Pozycja skali, na której leży zdjęcie. Brak oceny to osobna pozycja,
+    /// a nie zero: zero jest oceną najniższą, brak jest brakiem punktu.
+    func grade(of review: Review?) -> Grade {
+        guard let review, review.isRated else { return .unrated }
+        return Grade(rawValue: review.stars) ?? .zero
     }
 
     // MARK: - Szukanie
 
     var isActive: Bool {
-        fromYear > 0 || toYear < 9999 || standing != .all || !query.isEmpty
-            || feature != .any || order != .library || !stars.isEmpty || measure != nil
+        fromYear > 0 || toYear < 9999 || !grades.isEmpty || onlyMarked || !query.isEmpty
+            || feature != .any || order != .library || measure != nil
     }
 
     func clear() {
         query = ""
-        standing = .all
+        grades = []
+        onlyMarked = false
         feature = .any
         measure = nil
         order = .library
-        stars = []
         fromYear = 0
         toYear = 9999
     }

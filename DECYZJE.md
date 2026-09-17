@@ -828,6 +828,39 @@ ma `data-lg-size`, więc `zoomFromOrigin` nie działa i zdjęcie pojawia się be
 związku z klikniętym kafelkiem. Gdyby ten ruch był, opisany wyżej rozjazd
 zbiorów byłby widoczny w pierwszej klatce.
 
+## Ocena to jedna skala, nie stan plus skala
+
+Panel miał cztery wiersze stanu — wszystkie, nieocenione, ocenione, do
+usunięcia — a pod nimi skalę gwiazdek, **chowaną do czasu wybrania
+„ocenionych"**. Radek nie mógł jej znaleźć i to był objaw, nie pomyłka: dwie
+kontrolki odpowiadały na jedno pytanie, przy czym drugiej nie dało się
+zobaczyć, dopóki nie trafiło się w pierwszą.
+
+Jego obserwacja rozwiązała to lepiej niż odsłonięcie skali: **to jest ten sam
+wybór**. Wystarczy jeden rząd siedmiu pozycji — brak oceny, zero i pięć
+gwiazdek.
+
+| dawny stan | teraz |
+|---|---|
+| wszystkie | nic niezaznaczone |
+| nieocenione | `brak` |
+| ocenione | komplet: zero i pięć gwiazdek |
+
+A przy okazji dochodzi to, czego tamten układ nie umiał wyrazić: sam dół skali,
+oceny bez dna, albo nieocenione razem z zerami. Trzy nowe pytania za darmo,
+z czterech kontrolek zrobiła się jedna, i nie ma już nic ukrytego pod warunkiem.
+
+**Brak oceny nie jest zerem** i dostaje inny symbol — przekreślone kółko, nie
+przekreśloną gwiazdkę. Zero to ocena najniższa z możliwych, czyli dno, na które
+wypycha się zdjęcia do skasowania; brak to brak punktu.
+
+**„Do usunięcia" zostało osobno**, bo to nie ocena, tylko decyzja o losie
+zdjęcia — i zwykle towarzyszy jakiejś ocenie, zamiast ją zastępować. Gdyby
+dzieliło skalę z gwiazdkami, jedno wykluczałoby drugie.
+
+Przy okazji z nagłówka oceniania na telefonie zniknął segmentowany przełącznik
+stanu: nie ma już czego dublować.
+
 ## Filtr jako widok, nie czynność
 
 ### Segmentowany przełącznik nie umie zawieść z godnością

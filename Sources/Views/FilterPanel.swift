@@ -58,10 +58,10 @@ struct FilterPanel: View {
     }
 
     private var trigger: String {
-        "\(filters.baseStamp)|\(filters.standing.rawValue)|\(filters.feature.rawValue)"
+        "\(filters.baseStamp)|\(filters.grades.map(\.rawValue).sorted())|\(filters.onlyMarked)|\(filters.feature.rawValue)"
         + "|\(filters.threshold)|\(reviews.count)|\(features.revision)"
         + "|\(filters.measure.map(String.init) ?? "-")|\(filters.measureRanges.description)"
-        + "|\(filters.stars.sorted())"
+
     }
 
     private func recount() {
@@ -115,7 +115,7 @@ struct FilterPanel: View {
     private var sections: some View {
         VStack(alignment: .leading, spacing: 18) {
             group("Szukaj w treści") { searchField; searchNote }
-            group("Ocena") { standingRows; starRange }
+            group("Ocena") { gradeScale; markedRow }
             group("Cechy systemu") {
                 featureRows
                 thresholdSlider
@@ -190,52 +190,44 @@ struct FilterPanel: View {
 
     // MARK: - Ocena
 
-    private var standingRows: some View {
-        ForEach(Filters.Standing.allCases) { value in
-            row(value.rawValue,
-                count: tally.standing[value] ?? 0,
-                isOn: filters.standing == value) { filters.standing = value }
-        }
-    }
-
-    /// Gwiazdki mają sens wyłącznie wśród ocenionych: dla nieocenionych nie ma
-    /// czego zawężać, a „do usunięcia" jest znacznikiem, nie punktem na skali.
+    /// Cała ocena w jednym rzędzie: brak oceny, zero i pięć gwiazdek.
     ///
-    /// Każda gwiazdka to **osobny przełącznik**, nie koniec zakresu. Można
-    /// zapalić samą trójkę albo trójkę i piątkę z pominięciem czwórki.
-    /// Poprzednia wersja trzymała zakres i musiała udawać, że stuknięcie raz
-    /// zwija, a raz rozciąga — regułę tę dało się poznać wyłącznie przez
-    /// zaskoczenie.
-    @ViewBuilder
-    private var starRange: some View {
-        if filters.standing == .rated {
-            VStack(alignment: .leading, spacing: 6) {
-                HStack(spacing: 0) {
-                    ForEach(0...5, id: \.self) { value in starCell(value) }
-                }
-                Text(starSummary)
-                    .font(.caption2)
-                    .foregroundStyle(.tertiary)
-                    .fixedSize(horizontal: false, vertical: true)
+    /// Zastąpiło to cztery wiersze stanu plus skalę chowaną pod „ocenionymi".
+    /// Ten sam wybór da się wyrazić zaznaczeniem: nic to wszystkie, `brak` to
+    /// nieocenione, komplet gwiazdek to ocenione. A dochodzą przedziały,
+    /// których tamten układ nie umiał: sam dół skali albo oceny bez dna.
+    private var gradeScale: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            HStack(spacing: 0) {
+                ForEach(Filters.Grade.allCases) { gradeCell($0) }
             }
-            .padding(.top, 6)
+            Text(gradeSummary)
+                .font(.caption2)
+                .foregroundStyle(.tertiary)
+                .fixedSize(horizontal: false, vertical: true)
         }
     }
 
-    /// Jedna pozycja skali: symbol i pod nim liczba zdjęć, które ją mają.
-    /// Zero dostaje przekreśloną gwiazdkę — to nie brak oceny, tylko ocena
-    /// najniższa z możliwych.
-    private func starCell(_ value: Int) -> some View {
-        let isOn = filters.stars.contains(value)
-        let symbol = value == 0
-            ? (isOn ? "star.slash.fill" : "star.slash")
-            : (isOn ? "star.fill" : "star")
+    /// Jedna pozycja skali: symbol i pod nim liczba zdjęć.
+    private func gradeCell(_ grade: Filters.Grade) -> some View {
+        let isOn = filters.grades.contains(grade)
+        let symbol: String
+        switch grade {
+        // Brak oceny to przekreślone kółko, nie gwiazdka — bo to nie jest
+        // punkt na skali, tylko jego brak. Zero dostaje gwiazdkę przekreśloną:
+        // ocena najniższa z możliwych, czyli dno, na które wypycha się zdjęcia
+        // przeznaczone do skasowania.
+        case .unrated: symbol = isOn ? "circle.slash.fill" : "circle.slash"
+        case .zero: symbol = isOn ? "star.slash.fill" : "star.slash"
+        default: symbol = isOn ? "star.fill" : "star"
+        }
 
         return VStack(spacing: 1) {
             Image(systemName: symbol)
                 .font(.system(size: 13))
-                .foregroundStyle(isOn ? Color.yellow : Color.secondary.opacity(0.35))
-            Text((tally.stars[value] ?? 0).formatted())
+                .foregroundStyle(isOn ? (grade.isUnrated ? Color.accentColor : Color.yellow)
+                                      : Color.secondary.opacity(0.35))
+            Text((tally.grades[grade] ?? 0).formatted())
                 .font(.system(size: 9).monospacedDigit())
                 .foregroundStyle(isOn ? .secondary : .tertiary)
                 .lineLimit(1)
@@ -244,16 +236,26 @@ struct FilterPanel: View {
         .frame(maxWidth: .infinity)
         .contentShape(Rectangle())
         .onTapGesture {
-            if isOn { filters.stars.remove(value) } else { filters.stars.insert(value) }
+            if isOn { filters.grades.remove(grade) } else { filters.grades.insert(grade) }
         }
     }
 
-    private var starSummary: String {
-        guard !filters.stars.isEmpty else {
-            return "Wszystkie oceny. Stuknij gwiazdkę, żeby zawęzić."
+    private var gradeSummary: String {
+        guard !filters.grades.isEmpty else {
+            return "Wszystkie zdjęcia. Stuknij pozycję, żeby zawęzić."
         }
-        let chosen = filters.stars.sorted().map(String.init).joined(separator: ", ")
-        return "Tylko: \(chosen). Stuknij ponownie, żeby odznaczyć."
+        let sorted = filters.grades.sorted { $0.rawValue < $1.rawValue }
+        let names = sorted.map { $0.isUnrated ? "bez oceny" : String($0.rawValue) }
+        return "Tylko: \(names.joined(separator: ", ")). Stuknij ponownie, żeby odznaczyć."
+    }
+
+    /// Znacznik „do usunięcia" osobno, bo to nie ocena, tylko decyzja o losie
+    /// zdjęcia — i zwykle towarzyszy jakiejś ocenie, zamiast ją zastępować.
+    private var markedRow: some View {
+        row("do usunięcia",
+            count: tally.marked,
+            isOn: filters.onlyMarked) { filters.onlyMarked.toggle() }
+            .padding(.top, 2)
     }
 
     // MARK: - Cechy
