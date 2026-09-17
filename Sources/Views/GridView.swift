@@ -174,6 +174,17 @@ struct GridView: View {
                 .onKeyPress(.rightArrow) { move(1, in: shown); return .handled }
                 .onKeyPress(.upArrow) { move(-columns, in: shown); return .handled }
                 .onKeyPress(.downArrow) { move(columns, in: shown); return .handled }
+                // `esc` zdejmuje zaznaczenie — ostatnie ogniwo łańcucha cofania.
+                //
+                // Wcześniej wisiało to na skrócie przycisku „odznacz", a ten
+                // pojawia się dopiero przy założonym filtrze: bez filtru nie
+                // było w oknie nikogo, kto by ten klawisz obsłużył. Tu dociera
+                // zawsze, tą samą drogą co strzałki i oceny.
+                .onKeyPress(.escape) {
+                    guard !selection.isEmpty else { return .ignored }
+                    selection = []
+                    return .handled
+                }
                 .onKeyPress(.return) {
                     if let asset = current(in: shown) { onOpen(asset) }
                     return .handled
@@ -482,7 +493,6 @@ struct GridView: View {
                 // porównanie, a na końcu zaznaczenie. Dopiero gdy nie ma czego
                 // cofać, klawisz nie robi nic.
                 Button { selection = [] } label: { Text("odznacz") }
-                    .keyboardShortcut(.cancelAction)
                     #if os(iOS)
                     .font(.caption)
                     #endif
