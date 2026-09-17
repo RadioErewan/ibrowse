@@ -29,6 +29,9 @@ struct RangeSlider: View {
     private let knob: CGFloat = 12
     @State private var dragStart: ClosedRange<Double>?
 
+    /// Nieruchomy układ odniesienia dla wszystkich trzech chwytów.
+    private static let space = "przedzial"
+
     // Pionowy układ, od góry: histogram, prawy znacznik ▼, ścieżka, lewy ▲.
     private let barsHeight: CGFloat = 20
     private let markerHeight: CGFloat = 8
@@ -61,8 +64,8 @@ struct RangeSlider: View {
                     // Sama kreska ma trzy punkty wysokości, więc pole trafienia
                     // musi być grubsze od tego, co widać.
                     .contentShape(Rectangle().inset(by: -7))
-                    .gesture(dragBand(width: width))
                     .offset(x: lowX + knob / 2, y: trackY)
+                    .gesture(dragBand(width: width))
 
                 // Lewy znacznik **pod** kreską, czubkiem w górę; prawy **nad**
                 // kreską, czubkiem w dół. Dwa kształty po dwóch stronach ścieżki
@@ -76,6 +79,13 @@ struct RangeSlider: View {
                     .offset(x: highX, y: trackY - markerHeight)
                     .gesture(drag(lower: false, width: width))
             }
+            // Nazwany układ współrzędnych jest tu **konieczny**, nie porządkowy.
+            // Domyślnie gest mierzy ruch we własnym układzie widoku, do którego
+            // jest przypięty — a każdy chwyt tutaj przesuwa się w trakcie
+            // ciągnięcia, bo to właśnie robi. Punkt odniesienia uciekał więc
+            // razem z palcem i przesunięcie wychodziło raz za małe, raz szarpane.
+            // Ten układ należy do całej kontrolki i stoi w miejscu.
+            .coordinateSpace(.named(Self.space))
         }
         .frame(height: trackY + 3 + markerHeight)
     }
@@ -124,7 +134,7 @@ struct RangeSlider: View {
     }
 
     private func drag(lower: Bool, width: CGFloat) -> some Gesture {
-        DragGesture(minimumDistance: 0)
+        DragGesture(minimumDistance: 0, coordinateSpace: .named(Self.space))
             .onChanged { gesture in
                 let start = dragStart ?? range
                 if dragStart == nil { dragStart = range }
@@ -146,7 +156,7 @@ struct RangeSlider: View {
     /// dojściu do krańca skali przedział się o niego zatrzymuje, zamiast
     /// zwężać — inaczej powrót od krawędzi wracałby węższy, niż się wyjechało.
     private func dragBand(width: CGFloat) -> some Gesture {
-        DragGesture(minimumDistance: 0)
+        DragGesture(minimumDistance: 0, coordinateSpace: .named(Self.space))
             .onChanged { gesture in
                 let start = dragStart ?? range
                 if dragStart == nil { dragStart = range }
