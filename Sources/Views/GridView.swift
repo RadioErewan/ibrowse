@@ -62,6 +62,18 @@ struct GridView: View {
     @State private var showingDeletions = false
     @State private var hoveredDay: Date?
 
+    #if os(macOS)
+    /// Siatka jest głównym widokiem, więc musi dać się obsłużyć z klawiatury.
+    /// Dotąd nie dawała: strzałka wydawała pyknięcie, bo żaden widok nie
+    /// zgłaszał się po klawisz.
+    @FocusState private var focused: Bool
+
+    /// Ile kafelków mieści się w wierszu — potrzebne strzałkom w pionie.
+    /// Liczone z rzeczywistej szerokości, bo `LazyVGrid` z kolumnami
+    /// adaptacyjnymi sam decyduje, ile ich zmieści, i nie mówi tego nikomu.
+    @State private var columns = 1
+    #endif
+
     private var marked: [Review] { reviews.filter(\.markedForDeletion) }
 
     #if os(macOS)
@@ -145,9 +157,91 @@ struct GridView: View {
                     }
                 }
                 .task(id: focusID) { await reveal(focusID, using: proxy) }
+                #if os(macOS)
+                .background {
+                    GeometryReader { geometry in
+                        Color.clear
+                            .onAppear { measure(geometry.size.width) }
+                            .onChange(of: geometry.size.width) { _, width in measure(width) }
+                            .onChange(of: thumbSize) { _, _ in measure(geometry.size.width) }
+                    }
+                }
+                .focusable()
+                .focusEffectDisabled()
+                .focused($focused)
+                .onAppear { focused = true }
+                .onKeyPress(.leftArrow) { move(-1, in: shown); return .handled }
+                .onKeyPress(.rightArrow) { move(1, in: shown); return .handled }
+                .onKeyPress(.upArrow) { move(-columns, in: shown); return .handled }
+                .onKeyPress(.downArrow) { move(columns, in: shown); return .handled }
+                .onKeyPress(.return) {
+                    if let asset = current(in: shown) { onOpen(asset) }
+                    return .handled
+                }
+                .onKeyPress(.space) {
+                    if let asset = current(in: shown) { onOpen(asset) }
+                    return .handled
+                }
+                .onKeyPress { press in handle(press, in: shown) }
+                #endif
             }
         }
     }
+
+    #if os(macOS)
+    private func measure(_ width: Double) {
+        // Ta sama arytmetyka, którą robi `GridItem(.adaptive(minimum:))`:
+        // tyle kafelków, ile się mieści przy odstępie 3 punktów.
+        columns = max(1, Int((width - 6) / (thumbSize + 3)))
+    }
+
+    private func current(in shown: [PHAsset]) -> PHAsset? {
+        guard let focusID else { return shown.first }
+        return shown.first { $0.localIdentifier == focusID } ?? shown.first
+    }
+
+    /// Przesuwa wskaźnik miejsca **po zbiorze roboczym**, czyli po tej samej
+    /// kolejce, po której chodzi pełny ekran. Zaznaczenie idzie za nim, bo
+    /// strzałka jest odpowiednikiem kliknięcia, nie osobnym pojęciem.
+    private func move(_ delta: Int, in shown: [PHAsset]) {
+        focused = true
+        guard !shown.isEmpty else { return }
+        let index = focusID.flatMap { id in
+            shown.firstIndex { $0.localIdentifier == id }
+        } ?? 0
+        let next = min(max(index + delta, 0), shown.count - 1)
+        let id = shown[next].localIdentifier
+        focusID = id
+        selection = [id]
+    }
+
+    /// Ocena z klawiatury działa też w siatce — zaznaczone zdjęcie widać
+    /// w podglądzie, więc nie ma powodu wchodzić w pełny ekran, żeby postawić
+    /// gwiazdkę. Klawisze te same, co w ocenianiu.
+    private func handle(_ press: KeyPress, in shown: [PHAsset]) -> KeyPress.Result {
+        guard let key = press.characters.first, let asset = current(in: shown) else {
+            return .ignored
+        }
+        switch key {
+        case "0"..."5":
+            Review.upsert(assetID: asset.localIdentifier, in: context) {
+                $0.set(Double(String(key)) ?? 0)
+            }
+            move(1, in: shown)
+            return .handled
+        case "x", "X":
+            Review.upsert(assetID: asset.localIdentifier, in: context) {
+                $0.markedForDeletion.toggle()
+            }
+            return .handled
+        case "c", "C":
+            compare(in: shown)
+            return .handled
+        default:
+            return .ignored
+        }
+    }
+    #endif
 
     /// Jeden kafelek. Wyjęty z ciała widoku, bo od czasu grupowania
     /// wstawia się w dwóch miejscach naraz.
@@ -295,6 +389,7 @@ struct GridView: View {
 
     /// Zwykły klik zastępuje całe zaznaczenie i przestawia wskaźnik miejsca.
     private func pick(_ asset: PHAsset) {
+        focused = true
         selection = [asset.localIdentifier]
         focusID = asset.localIdentifier
     }

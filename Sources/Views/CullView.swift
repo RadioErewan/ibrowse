@@ -131,14 +131,16 @@ struct CullView: View {
                 .inspectorColumnWidth(min: 220, ideal: 280, max: 420)
         }
         .toolbar {
+            // Segmentowanego przełącznika stanu oceny **już tu nie ma**.
+            //
+            // Odkąd filtr jest kolumną na stałe, ten sam wybór stał tu drugi
+            // raz, dwieście punktów od pierwszego. Do tego zachowywał się źle:
+            // przy przesuwaniu kursora napisy przeskakiwały, bo segmentowany
+            // dobiera szerokości segmentów do treści i przelicza je przy każdej
+            // zmianie stanu najechania, a sztywna szerokość 340 punktów tylko
+            // ściskała je mocniej. Jedna kontrolka mniej i jeden powód do
+            // migotania mniej.
             ToolbarItemGroup(placement: .principal) {
-                Picker("", selection: $filters.standing) {
-                    ForEach(Filters.Standing.allCases) { Text($0.rawValue).tag($0) }
-                }
-                .pickerStyle(.segmented)
-                .labelsHidden()
-                .frame(width: 340)
-
                 if markedCount > 0 {
                     Button {
                         showingDeletions = true
