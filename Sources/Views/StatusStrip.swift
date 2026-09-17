@@ -15,7 +15,59 @@ struct StatusStrip: View {
     @ObservedObject var sync: LibrarySync
     @ObservedObject var albums: AlbumSync
 
+    /// Co zrobić, gdy w folderze leży nowszy plik.
+    var onRead: () -> Void = {}
+
     var body: some View {
+        VStack(spacing: 0) {
+            Divider()
+            HStack(spacing: 10) {
+                progress
+                Spacer(minLength: 12)
+                exchange
+            }
+            .padding(.horizontal, 14)
+            .padding(.vertical, 6)
+            .background(.bar)
+        }
+    }
+
+    /// Prawa strona mówi **zawsze**, bo odpowiada na pytanie zadawane po
+    /// powrocie do komputera: czy to, co widzę, jest aktualne. Synchronizacja
+    /// jest ręczna po obu stronach i bez tego nie da się tego wiedzieć —
+    /// oceniasz na telefonie, siadasz do Maca i wygląda, jakby praca przepadła.
+    @ViewBuilder
+    private var exchange: some View {
+        HStack(spacing: 8) {
+            if let pending = sync.pending {
+                Label {
+                    Text("w folderze nowszy: \(pending.name), \(pending.modified, style: .relative)")
+                } icon: {
+                    Image(systemName: "exclamationmark.triangle.fill")
+                }
+                .font(.caption)
+                .foregroundStyle(.yellow)
+                .lineLimit(1)
+
+                Button("odczytaj", action: onRead)
+                    .buttonStyle(.link)
+                    .font(.caption)
+            } else if let read = sync.lastRead {
+                Text("plik wymiany · odczytany \(read, style: .relative) temu")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .lineLimit(1)
+            } else {
+                Text("plik wymiany · nigdy nieodczytany")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .lineLimit(1)
+            }
+        }
+    }
+
+    @ViewBuilder
+    private var progress: some View {
         if similarity.isWorking {
             strip(
                 title: "liczę odciski wizualne",
@@ -35,46 +87,31 @@ struct StatusStrip: View {
     /// nic do zrobienia, kończyła się zniknięciem paska — obrazem
     /// nieodróżnialnym od awarii.
     private func done(_ text: String) -> some View {
-        VStack(spacing: 0) {
-            Divider()
-            HStack(spacing: 8) {
-                Image(systemName: "checkmark.circle.fill").foregroundStyle(.green)
-                Text(text).font(.callout)
-                Spacer()
-            }
-            .padding(.horizontal, 14)
-            .padding(.vertical, 8)
-            .background(.bar)
+        HStack(spacing: 8) {
+            Image(systemName: "checkmark.circle.fill").foregroundStyle(.green)
+            Text(text).font(.caption).lineLimit(1)
         }
-        .transition(.move(edge: .bottom).combined(with: .opacity))
+        .transition(.opacity)
     }
 
     /// Postęp określony pokazujemy paskiem, nieokreślony — kręciołkiem.
     /// Udawany pasek przy nieznanym czasie jest gorszy od żadnego: sugeruje
     /// wiedzę, której nie mamy.
     private func strip(title: String, detail: String?, fraction: Double?) -> some View {
-        VStack(spacing: 0) {
-            Divider()
-            HStack(spacing: 10) {
-                if let fraction {
-                    ProgressView(value: fraction).frame(width: 180)
-                } else {
-                    ProgressView().controlSize(.small)
-                }
-                Text(title)
-                    .font(.callout)
-                if let detail {
-                    Text(detail)
-                        .font(.callout.monospacedDigit())
-                        .foregroundStyle(.secondary)
-                }
-                Spacer()
+        HStack(spacing: 10) {
+            if let fraction {
+                ProgressView(value: fraction).frame(width: 130)
+            } else {
+                ProgressView().controlSize(.small)
             }
-            .padding(.horizontal, 14)
-            .padding(.vertical, 8)
-            .background(.bar)
+            Text(title).font(.caption).lineLimit(1)
+            if let detail {
+                Text(detail)
+                    .font(.caption.monospacedDigit())
+                    .foregroundStyle(.secondary)
+            }
         }
-        .transition(.move(edge: .bottom).combined(with: .opacity))
+        .transition(.opacity)
     }
 }
 #endif

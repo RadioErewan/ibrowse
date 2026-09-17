@@ -30,6 +30,76 @@ final class LibrarySync: ObservableObject {
     /// trzy różne oczekiwania, których nie da się od siebie odróżnić bez nazwy.
     @Published private(set) var stage: String?
 
+    /// Kiedy ostatnio przeczytaliśmy cudze pliki. Przeżywa zamknięcie
+    /// aplikacji, bo to pytanie zadaje się po powrocie do komputera, a nie
+    /// w trakcie jednej sesji.
+    @Published private(set) var lastRead: Date? =
+        UserDefaults.standard.object(forKey: "sync.lastRead") as? Date
+
+    /// Najnowszy cudzy plik leżący w folderze wymiany, jeśli jest **nowszy**
+    /// niż nasz ostatni odczyt.
+    ///
+    /// To jest odpowiedź na jedyne pytanie, którego ta aplikacja dotąd nie
+    /// umiała zadać: „czy drugie urządzenie ma nowszą pracę". Synchronizacja
+    /// jest ręczna po obu stronach, więc bez tego wygląda to jak utrata pracy
+    /// — oceniasz na telefonie, siadasz do Maca i nie ma tam nic.
+    ///
+    /// Sprawdzenie jest **darmowe**: data pliku w chmurze jest w metadanych
+    /// i nie wymaga ściągania zawartości.
+    @Published private(set) var pending: Pending?
+
+    struct Pending {
+        let name: String
+        let modified: Date
+    }
+
+    /// Rozgląda się po folderze bez czytania czegokolwiek.
+    func refreshFolderState() async {
+        guard let folder = SyncFolder.resolve() else { return }
+        defer { folder.release() }
+
+        let mine = SyncFolder.fileName
+        let source = folder.url
+        let seen = lastRead
+
+        let found = await Task.detached { () -> Pending? in
+            let keys: [URLResourceKey] = [.contentModificationDateKey]
+            let contents = (try? FileManager.default.contentsOfDirectory(
+                at: source, includingPropertiesForKeys: keys
+            )) ?? []
+
+            var newest: Pending?
+            for url in contents {
+                let name = url.lastPathComponent
+                // Także pliki jeszcze nieściągnięte — te mają kropkę z przodu
+                // i cudze rozszerzenie. Patrz `readOthers`.
+                let real = name.hasPrefix(".") && name.hasSuffix(".icloud")
+                    ? String(name.dropFirst().dropLast(".icloud".count))
+                    : name
+                guard real.hasSuffix("." + SyncFile.fileExtension), real != mine else { continue }
+                guard let date = try? url.resourceValues(
+                    forKeys: [.contentModificationDateKey]
+                ).contentModificationDate else { continue }
+                if newest == nil || date > newest!.modified {
+                    newest = Pending(name: String(real.dropLast(SyncFile.fileExtension.count + 1)),
+                                     modified: date)
+                }
+            }
+            guard let newest else { return nil }
+            guard let seen else { return newest }
+            return newest.modified > seen ? newest : nil
+        }.value
+
+        pending = found
+    }
+
+    private func noteRead() {
+        let now = Date.now
+        lastRead = now
+        pending = nil
+        UserDefaults.standard.set(now, forKey: "sync.lastRead")
+    }
+
     /// Kolejność ma znaczenie i jest tu jedyną nieoczywistą rzeczą.
     ///
     /// Odciski muszą wejść **przed** przeliczeniem serii, a werdykty **po** —
@@ -117,6 +187,7 @@ final class LibrarySync: ObservableObject {
         // mam" — a to są zupełnie różne sytuacje i tylko jedna jest błędem.
         if incoming.isEmpty {
             summary = "Nie znalazłem plików z innych urządzeń. Zapisałem swój."
+            noteRead()
         } else {
             let offered = incoming.reduce(into: (0, 0, 0)) { total, payload in
                 total.0 += payload.ratings.count
@@ -126,6 +197,7 @@ final class LibrarySync: ObservableObject {
             let names = incoming.map(\.deviceName).joined(separator: ", ")
             let localPrints = ((try? context.fetch(FetchDescriptor<Fingerprint>())) ?? []).count
 
+            noteRead()
             summary = """
                 Z \(incoming.count) pliku (\(names)): \(offered.0) ocen, \
                 \(offered.1) odcisków, \(offered.2) serii.

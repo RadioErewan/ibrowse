@@ -55,6 +55,7 @@ struct GridView: View {
     @State private var confirming = false
     @State private var lastMarked: Int?
     @State private var showingDeletions = false
+    @State private var hoveredDay: Date?
 
     private var marked: [Review] { reviews.filter(\.markedForDeletion) }
 
@@ -109,42 +110,22 @@ struct GridView: View {
                 ScrollView {
                     LazyVGrid(
                         columns: [GridItem(.adaptive(minimum: thumbSize), spacing: 3)],
-                        spacing: 3
+                        spacing: 3,
+                        pinnedViews: filters.order.isGrouped ? [.sectionHeaders] : []
                     ) {
-                        ForEach(shown, id: \.localIdentifier) { asset in
-                            Thumbnail(
-                                asset: asset,
-                                library: library,
-                                monitor: monitor,
-                                side: thumbSize,
-                                rating: reviewIndex[asset.localIdentifier]?.stars ?? 0,
-                                badge: filters.badge(for: asset.localIdentifier, in: features),
-                                isFocus: asset.localIdentifier == focusID,
-                                isSelected: selection.contains(asset.localIdentifier)
-                            )
-                            // Na telefonie otwiera pojedyncze stuknięcie, bo
-                            // tak działa każda galeria i nie ma tu czego
-                            // zaznaczać. Przewijaniu to nie przeszkadza: gest
-                            // dotknięcia nie odpala się, gdy palec wędruje.
-                            #if os(iOS)
-                            .onTapGesture { onOpen(asset) }
-                            #else
-                            // Kolejność ma znaczenie: dwuklik musi być wpięty
-                            // **przed** pojedynczym, inaczej pierwszy klik
-                            // zjada gest i druga połowa nigdy nie dochodzi.
-                            .onTapGesture(count: 2) { onOpen(asset) }
-                            .simultaneousGesture(
-                                TapGesture().modifiers(.command).onEnded {
-                                    toggle(asset, in: shown)
+                        if filters.order.isGrouped {
+                            // Nagłówki są **podziałami w płaskiej kolejce**, nie
+                            // zagnieżdżeniem. Zdjęcia idą dalej jedną listą,
+                            // więc „następne" znaczy to samo co w pełnym ekranie.
+                            ForEach(days(of: shown), id: \.key) { day in
+                                Section {
+                                    ForEach(day.assets, id: \.localIdentifier) { tile($0, in: shown, index: reviewIndex) }
+                                } header: {
+                                    dayHeader(day)
                                 }
-                            )
-                            .simultaneousGesture(
-                                TapGesture().modifiers(.shift).onEnded {
-                                    extend(to: asset, in: shown)
-                                }
-                            )
-                            .onTapGesture { pick(asset) }
-                            #endif
+                            }
+                        } else {
+                            ForEach(shown, id: \.localIdentifier) { tile($0, in: shown, index: reviewIndex) }
                         }
                     }
                     .padding(3)
@@ -161,6 +142,102 @@ struct GridView: View {
                 .task(id: focusID) { await reveal(focusID, using: proxy) }
             }
         }
+    }
+
+    /// Jeden kafelek. Wyjęty z ciała widoku, bo od czasu grupowania
+    /// wstawia się w dwóch miejscach naraz.
+    @ViewBuilder
+    private func tile(
+        _ asset: PHAsset, in shown: [PHAsset], index: [String: Review]
+    ) -> some View {
+        Thumbnail(
+            asset: asset,
+            library: library,
+            monitor: monitor,
+            side: thumbSize,
+            rating: index[asset.localIdentifier]?.stars ?? 0,
+            badge: filters.badge(for: asset.localIdentifier, in: features),
+            isFocus: asset.localIdentifier == focusID,
+            isSelected: selection.contains(asset.localIdentifier)
+        )
+        // Na telefonie otwiera pojedyncze stuknięcie, bo tak działa każda
+        // galeria i nie ma tu czego zaznaczać. Przewijaniu to nie przeszkadza:
+        // gest dotknięcia nie odpala się, gdy palec wędruje.
+        #if os(iOS)
+        .onTapGesture { onOpen(asset) }
+        #else
+        // Kolejność ma znaczenie: dwuklik musi być wpięty **przed**
+        // pojedynczym, inaczej pierwszy klik zjada gest.
+        .onTapGesture(count: 2) { onOpen(asset) }
+        .simultaneousGesture(
+            TapGesture().modifiers(.command).onEnded { toggle(asset, in: shown) }
+        )
+        .simultaneousGesture(
+            TapGesture().modifiers(.shift).onEnded { extend(to: asset, in: shown) }
+        )
+        .onTapGesture { pick(asset) }
+        #endif
+    }
+
+    // MARK: - Dni
+
+    struct Day: Identifiable {
+        let key: Date
+        let assets: [PHAsset]
+        var id: Date { key }
+    }
+
+    /// Dzieli zbiór na dni **bez zmiany kolejności** — zbiór przychodzi już
+    /// posortowany, a tu powstają tylko granice. Gdyby to tu sortowało,
+    /// kolejka w siatce rozjechałaby się z kolejką w pełnym ekranie.
+    private func days(of assets: [PHAsset]) -> [Day] {
+        let calendar = Calendar.current
+        var result: [Day] = []
+        var current: Date?
+        var bucket: [PHAsset] = []
+
+        for asset in assets {
+            let day = calendar.startOfDay(for: asset.creationDate ?? .distantPast)
+            if day != current {
+                if let current { result.append(Day(key: current, assets: bucket)) }
+                current = day
+                bucket = []
+            }
+            bucket.append(asset)
+        }
+        if let current { result.append(Day(key: current, assets: bucket)) }
+        return result
+    }
+
+    @ViewBuilder
+    private func dayHeader(_ day: Day) -> some View {
+        HStack(spacing: 8) {
+            Text(day.key, format: .dateTime.day().month(.wide).year())
+                .font(.system(size: 12, weight: .semibold))
+            Text("\(day.assets.count) \(day.assets.count == 1 ? "zdjęcie" : "zdjęć")")
+                .font(.caption.monospacedDigit())
+                .foregroundStyle(.secondary)
+            Spacer(minLength: 8)
+            #if os(macOS)
+            // Akcja przy najechaniu, nie na stałe — inaczej przy przewijaniu
+            // dostaje się kolumnę akcentowego tekstu przez cały ekran.
+            if hoveredDay == day.key {
+                Button("zaznacz dzień") {
+                    selection.formUnion(day.assets.map(\.localIdentifier))
+                }
+                .buttonStyle(.plain)
+                .font(.caption)
+                .foregroundStyle(Color.accentColor)
+            }
+            #endif
+        }
+        .padding(.horizontal, 12)
+        .padding(.vertical, 7)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(.bar)
+        #if os(macOS)
+        .onHover { hoveredDay = $0 ? day.key : nil }
+        #endif
     }
 
     #if os(macOS)

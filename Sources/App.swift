@@ -252,6 +252,10 @@ struct RootView: View {
             }
         }
         .task { await library.start() }
+        // Rozejrzenie się po folderze wymiany jest darmowe — czyta same daty
+        // plików, nie ich zawartość — a odpowiada na pytanie „czy drugie
+        // urządzenie ma nowszą pracę", którego aplikacja dotąd nie umiała zadać.
+        .task { await sync.refreshFolderState() }
         // Cechy czytamy raz, do zwykłego słownika. Po wczytaniu z baz systemu
         // i po synchronizacji odświeżamy je jawnie — same z siebie się nie
         // zmieniają, więc nie ma czego pilnować w tle.
@@ -261,6 +265,7 @@ struct RootView: View {
         .task(id: sync.isWorking) {
             guard !sync.isWorking else { return }
             features.load(context: context)
+            await sync.refreshFolderState()
         }
         .task(id: library.assets.count) { filters.adopt(library.assets) }
         // Przy zmianie trybu zwalniamy podgrzane renditiony — inaczej
@@ -352,7 +357,14 @@ struct RootView: View {
                 } else {
                     workspace
                 }
-                StatusStrip(similarity: similarity, sync: sync, albums: albums)
+                StatusStrip(similarity: similarity, sync: sync, albums: albums) {
+                    Task {
+                        await sync.synchronise(
+                            context: context, similarity: similarity, library: library
+                        )
+                        await sync.refreshFolderState()
+                    }
+                }
             }
             .animation(.easeInOut(duration: 0.2), value: similarity.isWorking)
             .animation(.easeInOut(duration: 0.2), value: sync.isWorking)

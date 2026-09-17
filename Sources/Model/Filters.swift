@@ -67,12 +67,22 @@ final class Filters: ObservableObject {
     /// to co innego niż obejrzeć całe archiwum od najbardziej poruszonych.
     enum Order: String, CaseIterable, Identifiable {
         case library = "jak w bibliotece"
+        case day = "po dniu"
         case blurry = "od poruszonych"
         case dark = "od niedoświetlonych"
         case eyes = "od zamkniętych oczu"
         case best = "od najlepszych"
         case worst = "od najgorszych"
         var id: String { rawValue }
+
+        /// Czy ta kolejność dzieli siatkę na nagłówki.
+        ///
+        /// Grupowanie **nie jest osobną osią** — to pozycja tej samej listy,
+        /// wykluczająca się z pozostałymi. Gdyby było osią, trzeba by
+        /// odpowiedzieć, co znaczy „następne zdjęcie" przy grupowaniu po dniu
+        /// i sortowaniu po poruszeniu naraz: kolejne w dniu czy kolejny dzień.
+        /// Tak kolejka zostaje płaska, a nagłówki są w niej podziałami.
+        var isGrouped: Bool { self == .day }
     }
 
     @Published var feature: Feature = Feature(
@@ -229,6 +239,12 @@ final class Filters: ObservableObject {
         switch order {
         case .library:
             return assets
+        case .day:
+            // Najnowsze pierwsze — dzień bez zdjęcia nie istnieje, więc brak
+            // daty ląduje na końcu razem z resztą nieznanego.
+            return assets.sorted {
+                ($0.creationDate ?? .distantPast) > ($1.creationDate ?? .distantPast)
+            }
         case .blurry, .dark:
             let value: (FeatureIndex.Row) -> Double =
                 order == .blurry ? { $0.sharpness } : { $0.exposure }
