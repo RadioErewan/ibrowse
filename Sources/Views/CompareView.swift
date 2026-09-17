@@ -63,7 +63,6 @@ struct CompareView: View {
             strip
         }
         .background(Color.black)
-        .background { keys }
         // Nowy kadr zawsze wchodzi dopasowany. Bez tego zdjęcie o innych
         // proporcjach wjeżdża przesunięte poza panel i wygląda na puste.
         .task(id: "\(pair?.a ?? "")|\(pair?.b ?? "")") {
@@ -72,26 +71,37 @@ struct CompareView: View {
         }
     }
 
-    /// Klawiatura przez **skróty przycisków**, nie przez `onKeyPress`.
+    /// Nawigacja **prawdziwymi przyciskami**, nie ukrytymi.
     ///
-    /// `onKeyPress` wymaga, żeby widok miał focus, a w tym oknie zabierał go
-    /// przełącznik wspólnego powiększenia i pasek miniatur — strzałki i `esc`
-    /// milczały, i nie dało się stąd wyjść inaczej niż myszą. Skrót przycisku
-    /// idzie łańcuchem odpowiedzi i działa niezależnie od tego, co ma focus.
+    /// Pierwsze podejście trzymało skróty na przyciskach zerowej wielkości
+    /// z zerową przezroczystością, schowanych w tle. macOS takich nie wpuszcza
+    /// do łańcucha odpowiedzi — klawisz nie trafiał w nic, więc system piszczał.
+    /// Drugie podejście, `onKeyPress`, wymagało focusu, a ten zabierał
+    /// przełącznik powiększenia i pasek miniatur.
     ///
-    /// Przyciski są niewidoczne, ale **nie** `hidden` — ukryte tracą skróty.
+    /// Widoczne przyciski rozwiązują oba problemy naraz i przy okazji pokazują,
+    /// że te klawisze w ogóle istnieją.
     @ViewBuilder
-    private var keys: some View {
-        VStack {
-            Button("") { step(-1, side: .b) }.keyboardShortcut(.leftArrow, modifiers: [])
-            Button("") { step(1, side: .b) }.keyboardShortcut(.rightArrow, modifiers: [])
-            Button("") { step(-1, side: .a) }.keyboardShortcut(.leftArrow, modifiers: .shift)
-            Button("") { step(1, side: .a) }.keyboardShortcut(.rightArrow, modifiers: .shift)
-            Button("") { swap() }.keyboardShortcut("s", modifiers: [])
+    private func stepper(_ side: Side, label: String, modifiers: EventModifiers) -> some View {
+        HStack(spacing: 2) {
+            Text(label)
+                .font(.caption.weight(.semibold))
+                .foregroundStyle(side == .a ? Color.yellow : Color.accentColor)
+            Button {
+                step(-1, side: side)
+            } label: {
+                Image(systemName: "chevron.left")
+            }
+            .keyboardShortcut(.leftArrow, modifiers: modifiers)
+            Button {
+                step(1, side: side)
+            } label: {
+                Image(systemName: "chevron.right")
+            }
+            .keyboardShortcut(.rightArrow, modifiers: modifiers)
         }
-        .opacity(0)
-        .allowsHitTesting(false)
-        .frame(width: 0, height: 0)
+        .buttonStyle(.bordered)
+        .controlSize(.small)
     }
 
     private var bar: some View {
@@ -104,10 +114,18 @@ struct CompareView: View {
 
             Spacer()
 
-            Text("← → zmienia B · ⇧← ⇧→ zmienia A · S zamienia strony")
-                .font(.caption.monospaced())
-                .foregroundStyle(.tertiary)
-                .lineLimit(1)
+            stepper(.a, label: "A", modifiers: .shift)
+            stepper(.b, label: "B", modifiers: [])
+
+            Button {
+                swap()
+            } label: {
+                Image(systemName: "arrow.left.arrow.right")
+            }
+            .buttonStyle(.bordered)
+            .controlSize(.small)
+            .keyboardShortcut("s", modifiers: [])
+            .help("S — zamień strony")
 
             Toggle("wspólne powiększenie", isOn: $sharedZoom)
                 .toggleStyle(.switch)
