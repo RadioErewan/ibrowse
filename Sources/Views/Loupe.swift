@@ -123,9 +123,7 @@ struct Loupe: View {
         }
         .task(id: asset.localIdentifier) { load() }
         .onDisappear { cancel() }
-        #if os(macOS)
-        .onExitCommand { isPresented = false }
-        #endif
+
     }
 
     /// Jeden piksel zdjęcia na jeden piksel ekranu. W punktach to znaczy
@@ -204,6 +202,11 @@ struct Loupe: View {
                         .foregroundStyle(.secondary)
                 }
                 .buttonStyle(.plain)
+                // Esc na **widocznym** przycisku, nie na `onExitCommand`.
+                // Arkusz przykrywa okno, więc dopóki lupa jest otwarta, to ona
+                // zjada klawisz — i o to chodzi: esc cofa o jedno okno, a nie
+                // od razu do siatki.
+                .keyboardShortcut(.cancelAction)
             }
             .padding(12)
             Spacer()

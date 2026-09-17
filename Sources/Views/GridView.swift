@@ -478,7 +478,11 @@ struct GridView: View {
             #endif
 
             if !selection.isEmpty {
+                // Ostatnie ogniwo łańcucha `esc`: lupa, pełny ekran,
+                // porównanie, a na końcu zaznaczenie. Dopiero gdy nie ma czego
+                // cofać, klawisz nie robi nic.
                 Button { selection = [] } label: { Text("odznacz") }
+                    .keyboardShortcut(.cancelAction)
                     #if os(iOS)
                     .font(.caption)
                     #endif

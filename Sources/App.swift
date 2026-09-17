@@ -381,7 +381,6 @@ struct RootView: View {
             }
             .animation(.easeInOut(duration: 0.2), value: similarity.isWorking)
             .animation(.easeInOut(duration: 0.2), value: sync.isWorking)
-            .onExitCommand { fullScreen = false }
             .toolbar {
                 ToolbarItem(placement: .navigation) {
                     if fullScreen {
@@ -391,6 +390,7 @@ struct RootView: View {
                             Label("wróć do siatki", systemImage: "chevron.left")
                         }
                         .help("esc")
+                        .keyboardShortcut(.cancelAction)
                     } else {
                         // Ikony zamiast napisów: dwa segmenty z tekstem stały
                         // obok drugiego segmentowanego przełącznika i belka
