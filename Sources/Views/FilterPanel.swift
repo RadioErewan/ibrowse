@@ -352,9 +352,18 @@ struct FilterPanel: View {
 
             VStack(alignment: .leading, spacing: 4) {
                 HStack(spacing: 4) {
-                    Text("od \(String(format: "%.2f", current.lowerBound)) do \(String(format: "%.2f", current.upperBound))")
-                        .font(.caption.monospacedDigit())
-                        .foregroundStyle(.secondary)
+                    // Nazwa miary **przy suwaku**, nie tylko przy wierszu. Suwak
+                    // stoi pod stałymi cechami, a wybrana miara bywa głęboko
+                    // w rolecie, poza ekranem — sam przedział liczb nie mówi,
+                    // czego dotyczy.
+                    VStack(alignment: .leading, spacing: 0) {
+                        Text(active.label)
+                            .font(.caption.weight(.semibold))
+                        Text("od \(String(format: "%.2f", current.lowerBound)) do \(String(format: "%.2f", current.upperBound))")
+                            .font(.caption.monospacedDigit())
+                            .foregroundStyle(.secondary)
+                    }
+                    .lineLimit(1)
                     Spacer(minLength: 6)
                     Menu {
                         Button("najgorsza dziesiąta część") {
