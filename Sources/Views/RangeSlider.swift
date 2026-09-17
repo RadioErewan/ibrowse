@@ -21,8 +21,15 @@ struct RangeSlider: View {
     let bounds: ClosedRange<Double>
     var histogram: [Int] = []
 
-    private let knob: CGFloat = 14
+    /// Szerokość znacznika. Oba są trójkątami, więc to też zapas po bokach
+    /// ścieżki, żeby czubek na krańcu nie wychodził poza kontrolkę.
+    private let knob: CGFloat = 12
     @State private var dragStart: ClosedRange<Double>?
+
+    // Pionowy układ, od góry: histogram, prawy znacznik ▼, ścieżka, lewy ▲.
+    private let barsHeight: CGFloat = 20
+    private let markerHeight: CGFloat = 8
+    private var trackY: CGFloat { barsHeight + markerHeight }
 
     var body: some View {
         GeometryReader { geometry in
@@ -32,37 +39,43 @@ struct RangeSlider: View {
 
             ZStack(alignment: .topLeading) {
                 bars(width: width)
-                    .frame(height: 22)
+                    .frame(height: barsHeight)
                     .offset(x: knob / 2)
 
                 Capsule()
                     .fill(.quaternary)
-                    .frame(height: 4)
-                    .offset(x: knob / 2, y: 26)
-                    .frame(width: width)
+                    .frame(width: width, height: 3)
+                    .offset(x: knob / 2, y: trackY)
 
                 Capsule()
                     .fill(Color.accentColor)
-                    .frame(width: max(highX - lowX, 0), height: 4)
-                    .offset(x: lowX + knob / 2, y: 26)
+                    .frame(width: max(highX - lowX, 0), height: 3)
+                    .offset(x: lowX + knob / 2, y: trackY)
 
-                handle
-                    .offset(x: lowX, y: 21)
+                // Lewy znacznik **pod** kreską, czubkiem w górę; prawy **nad**
+                // kreską, czubkiem w dół. Dwa kształty po dwóch stronach ścieżki
+                // mówią od razu, który jest który — dwa jednakowe kółka po
+                // zetknięciu przestawały być do odróżnienia i nie było wiadomo,
+                // który się złapie.
+                marker(pointingUp: true)
+                    .offset(x: lowX, y: trackY + 3)
                     .gesture(drag(lower: true, width: width))
-                handle
-                    .offset(x: highX, y: 21)
+                marker(pointingUp: false)
+                    .offset(x: highX, y: trackY - markerHeight)
                     .gesture(drag(lower: false, width: width))
             }
         }
-        .frame(height: 36)
+        .frame(height: trackY + 3 + markerHeight)
     }
 
-    private var handle: some View {
-        Circle()
+    private func marker(pointingUp: Bool) -> some View {
+        Triangle(pointingUp: pointingUp)
             .fill(.white)
-            .frame(width: knob, height: knob)
-            .shadow(color: .black.opacity(0.35), radius: 1, y: 0.5)
-            .contentShape(Rectangle().inset(by: -6))
+            .frame(width: knob, height: markerHeight)
+            .shadow(color: .black.opacity(0.35), radius: 0.8, y: 0.5)
+            // Pole trafienia większe niż sam trójkąt — osiem punktów wysokości
+            // to za mało, żeby łapać bez celowania.
+            .contentShape(Rectangle().inset(by: -7))
     }
 
     @ViewBuilder
@@ -81,10 +94,10 @@ struct RangeSlider: View {
                     .fill(range.contains(center)
                           ? Color.accentColor.opacity(0.55)
                           : Color.secondary.opacity(0.25))
-                    .frame(height: max(1, 22 * height))
+                    .frame(height: max(1, barsHeight * height))
             }
         }
-        .frame(width: width, height: 22, alignment: .bottom)
+        .frame(width: width, height: barsHeight, alignment: .bottom)
     }
 
     private func position(_ value: Double, width: CGFloat) -> CGFloat {
@@ -115,5 +128,25 @@ struct RangeSlider: View {
                 }
             }
             .onEnded { _ in dragStart = nil }
+    }
+}
+
+/// Trójkąt równoramienny, czubkiem w górę albo w dół.
+private struct Triangle: Shape {
+    let pointingUp: Bool
+
+    func path(in rect: CGRect) -> Path {
+        var path = Path()
+        if pointingUp {
+            path.move(to: CGPoint(x: rect.midX, y: rect.minY))
+            path.addLine(to: CGPoint(x: rect.maxX, y: rect.maxY))
+            path.addLine(to: CGPoint(x: rect.minX, y: rect.maxY))
+        } else {
+            path.move(to: CGPoint(x: rect.minX, y: rect.minY))
+            path.addLine(to: CGPoint(x: rect.maxX, y: rect.minY))
+            path.addLine(to: CGPoint(x: rect.midX, y: rect.maxY))
+        }
+        path.closeSubpath()
+        return path
     }
 }
