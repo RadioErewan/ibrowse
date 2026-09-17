@@ -30,6 +30,15 @@ struct Loupe: View {
     /// na punkt kursora. Bez tego rozróżnienia każde przerysowanie widoku
     /// odrzucałoby przesunięcie i wracało do miejsca kliknięcia.
     @State private var settled: CGSize?
+
+    /// Czy najechanie kursorem celuje lupą.
+    ///
+    /// Domyślnie tak, bo o to właśnie chodzi: po otwarciu chce się obejrzeć
+    /// różne miejsca kadru, a nie jedno. Kliknięcie zamraża widok — czasem
+    /// trzeba odsunąć rękę od myszy i popatrzeć, a lupa goniąca kursor przy
+    /// każdym drgnięciu na to nie pozwala. Przeciągnięcie też zamraża, bo
+    /// oznacza ruch dokładny.
+    @State private var aiming = true
     @State private var pan: CGSize = .zero
 
     /// Na Macu wolno dociągnąć z iCloud: miejsca jest więcej, a systemowa
@@ -69,10 +78,36 @@ struct Loupe: View {
                                         height: from.height + value.translation.height
                                     )
                                     settled = clamped(pan, in: geometry.size)
+                                    aiming = false
                                 }
                         )
+                        #if os(macOS)
+                        // Wodzenie kursorem **wewnątrz lupy** celuje po całym
+                        // zdjęciu, jak w nawigatorze: lewa krawędź panelu to
+                        // lewa krawędź kadru.
+                        //
+                        // Powód jest prozaiczny: otwarta lupa zasłania środek
+                        // zdjęcia, więc najechaniem na kadr pod spodem dawało
+                        // się wycelować wyłącznie w margines, który wystawał
+                        // zza panelu. Przeciąganie zostaje do ruchu dokładnego,
+                        // najechanie służy do grubego dojazdu — i te dwie
+                        // rzeczy nie wchodzą sobie w drogę, bo przeciągnięcie
+                        // wyłącza celowanie aż do puszczenia przycisku.
+                        .onContinuousHover { phase in
+                            guard case .active(let point) = phase, aiming else { return }
+                            let aim = UnitPoint(
+                                x: min(max(point.x / max(geometry.size.width, 1), 0), 1),
+                                y: min(max(point.y / max(geometry.size.height, 1), 0), 1)
+                            )
+                            settled = clamped(centred(on: aim, in: geometry.size),
+                                              in: geometry.size)
+                        }
+                        #endif
                 }
                 .clipped()
+                #if os(macOS)
+                .onTapGesture { aiming.toggle() }
+                #endif
             } else if finished {
                 unavailable
             } else {
@@ -145,9 +180,20 @@ struct Loupe: View {
                 if image != nil {
                     Text("1:1 · \(asset.pixelWidth)×\(asset.pixelHeight)")
                         .font(.caption.monospacedDigit())
-                        .padding(.horizontal, 8)
+                        .padding(.horizontal, 10)
                         .padding(.vertical, 4)
-                        .background(.thinMaterial, in: Capsule())
+                        .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 7))
+
+                    #if os(macOS)
+                    Label(aiming ? "celuje za kursorem — klik zamraża"
+                                 : "zamrożona — klik wznawia",
+                          systemImage: aiming ? "scope" : "lock.fill")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .padding(.horizontal, 10)
+                        .padding(.vertical, 4)
+                        .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 7))
+                    #endif
                 }
                 Spacer()
                 Button {
