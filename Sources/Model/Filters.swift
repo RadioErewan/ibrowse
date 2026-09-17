@@ -270,30 +270,43 @@ final class Filters: ObservableObject {
     /// zbiór przestawiałby się pod palcem przy każdej ocenie i zdjęcie
     /// uciekałoby spod kursora w trakcie pracy.
     func apply(_ reviews: [String: Review], features: FeatureIndex) -> [PHAsset] {
-        let key = "\(baseStamp)|\(grades.map(\.rawValue).sorted())"
-            + "|\(feature.rawValue)|\(threshold)|\(order.rawValue)"
+        // Pamięć podręczna obejmuje **wszystko poza oceną**: rok, szukanie,
+        // cechę, miarę i porządek. To one wymagają przefiltrowania 26 tysięcy
+        // pozycji i posortowania ich, więc to one muszą być policzone raz.
+        let key = "\(baseStamp)|\(feature.rawValue)|\(threshold)|\(order.rawValue)"
             + "|\(measure.map(String.init) ?? "-")|\(activeMeasure.map { range(for: $0, in: features).description } ?? "")"
             + "|\(reviews.count)|\(features.revision)"
-        if key == cacheKey { return cached }
 
-        var result = base
-        if !grades.isEmpty {
-            result = result.filter { accepts(reviews[$0.localIdentifier]) }
-        }
-        if feature != .any {
-            result = result.filter { carries(features[$0.localIdentifier]) }
-        }
-        if let active = activeMeasure, let slot = features.slots[active.code] {
-            let limit = range(for: active, in: features)
-            result = result.filter {
-                carries(features[$0.localIdentifier], slot: slot, measure: active, range: limit)
+        if key != cacheKey {
+            var result = base
+            if feature != .any {
+                result = result.filter { carries(features[$0.localIdentifier]) }
             }
+            if let active = activeMeasure, let slot = features.slots[active.code] {
+                let limit = range(for: active, in: features)
+                result = result.filter {
+                    carries(features[$0.localIdentifier], slot: slot, measure: active, range: limit)
+                }
+            }
+            cached = sorted(result, reviews: reviews, features: features)
+            cacheKey = key
         }
-        result = sorted(result, reviews: reviews, features: features)
 
-        cacheKey = key
-        cached = result
-        return result
+        // Ocena **poza pamięcią podręczną**, nakładana przy każdym wywołaniu.
+        //
+        // Wcześniej siedziała w kluczu razem z resztą, żeby zbiór nie
+        // przestawiał się pod palcem przy każdej ocenie. Chroniło to przed
+        // przesortowaniem, ale przy okazji zatrzymywało w widoku zdjęcia, które
+        // przestały spełniać warunek: przy filtrze „od 1 do 3" wyzerowane
+        // zdjęcie zostawało na ekranie. Widok kłamał o tym, co pokazuje.
+        //
+        // Rozdzielone działa tak, jak trzeba: zdjęcie **znika**, gdy przestaje
+        // pasować, ale reszta **nie zmienia kolejności**, bo posortowana
+        // tablica leży nietknięta w pamięci podręcznej. Filtrowanie gotowej
+        // tablicy to jeden przelot ze sprawdzeniem w słowniku — tanio, nawet
+        // kilka razy na odrysowanie.
+        guard !grades.isEmpty else { return cached }
+        return cached.filter { accepts(reviews[$0.localIdentifier]) }
     }
 
     /// Czy zdjęcie spełnia warunek cechy. Brak pomiaru to **nie** wynik zerowy
