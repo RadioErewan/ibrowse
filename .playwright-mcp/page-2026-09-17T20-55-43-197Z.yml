@@ -1,0 +1,38 @@
+- generic [ref=f2e2]:
+  - banner [ref=f2e3]:
+    - generic [ref=f2e4]:
+      - heading "Lightbrary" [level=1] [ref=f2e5]
+      - generic [ref=f2e6]: a browser for your own photo archive
+  - paragraph [ref=f2e7]: An archive nobody ever walks through is not an archive. It is a backup of something that stopped existing the moment it was saved.
+  - paragraph [ref=f2e8]:
+    - text: Lightbrary is a tool for going through your photo library
+    - strong [ref=f2e9]: again and again
+    - text: ": finding, comparing, rating and deleting. Not a catalogue, not a tagger. It works on the photo library already on your Mac and iPhone, and it reads what the system has quietly measured about every picture — sharpness, exposure, closed eyes, screenshots — and turns those into ways of cutting across the archive."
+  - heading "What it does" [level=2] [ref=f2e10]
+  - list [ref=f2e11]:
+    - listitem [ref=f2e12]:
+      - strong [ref=f2e13]: One working set.
+      - text: Filters decide what is in it, order decides what “next” means, and every view agrees.
+    - listitem [ref=f2e14]:
+      - strong [ref=f2e15]: Counts before you choose.
+      - text: Every condition says how many photos it would give you, before you click it.
+    - listitem [ref=f2e16]:
+      - strong [ref=f2e17]: Rating on a single continuous scale.
+      - text: No flags, no colour labels.
+    - listitem [ref=f2e18]:
+      - strong [ref=f2e19]: Side-by-side comparison
+      - text: and a pairwise tournament for near-identical frames.
+    - listitem [ref=f2e20]:
+      - strong [ref=f2e21]: 1:1 preview
+      - text: ", because that is the only place sharpness can be judged."
+  - heading "Everything stays on your devices" [level=2] [ref=f2e22]
+  - paragraph [ref=f2e24]:
+    - text: There is no account, no server and no analytics. Photos never leave your Mac or iPhone. Syncing between your own devices happens through a single file in a folder
+    - strong [ref=f2e25]: you choose
+    - text: — usually iCloud Drive, but any folder works.
+  - contentinfo [ref=f2e26]:
+    - link "Privacy" [ref=f2e27] [cursor=pointer]:
+      - /url: /privacy
+    - link "Support" [ref=f2e28] [cursor=pointer]:
+      - /url: /support
+    - generic [ref=f2e29]: macOS and iOS

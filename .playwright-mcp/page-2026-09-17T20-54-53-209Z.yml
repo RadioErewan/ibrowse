@@ -1,0 +1,38 @@
+- generic [ref=e2]:
+  - banner [ref=e3]:
+    - generic [ref=e4]:
+      - heading "Lightbrary" [level=1] [ref=e5]
+      - generic [ref=e6]: a browser for your own photo archive
+  - paragraph [ref=e7]: An archive nobody ever walks through is not an archive. It is a backup of something that stopped existing the moment it was saved.
+  - paragraph [ref=e8]:
+    - text: Lightbrary is a tool for going through your photo library
+    - strong [ref=e9]: again and again
+    - text: ": finding, comparing, rating and deleting. Not a catalogue, not a tagger. It works on the photo library already on your Mac and iPhone, and it reads what the system has quietly measured about every picture — sharpness, exposure, closed eyes, screenshots — and turns those into ways of cutting across the archive."
+  - heading "What it does" [level=2] [ref=e10]
+  - list [ref=e11]:
+    - listitem [ref=e12]:
+      - strong [ref=e13]: One working set.
+      - text: Filters decide what is in it, order decides what “next” means, and every view agrees.
+    - listitem [ref=e14]:
+      - strong [ref=e15]: Counts before you choose.
+      - text: Every condition says how many photos it would give you, before you click it.
+    - listitem [ref=e16]:
+      - strong [ref=e17]: Rating on a single continuous scale.
+      - text: No flags, no colour labels.
+    - listitem [ref=e18]:
+      - strong [ref=e19]: Side-by-side comparison
+      - text: and a pairwise tournament for near-identical frames.
+    - listitem [ref=e20]:
+      - strong [ref=e21]: 1:1 preview
+      - text: ", because that is the only place sharpness can be judged."
+  - heading "Everything stays on your devices" [level=2] [ref=e22]
+  - paragraph [ref=e24]:
+    - text: There is no account, no server and no analytics. Photos never leave your Mac or iPhone. Syncing between your own devices happens through a single file in a folder
+    - strong [ref=e25]: you choose
+    - text: — usually iCloud Drive, but any folder works.
+  - contentinfo [ref=e26]:
+    - link "Privacy" [ref=e27] [cursor=pointer]:
+      - /url: /privacy
+    - link "Support" [ref=e28] [cursor=pointer]:
+      - /url: /support
+    - generic [ref=e29]: macOS and iOS
