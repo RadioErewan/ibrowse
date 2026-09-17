@@ -477,17 +477,17 @@ struct RootView: View {
         .help("Podgląd i metadane")
     }
 
+    /// Sam suwak, bez ikon po bokach.
+    ///
+    /// Ikony „mniejsze" i „większe" to wzorzec z panelu ustawień, gdzie mają
+    /// miejsce. W belce narzędzi wchodzą pod zaokrągloną krawędź grupy
+    /// i wyglądają na obcięte — a przy suwaku rozmiaru kafelka niczego nie
+    /// tłumaczą, bo skutek widać natychmiast w siatce.
     private var thumbSlider: some View {
-        Slider(value: $thumbSize, in: 80...280) {
-            Text("rozmiar kafelka")
-        } minimumValueLabel: {
-            Image(systemName: "square.grid.3x3").font(.caption2)
-        } maximumValueLabel: {
-            Image(systemName: "square").font(.caption2)
-        }
-        .labelsHidden()
-        .frame(width: 130)
-        .help("rozmiar kafelka")
+        Slider(value: $thumbSize, in: 80...280) { Text("rozmiar kafelka") }
+            .labelsHidden()
+            .frame(width: 120)
+            .help("rozmiar kafelka")
     }
 
     /// `NavigationSplitView` mówi o widoczności trzema stanami, a nas
