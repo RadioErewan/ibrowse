@@ -1164,6 +1164,62 @@ cała warstwa, która decyduje o dostępie do danych, jest u siebie nieaktywna.
 Każda rzecz, o którą aplikacja prosi system, musi być sprawdzona na pakiecie
 po notaryzacji, najlepiej na koncie, które nigdy jej nie widziało.
 
+## Nie zapisuj w trakcie układania okna
+
+Cztery osoby z zewnątrz zgłosiły, że program ginie przy pierwszym uruchomieniu.
+Na maszynie deweloperskiej nie dało się tego powtórzyć ani razu. Trzy kolejne
+poprawki chybiły, bo wszystkie zakładały wyścig i przesuwały rzeczy w czasie —
+raz przez `Task`, raz przez `DispatchQueue.main.async`, raz przez odsunięcie
+momentu, w którym podmienia się cały widok. Żadna nie pomogła nawet trochę,
+i **to była najważniejsza wskazówka**: gdyby to był wyścig, choć jedna powinna
+była zmienić częstotliwość. Skoro nie zmieniła żadna — to nie wyścig, tylko
+pętla, która domknie się przy każdym starcie, o dowolnej porze.
+
+Pętla siedziała w dwóch bindingach: widoczności panelu filtrów i widoczności
+podglądu. Oba zapisywały wprost z settera do `@AppStorage`. Setter bindingu jest
+jednak wołany przez SwiftUI **w trakcie przebiegu układu okna** — także wtedy,
+gdy panelu nie zamyka człowiek, tylko system, bo panel przestał się mieścić.
+Zapis unieważniał widok w środku jego własnego układu: kolumna zmieniała
+szerokość, `setFrameSize:` rozsyłał powiadomienia, ktoś prosił o nowe
+ograniczenia, prośba szła w górę do okna — a okno było w połowie poprzedniego
+przeliczenia i rzucało wyjątkiem.
+
+Dwie osobne pętle tłumaczą obserwację, która przez cały czas nie miała
+wyjaśnienia: **ten sam wyjątek przychodził dwiema różnymi drogami** przez
+`NSHostingView`, raz przez `didChangeValueForKey:`, raz przez
+`invalidateSafeAreaInsets()`, przy niezmienionym kodzie w tamtym miejscu. Przy
+wąskim oknie system zamyka raz jeden panel, raz drugi.
+
+Dlaczego nigdy nie wyszło lokalnie: macOS pamięta ramkę okna osobno dla każdej
+aplikacji, a `@AppStorage` trzyma preferencje. Maszyna, na której się pracuje,
+ma jedno i drugie ustabilizowane od dawna, w szerokim oknie. Nic się nie
+zamyka, więc nic się nie pętli. Świeża instalacja nie ma ani ramki, ani
+preferencji — i suma minimalnych szerokości obu paneli (190 + 300 punktów,
+zanim siatka dostanie pierwszy piksel) nie mieściła się w domyślnym oknie.
+
+**Rozstrzygnęło dopiero obalanie, nie zgadywanie.** Zamiast wydać czwartą
+poprawkę w ciemno, wystarczyło wyłączyć oba panele w preferencjach i uruchomić
+**tę samą, niezmienioną wersję**:
+
+```
+defaults write pl.3210.lightbrary filters.sidebar -bool false
+defaults write pl.3210.lightbrary preview.inspector -bool false
+```
+
+Crash zniknął. Jedna zmienna, żadnej nowej kompilacji, odpowiedź w trzydzieści
+sekund. Przy błędzie, którego nie da się powtórzyć u siebie, test możliwy do
+przeprowadzenia na cudzej maszynie jest wart więcej niż najlepsza hipoteza.
+
+Zasada na przyszłość: **binding, którego setter zapisuje do trwałej pamięci,
+musi odróżnić decyzję człowieka od decyzji systemu i nie zapisywać w trakcie
+układu.** Trzy zabezpieczenia, w tej kolejności: nie zapisuj stanu, którego nie
+kontrolujesz; nie zapisuj echa; zapisuj dopiero po zakończeniu układu.
+
+Przy okazji wyszedł drugi błąd, niezależny od awarii: zamknięcie panelu przez
+system z braku miejsca zapisywało się jako wybór użytkownika. Wystarczyło raz
+uruchomić program w wąskim oknie, żeby na zawsze zapamiętał „ten człowiek nie
+chce podglądu".
+
 ## Co czeka
 
 ### Przesunięcie zakresu: z sortownika w przeglądarkę
