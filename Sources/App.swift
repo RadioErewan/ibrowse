@@ -88,6 +88,7 @@ struct LightbraryApp: App {
         adoptLegacyStore(into: url)
         #if os(macOS)
         adoptLegacySettings()
+        clearStaleWindowState()
         #endif
 
         let configuration = ModelConfiguration(schema: schema, url: url)
@@ -157,6 +158,38 @@ struct LightbraryApp: App {
     /// Na iOS tego nie ma i nie może być: tam stara aplikacja to osobny
     /// kontener, do którego nowa nie ma dostępu. Telefon odzyskuje wszystko
     /// synchronizacją.
+    /// **Jednorazowe skasowanie zapisanego położenia okna i podziału kolumn.**
+    ///
+    /// macOS zapisuje ramkę okna i stan `NSSplitView` pod kluczem, w którego
+    /// nazwie siedzi **pełny typ widoku głównego**. Dodanie czegokolwiek do
+    /// hierarchii — u nas arkusza z aktualizacjami — zmienia ten typ, więc
+    /// system traktuje okno jako nowe i daje mu domyślny, ciasny rozmiar.
+    /// U pierwszej testerki wyszło z tego okno 1143×450 z panelem filtrów
+    /// zapisanym jako **zwinięty**, przy jednoczesnym żądaniu SwiftUI, żeby był
+    /// widoczny. Dwa niezgodne źródła prawdy o tej samej kolumnie zapętlały
+    /// układ okna i zabijały program, zanim cokolwiek się pokazało.
+    ///
+    /// Samo naprawienie kodu nie wystarczy, bo **zły zapis przeżywa
+    /// aktualizację**: każdy, kto uruchomił którąkolwiek wcześniejszą wersję,
+    /// ma go u siebie i dostałby tę samą awarię mimo poprawek. Ci ludzie to
+    /// dokładnie pierwsi testerzy — czyli ostatnie osoby, które powinny
+    /// zobaczyć ten błąd po raz drugi.
+    ///
+    /// Kasujemy **tylko własne** klucze okienne, raz, i zapamiętujemy że już
+    /// to zrobiliśmy. Kosztem jest zapomniane położenie okna przy jednej
+    /// aktualizacji — cena, której nikt nie zauważy, w zamian za program,
+    /// który w ogóle wstaje.
+    private static func clearStaleWindowState() {
+        let defaults = UserDefaults.standard
+        guard !defaults.bool(forKey: "settings.clearedWindowState") else { return }
+
+        for key in defaults.dictionaryRepresentation().keys
+        where key.hasPrefix("NSWindow Frame") || key.hasPrefix("NSSplitView Subview Frames") {
+            defaults.removeObject(forKey: key)
+        }
+        defaults.set(true, forKey: "settings.clearedWindowState")
+    }
+
     private static func adoptLegacySettings() {
         let defaults = UserDefaults.standard
         guard !defaults.bool(forKey: "settings.adoptedFromIbrowse") else { return }

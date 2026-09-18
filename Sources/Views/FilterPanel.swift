@@ -403,7 +403,13 @@ struct FilterPanel: View {
                         Image(systemName: "ellipsis.circle")
                     }
                     .menuStyle(.borderlessButton)
-                    .fixedSize()
+                    // **Tylko w pionie.** `fixedSize()` bez argumentów usztywnia
+                    // obie osie, więc ten przycisk dyktował minimalną szerokość
+                    // całej kolumny filtrów. Kolumna zgłaszała ją wtedy jako swój
+                    // minimalny rozmiar — a że zawartość panelu dorasta już po
+                    // starcie (lata, miary, słupki histogramu), minimum zmieniało
+                    // się w trakcie przeliczania ograniczeń okna i zapętlało układ.
+                    .fixedSize(horizontal: false, vertical: true)
                     .help("quick ranges")
                 }
 
