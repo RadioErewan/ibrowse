@@ -79,12 +79,27 @@ struct LightbraryApp: App {
         #endif
 
         let configuration = ModelConfiguration(schema: schema, url: url)
-        do {
-            return try ModelContainer(for: schema, configurations: configuration)
-        } catch {
-            archiveIncompatibleStore(at: url)
-            return try! ModelContainer(for: schema, configurations: configuration)
+        if let container = try? ModelContainer(for: schema, configurations: configuration) {
+            return container
         }
+
+        // Pierwsza próba padła — najczęstszy powód to schemat sprzed migracji,
+        // więc odsuwamy stary plik i próbujemy jeszcze raz.
+        archiveIncompatibleStore(at: url)
+        if let container = try? ModelContainer(for: schema, configurations: configuration) {
+            return container
+        }
+
+        // Druga próba padła z **innego** powodu — pełny dysk, brak praw do
+        // katalogu, iCloud Drive trzymające go w chmurze. Odsunięcie pliku
+        // tego nie naprawia, a `try!` w tym miejscu zabijał aplikację bez
+        // śladu: trzy zgłoszenia „nigdy się nie otworzyła" po instalacji na
+        // obcym Macu wyglądają dokładnie tak. Skład w pamięci nie przeżywa
+        // zamknięcia okna, ale człowiek zobaczy program, a nie czarny ekran —
+        // i będzie miał co opisać w zgłoszeniu.
+        let fallback = ModelConfiguration(schema: schema, isStoredInMemoryOnly: true)
+        return (try? ModelContainer(for: schema, configurations: fallback))
+            ?? (try! ModelContainer(for: schema))
     }
 
     /// Przygarnia skład spod poprzedniej nazwy, **przenosząc go, nie kopiując**.

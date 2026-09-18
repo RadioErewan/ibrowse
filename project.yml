@@ -67,6 +67,13 @@ targets:
         # nie brakuje — patrz komentarz w samym pliku uprawnień.
         Release:
           CODE_SIGN_ENTITLEMENTS: Resources/lightbrary-mac.entitlements
+          # Uniwersalna binarka tylko w wydaniu. Xcode domyślnie buduje samą
+          # architekturę maszyny kompilującej — u nas arm64 — więc bez tego
+          # nikt na Intelu nie mógłby nawet spróbować otworzyć programu.
+          # Kompilacja deweloperska zostaje jednoarchitekturowa, bo tak jest
+          # szybciej, a nikt jej nie rozsyła dalej.
+          ARCHS: "arm64 x86_64"
+          ONLY_ACTIVE_ARCH: "NO"
 
   lightbrary-ios:
     type: application

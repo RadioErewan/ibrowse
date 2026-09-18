@@ -14,6 +14,12 @@
 # zatrzymuje program przy pierwszym uruchomieniu. Wymaga włączonego
 # hardened runtime, dlatego jest tu włączany jawnie, choć w kompilacji
 # deweloperskiej pozostaje wyłączony.
+#
+# `-destination "generic/platform=macOS"` jest konieczne, mimo że projekt ma
+# już ARCHS="arm64 x86_64" w konfiguracji Release. Bez jawnego celu xcodebuild
+# przywiązuje się do jednej, konkretnej maszyny — tej, na której kompiluje —
+# i cicho ignoruje ARCHS, bez ostrzeżenia w logu. Wychodzi wtedy binarka tylko
+# pod Apple Silicon, a na Intelu program nawet się nie otworzy.
 set -euo pipefail
 
 export DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer
@@ -32,6 +38,7 @@ rm -rf "$OUT"; mkdir -p "$STAGE"
 
 xcodebuild -project $APP.xcodeproj -scheme $APP-mac -configuration Release \
     -derivedDataPath build/release \
+    -destination "generic/platform=macOS" \
     CODE_SIGN_IDENTITY="Developer ID Application" \
     CODE_SIGN_STYLE=Manual \
     ENABLE_HARDENED_RUNTIME=YES \
