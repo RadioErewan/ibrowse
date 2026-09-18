@@ -77,7 +77,9 @@ struct PairView: View {
         // przełączeniu trybu klawiatura trafiała w poprzedni widok i strzałki
         // milczały, dopóki nie kliknęło się w zdjęcie.
         .focused($focused)
-        .onAppear { focused = true }
+        // Poza bieżącym przebiegiem układu okna — patrz komentarz przy tym
+        // samym wzorcu w `GridView`.
+        .onAppear { Task { @MainActor in focused = true } }
         .onKeyPress(.leftArrow) { pick(left: true); return .handled }
         .onKeyPress(.rightArrow) { pick(left: false); return .handled }
         .onKeyPress(.space) { resolveCurrent(); return .handled }

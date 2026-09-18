@@ -169,7 +169,19 @@ struct GridView: View {
                 .focusable()
                 .focusEffectDisabled()
                 .focused($focused)
-                .onAppear { focused = true }
+                // Nadanie ostrości **poza** bieżącym przebiegiem układu okna.
+                //
+                // `onAppear` odpala się w trakcie pierwszego przebiegu layoutu,
+                // a `@FocusState` ustawione synchronicznie w tym momencie prosi
+                // system fokusu o przeliczenie ograniczeń, zanim poprzednie
+                // przeliczenie się skończyło. AppKit tego zabrania i rzuca
+                // wyjątkiem zamiast zostawić okno w niespójnym stanie —
+                // widziane na trzech różnych Makach jako crash zaraz po
+                // nadaniu dostępu do biblioteki, bo to właśnie wtedy cały
+                // widok podmienia się w trakcie już trwającego odświeżenia.
+                // `Task` przesuwa przypisanie na kolejny obieg pętli zdarzeń,
+                // gdy układ jest już rozstrzygnięty.
+                .onAppear { Task { @MainActor in focused = true } }
                 .onKeyPress(.leftArrow) { move(-1, in: shown); return .handled }
                 .onKeyPress(.rightArrow) { move(1, in: shown); return .handled }
                 .onKeyPress(.upArrow) { move(-columns, in: shown); return .handled }
