@@ -1215,6 +1215,42 @@ musi odróżnić decyzję człowieka od decyzji systemu i nie zapisywać w trakc
 układu.** Trzy zabezpieczenia, w tej kolejności: nie zapisuj stanu, którego nie
 kontrolujesz; nie zapisuj echa; zapisuj dopiero po zakończeniu układu.
 
+### Sprostowanie: to nie było jeszcze to
+
+Powyższe napisałem przekonany, że sprawa zamknięta. **Nie była.** Wersja
+z rozerwanymi pętlami ginęła tak samo, a wyjątek przyszedł tym razem
+z `updateConstraintsIfNeeded`, nie z `layoutIfNeeded`, i po raz pierwszy
+z odsymbolizowanym śladem SwiftUI. Widać w nim, że to
+`SplitViewChildController` dostaje zmianę minimalnego rozmiaru treści
+w trakcie przeliczania ograniczeń — czyli sprzeczność o kolumnę, ale nie ta,
+którą naprawiłem.
+
+Rozstrzygnął dopiero wydruk `defaults read`. macOS zapisuje ramkę okna i stan
+`NSSplitView` pod kluczem, w którego nazwie siedzi **pełny typ widoku
+głównego**. Dodanie arkusza „sprawdź aktualizacje" zmieniło ten typ, więc
+system uznał okno za nowe i nadał mu 1143×450 — za ciasne na układ. W takim
+oknie `NSSplitView` zwinął panel filtrów i **zapisał to**, podczas gdy SwiftUI
+niezależnie żądał, żeby panel był widoczny. Dwa niezgodne źródła prawdy o tej
+samej kolumnie, unieważniające się nawzajem wewnątrz przebiegu ograniczeń okna.
+
+To wyjaśniło też, dlaczego `defaultSize` nic nie dawało: **działa wyłącznie
+wtedy, gdy zapisanej ramki nie ma.** A ona była.
+
+Najgorsze było to, czego żadna poprawka w kodzie nie mogła naprawić sama
+z siebie: **zły zapis przeżywa aktualizację.** Każdy, kto uruchomił dowolną
+wcześniejszą wersję, miał go u siebie i dostawał tę samą awarię mimo poprawek —
+czyli dokładnie czterej pierwsi testerzy, którzy ten błąd zgłosili. Stąd
+jednorazowe skasowanie własnych kluczy okiennych przy starcie, sprawdzone
+osobno: kasuje raz, zapisuje znacznik, przy drugim uruchomieniu nie rusza
+zapamiętanego położenia.
+
+Zasada, która z tego zostaje na trwałe, jest szersza niż bindingi:
+**nazwa, pod którą system zapamiętuje stan okna, jest częścią typu widoku
+głównego.** Zmiana hierarchii u samej góry — choćby dodanie jednego arkusza —
+unieważnia zapamiętane położenie i daje oknu rozmiar, którego nikt nie
+projektował. Przy oknie z kolumnami o twardych minimach to wystarczy, żeby
+program przestał wstawać.
+
 Przy okazji wyszedł drugi błąd, niezależny od awarii: zamknięcie panelu przez
 system z braku miejsca zapisywało się jako wybór użytkownika. Wystarczyło raz
 uruchomić program w wąskim oknie, żeby na zawsze zapamiętał „ten człowiek nie
