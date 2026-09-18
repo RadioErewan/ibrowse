@@ -6,6 +6,10 @@ import SwiftUI
 struct LightbraryApp: App {
     private let container = LightbraryApp.makeContainer()
 
+    #if os(macOS)
+    @StateObject private var updates = UpdateCheck.shared
+    #endif
+
     var body: some Scene {
         WindowGroup {
             RootView()
@@ -18,9 +22,18 @@ struct LightbraryApp: App {
                 // podejmujesz decyzje. Lightroom, Capture One i Bridge są
                 // ciemne z tego samego powodu.
                 .preferredColorScheme(.dark)
+                #if os(macOS)
+                .sheet(isPresented: $updates.isPresenting) { UpdateSheet() }
+                #endif
         }
         .modelContainer(container)
         #if os(macOS)
+        .commands {
+            // Pod „O programie", czyli tam, gdzie każdy Mac trzyma tę pozycję.
+            CommandGroup(after: .appInfo) {
+                Button("Sprawdź aktualizacje…") { updates.check() }
+            }
+        }
         // Belka tytułowa zostaje widoczna, bo teraz **coś w niej jest**.
         // Przy ukrytej toolbar nie ma się w co wpiąć i sterowanie znów
         // wylądowałoby we własnym pasku pod spodem.
