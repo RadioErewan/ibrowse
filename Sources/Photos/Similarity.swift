@@ -79,7 +79,7 @@ final class Similarity: ObservableObject {
         // przy komplecie odcisków dawało błysk „0 / 0" i zniknięcie paska,
         // czyli obraz nieodróżnialny od awarii.
         guard !todo.isEmpty else {
-            note = "Wszystkie odciski są już policzone (\(existing.count))."
+            note = "All fingerprints are already computed (\(existing.count))."
             forgetNoteLater()
             return
         }
@@ -108,7 +108,7 @@ final class Similarity: ObservableObject {
         // składało od nowa pięć tysięcy grup bez powodu.
         await rebuildGroups(context: context)
 
-        note = "Policzono \(todo.count) odcisków. Serii: \(groups.count)."
+        note = "Computed \(todo.count) fingerprints. Bursts: \(groups.count)."
         forgetNoteLater()
     }
 
@@ -233,7 +233,7 @@ final class Similarity: ObservableObject {
             context.insert(series)
             created.append(series)
         }
-        if restored > 0 { print("przywrócono \(restored) rozstrzygnięć serii") }
+        if restored > 0 { print("restored \(restored) burst decisions") }
         context.insert(
             SeriesStamp(fingerprintCount: prints.count,
                         threshold: Double(cutoff), timeWindow: window)

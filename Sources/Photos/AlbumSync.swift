@@ -78,11 +78,11 @@ final class AlbumSync: ObservableObject {
                 try await write(stars: stars, assetIDs: wanted)
                 written += wanted.count
             } catch {
-                lastSummary = "Nie udało się zapisać albumu ★\(stars): \(error.localizedDescription)"
+                lastSummary = "Couldn't write album ★\(stars): \(error.localizedDescription)"
                 return
             }
         }
-        lastSummary = "Zapisano \(written) ocen do albumów"
+        lastSummary = "Wrote \(written) ratings to albums"
     }
 
     /// Doprowadza album do stanu docelowego: dokłada brakujące, usuwa te,

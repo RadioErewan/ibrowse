@@ -128,10 +128,10 @@ extension AssetFacts {
         let subtypes = asset.mediaSubtypes
         if subtypes.contains(.photoPanorama) { traits.append("panorama") }
         if subtypes.contains(.photoHDR) { traits.append("HDR") }
-        if subtypes.contains(.photoScreenshot) { traits.append("zrzut ekranu") }
+        if subtypes.contains(.photoScreenshot) { traits.append("screenshot") }
         if subtypes.contains(.photoLive) { traits.append("Live") }
-        if subtypes.contains(.photoDepthEffect) { traits.append("portret") }
-        if asset.representsBurst { traits.append("seria") }
+        if subtypes.contains(.photoDepthEffect) { traits.append("portrait") }
+        if asset.representsBurst { traits.append("burst") }
         return traits
     }
 

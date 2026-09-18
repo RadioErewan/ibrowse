@@ -26,7 +26,7 @@ struct MetadataPanel: View {
                     text
                     native(asset)
                 } else {
-                    Text("Brak zdjęcia").foregroundStyle(.secondary)
+                    Text("No photo").foregroundStyle(.secondary)
                 }
 
                 if let failure = index.failure {
@@ -56,15 +56,15 @@ struct MetadataPanel: View {
     /// po ponownym uruchomieniu.
     private var fullDiskAccess: some View {
         VStack(alignment: .leading, spacing: 6) {
-            Button("Otwórz ustawienia dostępu…") {
+            Button("Open access settings…") {
                 let panel = "x-apple.systempreferences:com.apple.preference.security"
                     + "?Privacy_AllFiles"
                 if let url = URL(string: panel) { NSWorkspace.shared.open(url) }
             }
             .controlSize(.small)
 
-            Text("Dodaj lightbrary przyciskiem **+**, a potem uruchom program "
-                 + "ponownie — zgoda zaczyna działać dopiero przy starcie.")
+            Text("Add lightbrary with the **+** button, then launch the app "
+                 + "again — the permission only takes effect at startup.")
                 .font(.caption2)
                 .foregroundStyle(.secondary)
                 .fixedSize(horizontal: false, vertical: true)
@@ -75,7 +75,7 @@ struct MetadataPanel: View {
 
     private func identity(_ asset: PHAsset) -> some View {
         VStack(alignment: .leading, spacing: 3) {
-            Text(data.filename ?? "bez nazwy")
+            Text(data.filename ?? "untitled")
                 .font(.callout.weight(.semibold))
                 .textSelection(.enabled)
                 .lineLimit(2)
@@ -112,7 +112,7 @@ struct MetadataPanel: View {
                         .fixedSize(horizontal: false, vertical: true)
                 }
                 if data.flash == true {
-                    Label("lampa", systemImage: "bolt.fill")
+                    Label("flash", systemImage: "bolt.fill")
                         .font(.caption)
                         .foregroundStyle(.secondary)
                 }
@@ -122,8 +122,8 @@ struct MetadataPanel: View {
 
     @ViewBuilder
     private var people: some View {
-        Section("Osoby", values: data.people, tint: .blue)
-        Section("Zwierzęta", values: data.pets, tint: .brown)
+        Section("People", values: data.people, tint: .blue)
+        Section("Animals", values: data.pets, tint: .brown)
     }
 
     /// Miejsce jako jeden ciąg od punktu do kraju — tak, jak człowiek by je
@@ -132,7 +132,7 @@ struct MetadataPanel: View {
     private var place: some View {
         if !data.place.isEmpty {
             Group {
-                heading("Miejsce")
+                heading("Place")
                 Text(data.place.joined(separator: " · "))
                     .font(.callout)
                     .textSelection(.enabled)
@@ -143,12 +143,12 @@ struct MetadataPanel: View {
 
     @ViewBuilder
     private var occasion: some View {
-        Section("Okoliczność", values: data.occasion, tint: .purple)
+        Section("Occasion", values: data.occasion, tint: .purple)
     }
 
     @ViewBuilder
     private var scenes: some View {
-        Section("Co widzi system", values: data.scenes, tint: .secondary)
+        Section("What the system sees", values: data.scenes, tint: .secondary)
     }
 
     /// Odczytany tekst jest w indeksie rozbity na pojedyncze słowa bez
@@ -161,7 +161,7 @@ struct MetadataPanel: View {
                     showingWords.toggle()
                 } label: {
                     Label(
-                        "Tekst na zdjęciu (\(data.words.count))",
+                        "Text in the photo (\(data.words.count))",
                         systemImage: showingWords ? "chevron.down" : "chevron.right"
                     )
                     .font(.caption.weight(.semibold))

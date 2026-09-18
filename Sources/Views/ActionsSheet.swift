@@ -30,16 +30,16 @@ struct ActionsSheet: View {
     var body: some View {
         NavigationStack {
             List {
-                Section("Synchronizacja") {
-                    LabeledContent("Folder wymiany") {
-                        Text(folderName ?? "nie wskazany")
+                Section("Sync") {
+                    LabeledContent("Shared folder") {
+                        Text(folderName ?? "not chosen")
                             .foregroundStyle(folderName == nil ? .orange : .secondary)
                     }
                     Button {
                         choosingFolder = true
                     } label: {
                         Label(
-                            folderName == nil ? "wskaż folder…" : "zmień folder…",
+                            folderName == nil ? "choose folder…" : "change folder…",
                             systemImage: "folder"
                         )
                     }
@@ -56,14 +56,14 @@ struct ActionsSheet: View {
                             folderName = SyncFolder.displayName
                         }
                     } label: {
-                        Label("synchronizuj teraz", systemImage: "arrow.triangle.2.circlepath")
+                        Label("sync now", systemImage: "arrow.triangle.2.circlepath")
                     }
                     .disabled(folderName == nil || busy)
 
                     if sync.isWorking {
                         HStack(spacing: 8) {
                             ProgressView().controlSize(.small)
-                            Text(sync.stage ?? "pracuję…")
+                            Text(sync.stage ?? "working…")
                                 .font(.callout)
                                 .foregroundStyle(.secondary)
                         }
@@ -73,12 +73,12 @@ struct ActionsSheet: View {
                             .foregroundStyle(.secondary)
                             .fixedSize(horizontal: false, vertical: true)
                     }
-                    Text("Wskaż ten sam folder co na drugim urządzeniu — najlepiej w iCloud Drive. Odciski i oceny przyjadą stamtąd, więc telefon nie musi ich liczyć.")
+                    Text("Choose the same folder as on the other device — ideally in iCloud Drive. Fingerprints and ratings arrive from there, so the phone doesn't have to compute them.")
                         .font(.caption)
                         .foregroundStyle(.tertiary)
                 }
 
-                Section("Odciski wizualne") {
+                Section("Visual fingerprints") {
                     if similarity.isWorking {
                         VStack(alignment: .leading, spacing: 6) {
                             ProgressView(
@@ -97,21 +97,21 @@ struct ActionsSheet: View {
                                 )
                             }
                         } label: {
-                            Label("policz odciski", systemImage: "wand.and.stars")
+                            Label("compute fingerprints", systemImage: "wand.and.stars")
                         }
                         .disabled(busy)
                     }
 
                     if !similarity.groups.isEmpty {
-                        LabeledContent("Serie", value: "\(similarity.groups.count)")
+                        LabeledContent("Bursts", value: "\(similarity.groups.count)")
                     }
                 }
             }
-            .navigationTitle("Akcje")
+            .navigationTitle("Actions")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .confirmationAction) {
-                    Button("Gotowe") { dismiss() }
+                    Button("Done") { dismiss() }
                 }
             }
         }

@@ -346,8 +346,8 @@ enum SyncError: LocalizedError {
 
     var errorDescription: String? {
         switch self {
-        case .cannotWrite: "Nie udało się zapisać pliku wymiany."
-        case .noFolder: "Nie wskazano folderu wymiany."
+        case .cannotWrite: "Couldn't write the shared file."
+        case .noFolder: "No shared folder chosen."
         }
     }
 }

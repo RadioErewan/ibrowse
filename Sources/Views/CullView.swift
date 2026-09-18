@@ -150,7 +150,7 @@ struct CullView: View {
                     Button {
                         showingDeletions = true
                     } label: {
-                        Label("\(markedCount) do usunięcia", systemImage: "trash")
+                        Label("\(markedCount) to delete", systemImage: "trash")
                     }
                     .tint(.red)
                 }
@@ -159,9 +159,9 @@ struct CullView: View {
                 Button {
                     showingMetadata.toggle()
                 } label: {
-                    Label("metadane", systemImage: "sidebar.trailing")
+                    Label("metadata", systemImage: "sidebar.trailing")
                 }
-                .help("Panel metadanych (klawisz I)")
+                .help("Metadata panel (key I)")
             }
         }
         #endif
@@ -273,9 +273,9 @@ struct CullView: View {
                 #endif
             } else {
                 ContentUnavailableView(
-                    "Pusto",
+                    "Empty",
                     systemImage: "line.3.horizontal.decrease.circle",
-                    description: Text("Żadne zdjęcie nie spełnia warunków filtru.")
+                    description: Text("No photo matches the filter.")
                 )
             }
         }
@@ -349,7 +349,7 @@ struct CullView: View {
                 Button {
                     showingDeletions = true
                 } label: {
-                    Label("\(markedCount) do usunięcia", systemImage: "trash")
+                    Label("\(markedCount) to delete", systemImage: "trash")
                 }
                 .buttonStyle(.borderedProminent)
                 .tint(.red)
@@ -433,7 +433,7 @@ struct CullView: View {
                 symbol: currentReview?.markedForDeletion == true ? "trash.fill" : "trash",
                 tint: AnyShapeStyle(Color.red),
                 isOn: currentReview?.markedForDeletion == true,
-                help: "do usunięcia — X"
+                help: "to delete — X"
             ) { toggleDeletion(advance: false) }
 
             // Zera nie ma jako osobnej pozycji: **ocena zerowa to pięć
@@ -452,7 +452,7 @@ struct CullView: View {
                     symbol: lit ? "star.fill" : "star",
                     tint: AnyShapeStyle(Color.yellow),
                     isOn: lit,
-                    help: clears ? "wyzeruj ocenę" : "\(value) — klawisz \(value)"
+                    help: clears ? "clear rating" : "\(value) — key \(value)"
                 ) { rate(clears ? 0 : Double(value), advance: false) }
             }
         }
@@ -475,9 +475,9 @@ struct CullView: View {
 
     private var hint: String {
         #if os(iOS)
-        "pociągnij w bok, żeby zobaczyć sąsiednie · w górę lepsze, w dół gorsze"
+        "swipe sideways for neighbours · up is better, down is worse"
         #else
-        "1–5 ocena · −/+ przesuń · Z podgląd 1:1 · X do usunięcia · T pasek · I metadane · ←/→ nawigacja"
+        "1–5 rate · −/+ nudge · Z 1:1 preview · X to delete · T strip · I metadata · ←/→ navigate"
         #endif
     }
 

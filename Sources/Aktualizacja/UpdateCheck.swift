@@ -74,7 +74,7 @@ final class UpdateCheck: ObservableObject {
                     : .current(version: installedVersion)
             } catch {
                 state = .failed(
-                    "Nie udało się sprawdzić. Sieć albo serwer — spróbuj później."
+                    "Couldn't check. Network or server — try again later."
                 )
             }
         }
@@ -105,27 +105,27 @@ struct UpdateSheet: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 14) {
-            Text("Aktualizacja").font(.headline)
+            Text("Update").font(.headline)
 
             switch check.state {
             case .idle, .checking:
                 HStack(spacing: 8) {
                     ProgressView().controlSize(.small)
-                    Text("Sprawdzam…").foregroundStyle(.secondary)
+                    Text("Checking…").foregroundStyle(.secondary)
                 }
 
             case .current(let version):
-                Text("Masz najnowszą wersję (\(version)).")
+                Text("You have the latest version (\(version)).")
                     .foregroundStyle(.secondary)
 
             case .available(let version, let page):
-                Text("Jest wersja \(version). Masz \(check.installedVersion).")
-                Text("Pobierz nowy obraz i przeciągnij go do Aplikacji, "
-                     + "zastępując poprzedni. Nadane zgody zostają.")
+                Text("Version \(version) is out. You have \(check.installedVersion).")
+                Text("Download the new image and drag it to Applications, "
+                     + "replacing the previous one. Granted permissions stay.")
                     .font(.caption)
                     .foregroundStyle(.secondary)
                     .fixedSize(horizontal: false, vertical: true)
-                Button("Otwórz stronę pobierania") {
+                Button("Open the download page") {
                     NSWorkspace.shared.open(page)
                     dismiss()
                 }
@@ -139,7 +139,7 @@ struct UpdateSheet: View {
 
             HStack {
                 Spacer()
-                Button("Zamknij") { dismiss() }
+                Button("Close") { dismiss() }
             }
         }
         .padding(20)

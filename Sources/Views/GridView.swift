@@ -104,8 +104,8 @@ struct GridView: View {
             HStack(spacing: 10) {
                 orderMenu
                 Text(filters.order == .library
-                     ? "kolejność biblioteki"
-                     : "„następne” idzie tą samą kolejką")
+                     ? "library order"
+                     : "“next” follows the same queue")
                     .font(.caption)
                     .foregroundStyle(.tertiary)
                     .lineLimit(1)
@@ -150,7 +150,7 @@ struct GridView: View {
                 .overlay {
                     if shown.isEmpty {
                         ContentUnavailableView(
-                            "Nic nie pasuje",
+                            "Nothing matches",
                             systemImage: "line.3.horizontal.decrease.circle",
                             description: Text(emptyNote)
                         )
@@ -325,7 +325,7 @@ struct GridView: View {
         HStack(spacing: 8) {
             Text(day.key, format: .dateTime.day().month(.wide).year())
                 .font(.system(size: 12, weight: .semibold))
-            Text("\(day.assets.count) \(day.assets.count == 1 ? "zdjęcie" : "zdjęć")")
+            Text("\(day.assets.count) \(day.assets.count == 1 ? "zdjęcie" : "photos")")
                 .font(.caption.monospacedDigit())
                 .foregroundStyle(.secondary)
             Spacer(minLength: 8)
@@ -333,7 +333,7 @@ struct GridView: View {
             // Akcja przy najechaniu, nie na stałe — inaczej przy przewijaniu
             // dostaje się kolumnę akcentowego tekstu przez cały ekran.
             if hoveredDay == day.key {
-                Button("zaznacz dzień") {
+                Button("select day") {
                     selection.formUnion(day.assets.map(\.localIdentifier))
                 }
                 .buttonStyle(.plain)
@@ -391,7 +391,7 @@ struct GridView: View {
     /// znaczy „następne zdjęcie". Przestawia się w trakcie pracy dużo częściej
     /// niż rok czy cecha, więc należy jej się miejsce pod ręką.
     private var orderMenu: some View {
-        Picker("kolejność", selection: $filters.order) {
+        Picker("order", selection: $filters.order) {
             ForEach(Filters.Order.allCases) { Text($0.rawValue).tag($0) }
         }
         .pickerStyle(.menu)
@@ -450,15 +450,15 @@ struct GridView: View {
             Text("\(targets.count)")
                 .font(.callout.monospacedDigit().weight(.semibold))
             Text(selection.isEmpty
-                 ? (shown.count == 1 ? "zdjęcie w tym filtrze" : "zdjęć w tym filtrze")
-                 : "zaznaczone · \(shown.count) w tym filtrze")
+                 ? (shown.count == 1 ? "photo in this filter" : "photos in this filter")
+                 : "selected · \(shown.count) in this filter")
                 .foregroundStyle(.secondary)
                 .lineLimit(1)
 
             Spacer(minLength: 8)
 
             if let lastMarked {
-                Text("oznaczono \(lastMarked)")
+                Text("marked \(lastMarked)")
                     .font(.caption)
                     .foregroundStyle(.secondary)
                     .transition(.opacity)
@@ -471,7 +471,7 @@ struct GridView: View {
                 Button {
                     showingDeletions = true
                 } label: {
-                    Label("\(marked.count) do usunięcia", systemImage: "trash.fill")
+                    Label("\(marked.count) to delete", systemImage: "trash.fill")
                 }
                 .tint(.red)
                 #if os(iOS)
@@ -483,7 +483,7 @@ struct GridView: View {
             Button {
                 compare(in: shown)
             } label: {
-                Label("porównaj zaznaczone", systemImage: "rectangle.on.rectangle")
+                Label("compare selected", systemImage: "rectangle.on.rectangle")
             }
             .disabled(shown.count < 2)
             .help("C")
@@ -493,7 +493,7 @@ struct GridView: View {
                 // Ostatnie ogniwo łańcucha `esc`: lupa, pełny ekran,
                 // porównanie, a na końcu zaznaczenie. Dopiero gdy nie ma czego
                 // cofać, klawisz nie robi nic.
-                Button { selection = [] } label: { Text("odznacz") }
+                Button { selection = [] } label: { Text("deselect") }
                     #if os(iOS)
                     .font(.caption)
                     #endif
@@ -502,7 +502,7 @@ struct GridView: View {
             Button(role: .destructive) {
                 confirming = true
             } label: {
-                Label("oznacz do usunięcia", systemImage: "trash")
+                Label("mark for deletion", systemImage: "trash")
             }
             .disabled(targets.isEmpty)
             #if os(iOS)
@@ -519,16 +519,16 @@ struct GridView: View {
             DeletionReview(library: library, reviews: marked)
         }
         .confirmationDialog(
-            "Oznaczyć \(targets.count) zdjęć do usunięcia?",
+            "Mark \(targets.count) photos for deletion?",
             isPresented: $confirming, titleVisibility: .visible
         ) {
             Button("Oznacz \(targets.count)", role: .destructive) {
                 lastMarked = Review.mark(targets, deleted: true, in: context)
             }
-            Button("Anuluj", role: .cancel) {}
+            Button("Cancel", role: .cancel) {}
         } message: {
-            Text("Nic jeszcze nie zniknie. Zdjęcia trafią do przeglądu "
-                 + "do usunięcia, gdzie można je odznaczyć albo skasować.")
+            Text("Nothing disappears yet. The photos go to the "
+                 + "deletion review, where you can unmark or delete them.")
         }
     }
 
@@ -536,14 +536,14 @@ struct GridView: View {
     /// o filtr, tylko o to, że nikt jeszcze nie wczytał pomiarów.
     private var emptyNote: String {
         guard filters.axis != .none, features.isEmpty else {
-            return "Żadne zdjęcie nie spełnia warunków filtru."
+            return "No photo matches the filter."
         }
         #if os(macOS)
-        return "Cechy leżą w bazach biblioteki Zdjęć i nikt ich jeszcze nie wczytał. "
-            + "Zrób to przyciskiem w belce — wymaga Pełnego dostępu do dysku."
+        return "Measures live in the Photos library databases and nobody has loaded them yet. "
+            + "Use the toolbar button — it needs Full Disk Access."
         #else
-        return "Cechy liczy system na Macu i przyjeżdżają tu synchronizacją. "
-            + "Wczytaj je na Macu, zsynchronizuj oba urządzenia i wróć tutaj."
+        return "The system computes measures on the Mac and they arrive here by sync. "
+            + "Load them on the Mac, sync both devices, then come back here."
         #endif
     }
 

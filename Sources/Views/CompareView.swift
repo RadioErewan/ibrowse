@@ -107,9 +107,9 @@ struct CompareView: View {
 
     private var bar: some View {
         HStack(spacing: 12) {
-            Text("porównanie")
+            Text("comparison")
                 .font(.headline)
-            Text("ten sam zbiór · \(queue.count)\(orderName.isEmpty ? "" : " · \(orderName)")")
+            Text("same set · \(queue.count)\(orderName.isEmpty ? "" : " · \(orderName)")")
                 .font(.caption.monospacedDigit())
                 .foregroundStyle(.secondary)
 
@@ -126,14 +126,14 @@ struct CompareView: View {
             .buttonStyle(.bordered)
             .controlSize(.small)
             .keyboardShortcut("s", modifiers: [])
-            .help("S — zamień strony")
+            .help("S — swap sides")
 
-            Toggle("wspólne powiększenie", isOn: $sharedZoom)
+            Toggle("shared zoom", isOn: $sharedZoom)
                 .toggleStyle(.switch)
                 .controlSize(.small)
                 .font(.caption)
 
-            Button("esc — powrót do siatki", action: onClose)
+            Button("esc — back to the grid", action: onClose)
                 .buttonStyle(.plain)
                 .font(.caption.monospaced())
                 .foregroundStyle(.tertiary)

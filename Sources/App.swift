@@ -31,7 +31,7 @@ struct LightbraryApp: App {
         .commands {
             // Pod „O programie", czyli tam, gdzie każdy Mac trzyma tę pozycję.
             CommandGroup(after: .appInfo) {
-                Button("Sprawdź aktualizacje…") { updates.check() }
+                Button("Check for Updates…") { updates.check() }
             }
         }
         // Belka tytułowa zostaje widoczna, bo teraz **coś w niej jest**.
@@ -218,11 +218,18 @@ struct RootView: View {
     /// trybem, choć jest pytaniem o zbiór — i właśnie dlatego miało własną
     /// kolejkę, z której kliknięcie wyprowadzało donikąd. Teraz co oglądam
     /// rozstrzyga filtr, a tu zostaje wyłącznie to, co robię.
+    /// Jak w `Filters.Feature`: `rawValue` jest kluczem, `label` napisem.
     enum Mode: String, CaseIterable, Identifiable {
-        case grid = "siatka"
-        case cull = "ocenianie"
-        case pair = "parowanie"
+        case grid, cull, pair
         var id: String { rawValue }
+
+        var label: String {
+            switch self {
+            case .grid: String(localized: "grid")
+            case .cull: String(localized: "rate")
+            case .pair: String(localized: "pair up")
+            }
+        }
 
         /// Na Macu **ocenianie zniknęło z listy**, bo przestało być trybem:
         /// przestrzeń robocza pokazuje zaznaczone zdjęcie w podglądzie, a pełny
@@ -250,21 +257,21 @@ struct RootView: View {
             switch library.authorization {
             case .authorized, .limited:
                 if library.assets.isEmpty {
-                    ProgressView("Wczytuję bibliotekę…")
+                    ProgressView("Loading library…")
                         .frame(maxWidth: .infinity, maxHeight: .infinity)
                 } else {
                     main
                 }
             case .notDetermined:
                 Permission(
-                    title: "Dostęp do biblioteki zdjęć",
-                    message: "lightbrary czyta zdjęcia bezpośrednio z Twojej biblioteki. Nic nie opuszcza urządzenia.",
-                    action: ("Poproś o dostęp", { Task { await library.requestAccess() } })
+                    title: "Photo library access",
+                    message: "lightbrary reads photos straight from your library. Nothing leaves this device.",
+                    action: ("Request access", { Task { await library.requestAccess() } })
                 )
             default:
                 Permission(
-                    title: "Brak dostępu",
-                    message: "Odmówiono dostępu do biblioteki zdjęć. Włącz go w Ustawieniach systemowych → Prywatność i bezpieczeństwo → Zdjęcia.",
+                    title: "No access",
+                    message: "Photo library access was denied. Turn it on in System Settings → Privacy & Security → Photos.",
                     action: nil
                 )
             }
@@ -313,7 +320,7 @@ struct RootView: View {
             ForEach(Mode.available) { item in
                 NavigationStack {
                     screen(item)
-                        .navigationTitle(item.rawValue)
+                        .navigationTitle(item.label)
                         .navigationBarTitleDisplayMode(.inline)
                         .toolbar {
                             // Zakres lat ma własny przycisk, a nie pozycję
@@ -324,7 +331,7 @@ struct RootView: View {
                             ToolbarItem(placement: .topBarTrailing) { actionsButton }
                         }
                 }
-                .tabItem { Label(item.rawValue, systemImage: item.icon) }
+                .tabItem { Label(item.label, systemImage: item.icon) }
                 .tag(item)
             }
         }
@@ -369,7 +376,7 @@ struct RootView: View {
                         queue: compareQueue,
                         library: library,
                         pair: $comparePair,
-                        orderName: filters.order.rawValue,
+                        orderName: filters.order.label,
                         onClose: { comparePair = nil }
                     )
                 } else if fullScreen {
@@ -401,7 +408,7 @@ struct RootView: View {
                         Button {
                             fullScreen = false
                         } label: {
-                            Label("wróć do siatki", systemImage: "chevron.left")
+                            Label("back to the grid", systemImage: "chevron.left")
                         }
                         .help("esc")
                     } else {
@@ -411,9 +418,9 @@ struct RootView: View {
                         // szerokości przy tłumaczeniu.
                         Picker("", selection: $mode) {
                             ForEach(Mode.available) { item in
-                                Label(item.rawValue, systemImage: item.icon)
+                                Label(item.label, systemImage: item.icon)
                                     .labelStyle(.iconOnly)
-                                    .help(item.rawValue)
+                                    .help(item.label)
                                     .tag(item)
                             }
                         }
@@ -484,10 +491,10 @@ struct RootView: View {
         Button {
             inspectorVisible.toggle()
         } label: {
-            Label("podgląd", systemImage: "sidebar.trailing")
+            Label("preview", systemImage: "sidebar.trailing")
                 .labelStyle(.iconOnly)
         }
-        .help("Podgląd i metadane")
+        .help("Preview and metadata")
     }
 
     /// Sam suwak, bez ikon po bokach.
@@ -497,10 +504,10 @@ struct RootView: View {
     /// i wyglądają na obcięte — a przy suwaku rozmiaru kafelka niczego nie
     /// tłumaczą, bo skutek widać natychmiast w siatce.
     private var thumbSlider: some View {
-        Slider(value: $thumbSize, in: 80...280) { Text("rozmiar kafelka") }
+        Slider(value: $thumbSize, in: 80...280) { Text("tile size") }
             .labelsHidden()
             .frame(width: 120)
-            .help("rozmiar kafelka")
+            .help("tile size")
     }
 
     /// `NavigationSplitView` mówi o widoczności trzema stanami, a nas
@@ -571,10 +578,10 @@ struct RootView: View {
     @ViewBuilder
     private var featureControl: some View {
         busyButton(
-            title: "wczytaj cechy",
+            title: "load measures",
             icon: "camera.metering.spot",
             busy: importer.isWorking,
-            help: importer.summary ?? "Czyta ostrość, ekspozycję i twarze z baz biblioteki Zdjęć"
+            help: importer.summary ?? "Reads sharpness, exposure and faces from the Photos library databases"
         ) {
             Task {
                 await importer.run(context: context, library: library)
@@ -594,10 +601,10 @@ struct RootView: View {
     @ViewBuilder
     private var fingerprintControl: some View {
         busyButton(
-            title: "policz odciski",
+            title: "compute fingerprints",
             icon: "wand.and.stars",
             busy: similarity.isWorking,
-            help: "Liczy odciski wizualne dla całej biblioteki"
+            help: "Computes visual fingerprints for the whole library"
         ) {
             Task {
                 await similarity.computeFingerprints(
@@ -654,8 +661,8 @@ extension RootView {
         if !filters.grades.isEmpty {
             let sorted = filters.grades.sorted { $0.rawValue < $1.rawValue }
             parts.append(sorted.map { grade -> String in
-                if grade.isDeleted { return "do usunięcia" }
-                if grade.isUnrated { return "bez oceny" }
+                if grade.isDeleted { return "to delete" }
+                if grade.isUnrated { return "unrated" }
                 return "★\(grade.rawValue)"
             }.joined(separator: ","))
         }
@@ -667,7 +674,7 @@ extension RootView {
             else { parts.append(from == to ? String(from) : "\(String(from))–\(String(to))") }
         }
 
-        return parts.isEmpty ? "filtr" : parts.joined(separator: " · ")
+        return parts.isEmpty ? "filter" : parts.joined(separator: " · ")
     }
 
     /// Synchronizacja jest ręczna i wsadowa. Zapis przez PhotoKit jest wolny,
@@ -693,7 +700,7 @@ extension RootView {
                         await albums.push(from: context)
                     }
                 } label: {
-                    Label("synchronizuj teraz", systemImage: "arrow.triangle.2.circlepath")
+                    Label("sync now", systemImage: "arrow.triangle.2.circlepath")
                 }
                 .disabled(!SyncFolder.isChosen)
 
@@ -703,7 +710,7 @@ extension RootView {
                     chooseFolder()
                 } label: {
                     Label(
-                        SyncFolder.isChosen ? "zmień folder wymiany…" : "wybierz folder wymiany…",
+                        SyncFolder.isChosen ? "change shared folder…" : "choose shared folder…",
                         systemImage: "folder"
                     )
                 }
@@ -716,7 +723,7 @@ extension RootView {
                     Text(note)
                 }
             } label: {
-                Label("synchronizuj", systemImage: "arrow.triangle.2.circlepath")
+                Label("sync", systemImage: "arrow.triangle.2.circlepath")
             }
             #if os(iOS)
             .fileImporter(
@@ -736,8 +743,8 @@ extension RootView {
         panel.canChooseDirectories = true
         panel.canChooseFiles = false
         panel.allowsMultipleSelection = false
-        panel.prompt = "Wybierz"
-        panel.message = "Folder wymiany — najlepiej w iCloud Drive, żeby jeździł między urządzeniami."
+        panel.prompt = "Choose"
+        panel.message = "Shared folder — ideally in iCloud Drive, so it travels between devices."
         if panel.runModal() == .OK, let url = panel.url {
             try? SyncFolder.remember(url)
         }

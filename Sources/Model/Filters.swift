@@ -70,24 +70,36 @@ final class Filters: ObservableObject {
     /// Nie jest oceną i niczego nie waży — to inne pytanie do tego samego
     /// archiwum. Zero w pomiarze znaczy „nie policzono", a nie „beznadziejne",
     /// więc nigdzie nie liczy się jako wynik najgorszy.
+    /// `rawValue` bierze się z nazwy przypadku i **nigdy nie jest tekstem dla
+    /// człowieka** — bo trafia do ustawień i do klucza pamięci podręcznej.
+    /// Napis pokazywany na ekranie mieszka osobno, w `label`, i wolno go
+    /// tłumaczyć bez konsekwencji. Miary nauczyły się tego wcześniej
+    /// (patrz `Measure.code`); te dwa wyliczenia zostały z polskimi napisami
+    /// w roli klucza i przy tłumaczeniu skasowałyby ludziom zapisane wybory.
     enum Feature: String, CaseIterable, Identifiable {
-        case any = "bez warunku"
-        case blurry = "poruszone"
-        case dark = "źle naświetlone"
-        case eyes = "zamknięte oczy"
-        case screenshots = "zrzuty ekranu"
+        case any, blurry, dark, eyes, screenshots
         var id: String { rawValue }
 
         /// Czy warunek jest ciągły — tylko wtedy próg ma sens.
         var isContinuous: Bool { self == .blurry || self == .dark }
 
+        var label: String {
+            switch self {
+            case .any: String(localized: "no condition")
+            case .blurry: String(localized: "blurry")
+            case .dark: String(localized: "badly exposed")
+            case .eyes: String(localized: "closed eyes")
+            case .screenshots: String(localized: "screenshots")
+            }
+        }
+
         var hint: String {
             switch self {
-            case .any: "wszystko, co przeszło pozostałe warunki"
-            case .blurry: "niżej = bardziej rozmyte"
-            case .dark: "niżej = gorzej naświetlone"
-            case .eyes: "ktoś na zdjęciu ma zamknięte oczy"
-            case .screenshots: "rozpoznane przez system"
+            case .any: String(localized: "everything that passed the other conditions")
+            case .blurry: String(localized: "lower = more blurred")
+            case .dark: String(localized: "lower = worse exposed")
+            case .eyes: String(localized: "someone in the photo has their eyes closed")
+            case .screenshots: String(localized: "recognised by the system")
             }
         }
     }
@@ -97,17 +109,24 @@ final class Filters: ObservableObject {
     /// Osobny od warunku celowo: chcieć obejrzeć same zrzuty ekranu po kolei
     /// to co innego niż obejrzeć całe archiwum od najbardziej poruszonych.
     enum Order: String, CaseIterable, Identifiable {
-        case library = "jak w bibliotece"
-        case day = "po dniu"
-        case blurry = "od poruszonych"
-        case dark = "od niedoświetlonych"
-        case eyes = "od zamkniętych oczu"
-        case best = "od najlepszych"
-        case worst = "od najgorszych"
+        case library, day, blurry, dark, eyes, best, worst
         /// Od najgorszych wedle miary wybranej w panelu cech. Bez wybranej
         /// miary zachowuje się jak kolejność biblioteki.
-        case measure = "wg wybranej miary"
+        case measure
         var id: String { rawValue }
+
+        var label: String {
+            switch self {
+            case .library: String(localized: "as in library")
+            case .day: String(localized: "by day")
+            case .blurry: String(localized: "blurriest first")
+            case .dark: String(localized: "darkest first")
+            case .eyes: String(localized: "closed eyes first")
+            case .best: String(localized: "best first")
+            case .worst: String(localized: "worst first")
+            case .measure: String(localized: "by chosen measure")
+            }
+        }
 
         /// Czy ta kolejność dzieli siatkę na nagłówki.
         ///
@@ -119,8 +138,8 @@ final class Filters: ObservableObject {
         var isGrouped: Bool { self == .day }
     }
 
-    @Published var feature: Feature = Feature(
-        rawValue: UserDefaults.standard.string(forKey: "library.feature") ?? ""
+    @Published var feature: Feature = Feature(rawValue:
+        UserDefaults.standard.string(forKey: "library.feature") ?? ""
     ) ?? .any {
         didSet {
             UserDefaults.standard.set(feature.rawValue, forKey: "library.feature")
@@ -184,8 +203,8 @@ final class Filters: ObservableObject {
         }
     }
 
-    @Published var order: Order = Order(
-        rawValue: UserDefaults.standard.string(forKey: "library.order") ?? ""
+    @Published var order: Order = Order(rawValue:
+        UserDefaults.standard.string(forKey: "library.order") ?? ""
     ) ?? .library {
         didSet { UserDefaults.standard.set(order.rawValue, forKey: "library.order") }
     }
@@ -471,7 +490,7 @@ final class Filters: ObservableObject {
         case .eyes:
             guard row.eyesClosed > 0 else { return nil }
             return "\(row.eyesClosed) z \(max(row.faces, row.eyesClosed))"
-        case .screenshot: return row.isScreenshot ? "zrzut" : nil
+        case .screenshot: return row.isScreenshot ? "screenshot" : nil
         }
     }
 
@@ -554,7 +573,7 @@ final class Filters: ObservableObject {
             guard !Task.isCancelled else { return }
 
             self.matches = found
-            self.searchNote = failure ?? (found.isEmpty ? "Nic nie pasuje do: \(text)" : nil)
+            self.searchNote = failure ?? (found.isEmpty ? "Nothing matches: \(text)" : nil)
             self.isSearching = false
             self.rebuild()
         }
@@ -564,7 +583,7 @@ final class Filters: ObservableObject {
         // etykiet, ani tekstu, a przepisywanie 285 tysięcy przypisań przez
         // albumy byłoby lekarstwem gorszym od choroby.
         matches = nil
-        searchNote = "Szukanie po treści działa tylko na Macu — na telefonie nie ma tego indeksu."
+        searchNote = "Content search works on the Mac only — the phone has no such index."
         rebuild()
         #endif
     }

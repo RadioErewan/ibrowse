@@ -109,13 +109,13 @@ struct PerfOverlay: View {
     var body: some View {
         HStack(spacing: 14) {
             reading("tik/s", String(format: "%.0f", monitor.ticksPerSecond), health)
-            reading("max zacięcie", String(format: "%.0f ms", monitor.worstStallMS), stallHealth)
-            reading("pamięć", String(format: "%.0f MB", monitor.memoryMB), .primary)
-            reading("miniatur", "\(monitor.thumbsLoaded)", .primary)
-            reading("w locie", "\(monitor.inFlight)", .primary)
-            reading("zdjęć", "\(total)", .secondary)
+            reading("max hitch", String(format: "%.0f ms", monitor.worstStallMS), stallHealth)
+            reading("memory", String(format: "%.0f MB", monitor.memoryMB), .primary)
+            reading("thumbnails", "\(monitor.thumbsLoaded)", .primary)
+            reading("in flight", "\(monitor.inFlight)", .primary)
+            reading("photos", "\(total)", .secondary)
 
-            Button("wyzeruj") { monitor.resetStall() }
+            Button("reset") { monitor.resetStall() }
                 .buttonStyle(.borderless)
                 .font(.caption2)
         }

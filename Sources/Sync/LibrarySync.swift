@@ -111,7 +111,7 @@ final class LibrarySync: ObservableObject {
     ) async {
         guard !isWorking else { return }
         guard let folder = SyncFolder.resolve() else {
-            summary = "Wskaż najpierw folder wymiany."
+            summary = "Choose a shared folder first."
             return
         }
         defer { folder.release() }
@@ -128,10 +128,10 @@ final class LibrarySync: ObservableObject {
             Task { @MainActor in self?.stage = text }
         }
 
-        stage = "sprzątam sieroty…"
+        stage = "cleaning up orphans…"
         let orphans = discardOrphans(context: context, library: library)
 
-        stage = "szukam plików…"
+        stage = "looking for files…"
         let incoming = await Task.detached {
             Self.readOthers(in: source, excluding: mine, report: report)
         }.value
@@ -148,20 +148,20 @@ final class LibrarySync: ObservableObject {
         // Jedno mapowanie na całą synchronizację, w obie strony. Odwrócenie
         // słownika jest darmowe, a drugie odpytanie systemu kosztowałoby tyle
         // samo co pierwsze — przy 25 tysiącach zdjęć to nie jest drobiazg.
-        stage = "dopasowuję zdjęcia…"
+        stage = "matching photos…"
         let toCloud = CloudIdentity.cloudIDs(for: library.assets.map(\.localIdentifier))
         var toLocal: [String: String] = [:]
         toLocal.reserveCapacity(toCloud.count)
         for (local, cloud) in toCloud { toLocal[cloud] = local }
 
-        stage = "scalam oceny i odciski…"
+        stage = "merging ratings and fingerprints…"
         for payload in incoming {
             ratings += mergeRatings(payload.ratings, translating: toLocal, into: context)
             prints += mergePrints(payload.prints, translating: toLocal, into: context)
         }
 
         if prints > 0 {
-            stage = "przeliczam serie…"
+            stage = "recomputing bursts…"
             // Nowe odciski unieważniają cache serii przez `SeriesStamp`,
             // więc to wywołanie faktycznie przelicza grupy, a nie tylko je
             // wczytuje.
@@ -175,7 +175,7 @@ final class LibrarySync: ObservableObject {
         try? context.save()
 
         do {
-            stage = "zapisuję swój plik…"
+            stage = "writing my file…"
             try await export(context: context, to: folder.url, translating: toCloud)
         } catch {
             summary = error.localizedDescription
@@ -186,7 +186,7 @@ final class LibrarySync: ObservableObject {
         // nie odróżnia „nie znalazłem pliku" od „znalazłem, ale wszystko już
         // mam" — a to są zupełnie różne sytuacje i tylko jedna jest błędem.
         if incoming.isEmpty {
-            summary = "Nie znalazłem plików z innych urządzeń. Zapisałem swój."
+            summary = "Found no files from other devices. Wrote mine."
             noteRead()
         } else {
             let offered = incoming.reduce(into: (0, 0, 0)) { total, payload in
@@ -202,7 +202,7 @@ final class LibrarySync: ObservableObject {
                 Z \(incoming.count) pliku (\(names)): \(offered.0) ocen, \
                 \(offered.1) odcisków, \(offered.2) serii.
                 Nowe u mnie: \(ratings) ocen, \(prints) odcisków, \(verdicts) serii.
-                Mam łącznie \(localPrints) odcisków\(orphans > 0 ? ", usunąłem \(orphans) sierot" : "").
+                Mam łącznie \(localPrints) odcisków\(orphans > 0 ? ", removed \(orphans) orphans" : "").
                 """
         }
     }
@@ -257,7 +257,7 @@ final class LibrarySync: ObservableObject {
                 let size = (try? url.resourceValues(forKeys: [.fileSizeKey]).fileSize) ?? 0
                 let onDisk = FileManager.default.fileExists(atPath: url.path)
                 report(
-                    (onDisk ? "czytam" : "pobieram") + " plik \(position + 1) z \(others.count)"
+                    (onDisk ? "reading" : "downloading") + " plik \(position + 1) z \(others.count)"
                     + (size > 0 ? " (\(size / 1_048_576) MB)" : "") + "…"
                 )
 

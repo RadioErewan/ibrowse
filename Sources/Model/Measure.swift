@@ -14,10 +14,17 @@ import Foundation
 struct Measure: Identifiable, Hashable, Sendable {
 
     /// Czego miara dotyczy — i od razu, do jakiego zadania służy.
+    /// Jak w `Filters.Feature`: `rawValue` jest kluczem, `label` napisem.
     enum Group: String, CaseIterable, Sendable {
-        case photo = "właściwości zdjęcia"
-        case archive = "stan w archiwum"
-        case technique = "technika"
+        case photo, archive, technique
+
+        var label: String {
+            switch self {
+            case .photo: String(localized: "photo qualities")
+            case .archive: String(localized: "archive status")
+            case .technique: String(localized: "technique")
+            }
+        }
     }
 
     enum Kind: Sendable {
@@ -32,7 +39,10 @@ struct Measure: Identifiable, Hashable, Sendable {
     /// wycofana zostawia swój kod nieużywany.
     let code: UInt8
 
-    let label: String
+    /// Napis **źródłowy, po angielsku** — jednocześnie klucz w katalogu
+    /// tłumaczeń. Sam `code` pozostaje tym, co jedzie w składzie i w pliku
+    /// wymiany; nazwa wolno się zmienia i wolno ją tłumaczyć.
+    let key: String
     let group: Group
     let kind: Kind
 
@@ -46,25 +56,30 @@ struct Measure: Identifiable, Hashable, Sendable {
 
     var id: UInt8 { code }
 
+    /// Nazwa w języku interfejsu. Wyszukiwana po kluczu, bo spis powstaje raz
+    /// przy starcie, a język ma obowiązywać wszędzie tam, gdzie miara się
+    /// pokazuje.
+    var label: String { String(localized: String.LocalizationValue(key)) }
+
     /// Jak nazwać stronę, którą warunek wybiera.
     var worstSide: String {
         switch kind {
         case .flag: return label
-        case .continuous: return higherIsBetter ? "poniżej" : "powyżej"
+        case .continuous: return higherIsBetter ? "below" : "above"
         }
     }
 }
 
 extension Measure {
-    private static func photo(_ code: UInt8, _ label: String, _ expr: String,
+    private static func photo(_ code: UInt8, _ key: String, _ expr: String,
                               higherIsBetter: Bool = true) -> Measure {
-        Measure(code: code, label: label, group: .photo, kind: .continuous,
+        Measure(code: code, key: key, group: .photo, kind: .continuous,
                 higherIsBetter: higherIsBetter, expression: expr)
     }
 
-    private static func flag(_ code: UInt8, _ label: String, _ group: Group,
+    private static func flag(_ code: UInt8, _ key: String, _ group: Group,
                              _ condition: String) -> Measure {
-        Measure(code: code, label: label, group: group, kind: .flag,
+        Measure(code: code, key: key, group: group, kind: .flag,
                 higherIsBetter: true,
                 expression: "CASE WHEN \(condition) THEN 1 END")
     }
@@ -72,53 +87,53 @@ extension Measure {
     /// Spis. Kody nadane raz — nowe pozycje dostają kolejne, nigdy stare.
     static let all: [Measure] = [
         // Właściwości zdjęcia — miary ciągłe.
-        photo(1, "estetyka ogólna", "a.ZOVERALLAESTHETICSCORE"),
-        photo(2, "kuracja", "a.ZCURATIONSCORE"),
-        photo(3, "ikoniczność", "a.ZICONICSCORE"),
-        photo(4, "kompozycja", "c.ZPLEASANTCOMPOSITIONSCORE"),
-        photo(5, "oświetlenie", "c.ZPLEASANTLIGHTINGSCORE"),
-        photo(6, "ciekawy temat", "c.ZINTERESTINGSUBJECTSCORE"),
-        photo(7, "dobór tematu", "c.ZWELLCHOSENSUBJECTSCORE"),
-        photo(8, "skadrowanie", "c.ZWELLFRAMEDSUBJECTSCORE"),
-        photo(9, "moment ujęcia", "c.ZWELLTIMEDSHOTSCORE"),
-        photo(10, "ostrość tematu", "c.ZSHARPLYFOCUSEDSUBJECTSCORE"),
-        photo(11, "żywe kolory", "c.ZLIVELYCOLORSCORE"),
-        photo(12, "harmonia kolorów", "c.ZHARMONIOUSCOLORSCORE"),
-        photo(13, "rozmycie tła", "c.ZTASTEFULLYBLURREDSCORE"),
-        photo(14, "perspektywa", "c.ZPLEASANTPERSPECTIVESCORE"),
-        photo(15, "symetria", "c.ZPLEASANTSYMMETRYSCORE"),
-        photo(16, "wzory", "c.ZPLEASANTPATTERNSCORE"),
-        photo(17, "odbicia", "c.ZPLEASANTREFLECTIONSSCORE"),
-        photo(18, "obróbka", "c.ZPLEASANTPOSTPROCESSINGSCORE"),
+        photo(1, "overall aesthetics", "a.ZOVERALLAESTHETICSCORE"),
+        photo(2, "curation", "a.ZCURATIONSCORE"),
+        photo(3, "iconic", "a.ZICONICSCORE"),
+        photo(4, "composition", "c.ZPLEASANTCOMPOSITIONSCORE"),
+        photo(5, "lighting", "c.ZPLEASANTLIGHTINGSCORE"),
+        photo(6, "interesting subject", "c.ZINTERESTINGSUBJECTSCORE"),
+        photo(7, "subject choice", "c.ZWELLCHOSENSUBJECTSCORE"),
+        photo(8, "framing", "c.ZWELLFRAMEDSUBJECTSCORE"),
+        photo(9, "timing", "c.ZWELLTIMEDSHOTSCORE"),
+        photo(10, "subject sharpness", "c.ZSHARPLYFOCUSEDSUBJECTSCORE"),
+        photo(11, "lively colour", "c.ZLIVELYCOLORSCORE"),
+        photo(12, "colour harmony", "c.ZHARMONIOUSCOLORSCORE"),
+        photo(13, "background blur", "c.ZTASTEFULLYBLURREDSCORE"),
+        photo(14, "perspective", "c.ZPLEASANTPERSPECTIVESCORE"),
+        photo(15, "symmetry", "c.ZPLEASANTSYMMETRYSCORE"),
+        photo(16, "patterns", "c.ZPLEASANTPATTERNSCORE"),
+        photo(17, "reflections", "c.ZPLEASANTREFLECTIONSSCORE"),
+        photo(18, "post-processing", "c.ZPLEASANTPOSTPROCESSINGSCORE"),
         // Przechył, szum, nieudane ujęcie i natrętny obiekt mają **tylko**
         // wartości ujemne albo bliskie zera, a zero jest najlepsze. Wyżej
         // znaczy więc lepiej, choć nazwy sugerują odwrotnie.
-        photo(19, "przechył kadru", "c.ZPLEASANTCAMERATILTSCORE"),
-        photo(20, "szum", "c.ZNOISESCORE"),
-        photo(21, "nieudane ujęcie", "c.ZFAILURESCORE"),
-        photo(22, "natrętny obiekt", "c.ZINTRUSIVEOBJECTPRESENCESCORE"),
-        photo(23, "słabe światło", "c.ZLOWLIGHT", higherIsBetter: false),
-        photo(24, "immersyjność", "c.ZIMMERSIVENESSSCORE"),
-        photo(25, "aktywność w kadrze", "m.ZACTIVITYSCORE"),
-        photo(26, "przydatność na tapetę", "m.ZWALLPAPERSCORE"),
+        photo(19, "camera tilt", "c.ZPLEASANTCAMERATILTSCORE"),
+        photo(20, "noise", "c.ZNOISESCORE"),
+        photo(21, "failed shot", "c.ZFAILURESCORE"),
+        photo(22, "intrusive object", "c.ZINTRUSIVEOBJECTPRESENCESCORE"),
+        photo(23, "low light", "c.ZLOWLIGHT", higherIsBetter: false),
+        photo(24, "immersiveness", "c.ZIMMERSIVENESSSCORE"),
+        photo(25, "activity", "m.ZACTIVITYSCORE"),
+        photo(26, "wallpaper suitability", "m.ZWALLPAPERSCORE"),
 
         // Stan w archiwum — historia zdjęcia, nie obraz.
-        flag(40, "nigdy nieoglądane", .archive, "x.ZVIEWCOUNT = 0"),
-        flag(41, "kiedyś udostępnione", .archive, "x.ZSHARECOUNT > 0"),
-        flag(42, "ulubione", .archive, "a.ZFAVORITE = 1"),
-        flag(43, "seria aparatu", .archive, "a.ZAVALANCHEUUID IS NOT NULL"),
-        flag(44, "duplikat wg systemu", .archive, "a.ZDUPLICATEASSETVISIBILITYSTATE > 0"),
+        flag(40, "never viewed", .archive, "x.ZVIEWCOUNT = 0"),
+        flag(41, "shared at some point", .archive, "x.ZSHARECOUNT > 0"),
+        flag(42, "favourite", .archive, "a.ZFAVORITE = 1"),
+        flag(43, "camera burst", .archive, "a.ZAVALANCHEUUID IS NOT NULL"),
+        flag(44, "system duplicate", .archive, "a.ZDUPLICATEASSETVISIBILITYSTATE > 0"),
 
         // Technika i obecność ludzi.
         // „Bez twarzy" z jawnej kolumny liczby twarzy, **nie** ze zliczenia
         // wykrytych twarzy: tam zero znaczy też „nie analizowano".
-        flag(60, "bez twarzy", .technique, "m.ZFACECOUNT = 0"),
-        flag(61, "osoby w kadrze", .technique, "x.ZHASPEOPLESCENEMIDORGREATERCONFIDENCE = 1"),
+        flag(60, "no faces", .technique, "m.ZFACECOUNT = 0"),
+        flag(61, "people in frame", .technique, "x.ZHASPEOPLESCENEMIDORGREATERCONFIDENCE = 1"),
         flag(62, "HDR", .technique, "a.ZHDRTYPE > 0"),
-        flag(63, "portret z mapą głębi", .technique, "a.ZDEPTHTYPE > 0"),
-        flag(64, "wideo", .technique, "a.ZKIND = 1"),
-        flag(65, "bez lokalizacji", .technique, "(a.ZLATITUDE IS NULL OR a.ZLATITUDE <= -180)"),
-        flag(66, "niska rozdzielczość", .technique, "a.ZWIDTH * a.ZHEIGHT < 2000000"),
+        flag(63, "portrait with depth map", .technique, "a.ZDEPTHTYPE > 0"),
+        flag(64, "video", .technique, "a.ZKIND = 1"),
+        flag(65, "no location", .technique, "(a.ZLATITUDE IS NULL OR a.ZLATITUDE <= -180)"),
+        flag(66, "low resolution", .technique, "a.ZWIDTH * a.ZHEIGHT < 2000000"),
     ]
 
     static let byCode: [UInt8: Measure] = Dictionary(

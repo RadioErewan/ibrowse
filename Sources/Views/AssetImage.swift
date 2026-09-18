@@ -57,7 +57,7 @@ struct AssetImage: View {
                     Spacer()
                     HStack {
                         Spacer()
-                        Label("dociągam z iCloud", systemImage: "icloud.and.arrow.down")
+                        Label("fetching from iCloud", systemImage: "icloud.and.arrow.down")
                             .font(.caption2)
                             .padding(.horizontal, 8)
                             .padding(.vertical, 4)

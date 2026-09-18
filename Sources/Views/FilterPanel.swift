@@ -89,15 +89,15 @@ struct FilterPanel: View {
         #if os(iOS)
         NavigationStack {
             ScrollView { sections.padding(16) }
-                .navigationTitle("Filtr")
+                .navigationTitle("Filter")
                 .navigationBarTitleDisplayMode(.inline)
                 .toolbar {
                     ToolbarItem(placement: .cancellationAction) {
-                        Button("wyczyść") { filters.clear() }
+                        Button("clear") { filters.clear() }
                             .disabled(!filters.isActive)
                     }
                     ToolbarItem(placement: .confirmationAction) {
-                        Button("Gotowe") { dismiss() }
+                        Button("Done") { dismiss() }
                     }
                 }
                 .safeAreaInset(edge: .bottom) { footer }
@@ -114,9 +114,9 @@ struct FilterPanel: View {
 
     private var sections: some View {
         VStack(alignment: .leading, spacing: 18) {
-            group("Szukaj w treści") { searchField; searchNote }
-            group("Ocena") { gradeScale }
-            group("Cechy systemu") {
+            group("Search contents") { searchField; searchNote }
+            group("Rating") { gradeScale }
+            group("System measures") {
                 featureRows
                 thresholdSlider
                 pinnedRows
@@ -128,10 +128,10 @@ struct FilterPanel: View {
             #if os(iOS)
             // Na Macu kolejność siedzi na belce nad siatką — to nie jest
             // warunek, tylko sposób czytania zbioru. Na telefonie belki nie ma.
-            group("Kolejność") { orderRows }
+            group("Order") { orderRows }
             #endif
             if !library.years.isEmpty {
-                group("Zakres lat") { yearPickers }
+                group("Year range") { yearPickers }
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
@@ -265,15 +265,15 @@ struct FilterPanel: View {
 
     private var gradeSummary: String {
         guard !filters.grades.isEmpty else {
-            return "Wszystkie zdjęcia. Stuknij pozycję, żeby zawęzić."
+            return "All photos. Tap a position to narrow down."
         }
         let sorted = filters.grades.sorted { $0.rawValue < $1.rawValue }
         let names = sorted.map { grade -> String in
-            if grade.isDeleted { return "do usunięcia" }
-            if grade.isUnrated { return "bez oceny" }
+            if grade.isDeleted { return "to delete" }
+            if grade.isUnrated { return "unrated" }
             return String(grade.rawValue)
         }
-        return "Tylko: \(names.joined(separator: ", ")). Stuknij ponownie, żeby odznaczyć."
+        return "Tylko: \(names.joined(separator: ", ")). Tap again to deselect."
     }
 
     // MARK: - Cechy
@@ -299,9 +299,9 @@ struct FilterPanel: View {
     private var thresholdSlider: some View {
         if filters.feature.isContinuous {
             VStack(alignment: .leading, spacing: 2) {
-                Slider(value: $filters.threshold, in: 0.1...1.0) { Text("próg") }
+                Slider(value: $filters.threshold, in: 0.1...1.0) { Text("threshold") }
                     .labelsHidden()
-                Text(String(format: "poniżej %.2f", filters.threshold))
+                Text(String(format: "below %.2f", filters.threshold))
                     .font(.caption.monospacedDigit())
                     .foregroundStyle(.secondary)
             }
@@ -313,10 +313,10 @@ struct FilterPanel: View {
     private var featureNote: some View {
         if features.isEmpty {
             #if os(macOS)
-            note("Nie wczytano jeszcze cech. Przycisk w belce narzędzi — wymaga Pełnego dostępu do dysku.",
+            note("Measures aren't loaded yet. Use the toolbar button — it needs Full Disk Access.",
                  colour: .orange)
             #else
-            note("Nie wczytano jeszcze cech. Liczy je Mac i przyjeżdżają tu synchronizacją.",
+            note("Measures aren't loaded yet. The Mac computes them and they arrive here by sync.",
                  colour: .orange)
             #endif
         } else {
@@ -340,7 +340,7 @@ struct FilterPanel: View {
             filters.measure = filters.measure == measure.code ? nil : measure.code
         }
         .contextMenu {
-            Button(pinned.contains(measure.code) ? "odepnij" : "przypnij na wierzch") {
+            Button(pinned.contains(measure.code) ? "unpin" : "pin to top") {
                 togglePin(measure.code)
             }
         }
@@ -386,17 +386,17 @@ struct FilterPanel: View {
                     .lineLimit(1)
                     Spacer(minLength: 6)
                     Menu {
-                        Button("najgorsza dziesiąta część") {
+                        Button("worst tenth") {
                             filters.measureRanges[active.code] = nil
                         }
-                        Button("najlepsza dziesiąta część") {
+                        Button("best tenth") {
                             let worst = stat.defaultRange(higherIsBetter: active.higherIsBetter)
                             let mirrored = active.higherIsBetter
                                 ? mirror(worst.upperBound, in: bounds, stat: stat, higherIsBetter: true)
                                 : mirror(worst.lowerBound, in: bounds, stat: stat, higherIsBetter: false)
                             filters.measureRanges[active.code] = mirrored
                         }
-                        Button("cały zakres") {
+                        Button("full range") {
                             filters.measureRanges[active.code] = bounds
                         }
                     } label: {
@@ -404,7 +404,7 @@ struct FilterPanel: View {
                     }
                     .menuStyle(.borderlessButton)
                     .fixedSize()
-                    .help("szybkie przedziały")
+                    .help("quick ranges")
                 }
 
                 RangeSlider(range: binding, bounds: bounds, histogram: stat.histogram)
@@ -412,7 +412,7 @@ struct FilterPanel: View {
                 HStack {
                     Text(String(format: "%.2f", stat.min))
                     Spacer()
-                    Text(active.higherIsBetter ? "← gorzej · lepiej →" : "← lepiej · gorzej →")
+                    Text(active.higherIsBetter ? "← worse · better →" : "← better · worse →")
                     Spacer()
                     Text(String(format: "%.2f", stat.max))
                 }
@@ -466,7 +466,7 @@ struct FilterPanel: View {
                     Image(systemName: "chevron.right")
                         .font(.system(size: 9, weight: .semibold))
                         .rotationEffect(.degrees(expanded ? 90 : 0))
-                    Text("rzadziej używane")
+                    Text("less used")
                     Spacer(minLength: 8)
                     Text("\(rest.count)")
                         .font(.caption.monospacedDigit())
@@ -483,7 +483,7 @@ struct FilterPanel: View {
 
                 HStack(spacing: 6) {
                     Image(systemName: "magnifyingglass").font(.caption).foregroundStyle(.secondary)
-                    TextField("szukaj miary", text: $measureQuery)
+                    TextField("search measures", text: $measureQuery)
                         .textFieldStyle(.plain)
                         .font(.callout)
                     Text("\(matching.count) z \(rest.count)")
@@ -495,7 +495,7 @@ struct FilterPanel: View {
                 ForEach(Measure.Group.allCases, id: \.self) { group in
                     let items = matching.filter { $0.group == group }
                     if !items.isEmpty {
-                        Text(group.rawValue)
+                        Text(group.label)
                             .font(.caption2)
                             .foregroundStyle(.tertiary)
                             .padding(.top, 6)
@@ -503,7 +503,7 @@ struct FilterPanel: View {
                     }
                 }
 
-                Text("Prawy przycisk na wierszu przypina miarę na wierzch.")
+                Text("Right-click a row to pin that measure to the top.")
                     .font(.caption2)
                     .foregroundStyle(.tertiary)
                     .padding(.top, 4)
@@ -524,15 +524,15 @@ struct FilterPanel: View {
         let fresh = knownRaw.isEmpty ? [] : features.available.filter { !known.contains($0.code) }
         if let first = fresh.first {
             VStack(alignment: .leading, spacing: 6) {
-                Text("system zaczął liczyć **\(first.label)** · \(features.stats[first.code]?.count ?? 0) zdjęć ma pomiar")
+                Text("the system started computing **\(first.label)** · \(features.stats[first.code]?.count ?? 0) photos have a value")
                     .font(.caption)
                     .fixedSize(horizontal: false, vertical: true)
                 HStack(spacing: 12) {
-                    Button("pokaż") {
+                    Button("show") {
                         filters.measure = first.code
                         rememberKnown(first.code)
                     }
-                    Button("ukryj") { rememberKnown(first.code) }
+                    Button("hide") { rememberKnown(first.code) }
                 }
                 .buttonStyle(.borderless)
                 .font(.caption)
@@ -565,7 +565,7 @@ struct FilterPanel: View {
     private var searchField: some View {
         HStack(spacing: 6) {
             Image(systemName: "magnifyingglass").foregroundStyle(.secondary)
-            TextField("las, tablica, Kraków…", text: $filters.query)
+            TextField("forest, sign, Kraków…", text: $filters.query)
                 #if os(iOS)
                 .textFieldStyle(.plain)
                 .autocorrectionDisabled()
@@ -590,7 +590,7 @@ struct FilterPanel: View {
         if let text = filters.searchNote {
             note(text, colour: .orange)
         } else {
-            note("Etykiety scen, imiona osób, nazwy miejsc i tekst ze zdjęć.", colour: .secondary)
+            note("Scene labels, people's names, place names and text found in photos.", colour: .secondary)
         }
     }
 
@@ -608,17 +608,17 @@ struct FilterPanel: View {
     @ViewBuilder
     private var yearPickers: some View {
         VStack(alignment: .leading, spacing: 8) {
-            labelled("od") {
-                Picker("od", selection: $filters.fromYear) {
-                    Text("od początku").tag(0)
+            labelled("from") {
+                Picker("from", selection: $filters.fromYear) {
+                    Text("from the start").tag(0)
                     ForEach(library.years, id: \.year) { entry in
                         Text("\(String(entry.year))  ·  \(entry.count)").tag(entry.year)
                     }
                 }
             }
-            labelled("do") {
-                Picker("do", selection: $filters.toYear) {
-                    Text("do końca").tag(9999)
+            labelled("to") {
+                Picker("to", selection: $filters.toYear) {
+                    Text("to the end").tag(9999)
                     ForEach(library.years.reversed(), id: \.year) { entry in
                         Text(String(entry.year)).tag(entry.year)
                     }
@@ -643,16 +643,16 @@ struct FilterPanel: View {
 
     private var footer: some View {
         HStack(spacing: 6) {
-            Text("Pasuje").foregroundStyle(.secondary)
+            Text("Matching").foregroundStyle(.secondary)
             Text("\(tally.total)")
                 .font(.body.monospacedDigit().weight(.semibold))
                 .foregroundStyle(tally.total == 0 ? .orange : .primary)
-            Text("z \(library.assets.count)")
+            Text("of \(library.assets.count)")
                 .font(.caption.monospacedDigit())
                 .foregroundStyle(.secondary)
             Spacer(minLength: 8)
             #if os(macOS)
-            Button("wyczyść") { filters.clear() }
+            Button("clear") { filters.clear() }
                 .disabled(!filters.isActive)
             #endif
         }

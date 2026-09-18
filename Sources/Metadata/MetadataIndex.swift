@@ -318,7 +318,7 @@ actor MetadataStore {
         opened = true
 
         guard let root = Self.libraryURL() else {
-            failure = "Nie znalazłem biblioteki Zdjęć w ~/Pictures."
+            failure = "Couldn't find a Photos library in ~/Pictures."
             return
         }
 
@@ -330,8 +330,8 @@ actor MetadataStore {
             // wymaga, żeby człowiek dodał program ręcznie. Skoro tak, to
             // przynajmniej otwieramy mu właściwy panel; patrz `MetadataPanel`.
             needsFullDiskAccess = true
-            failure = "Techniki i miary czytamy wprost z baz biblioteki Zdjęć — "
-                + "PhotoKit ich nie wystawia. Wymaga to pełnego dostępu do dysku."
+            failure = "We read technique and measures straight from the Photos library databases — "
+                + "PhotoKit doesn't expose them. This needs Full Disk Access."
         }
     }
 
@@ -544,7 +544,7 @@ final class FeatureImport: ObservableObject {
         let measures = await MetadataStore.shared.measures()
         guard !features.isEmpty || !measures.isEmpty else {
             summary = await MetadataStore.shared.currentFailure()
-                ?? "Baza biblioteki nie ma policzonych cech."
+                ?? "The library database has no computed measures."
             return
         }
 
@@ -583,7 +583,7 @@ final class FeatureImport: ObservableObject {
         }
 
         try? context.save()
-        summary = "Wczytałem cechy \(touched) zdjęć."
+        summary = "Loaded measures for \(touched) photos."
     }
 }
 #endif

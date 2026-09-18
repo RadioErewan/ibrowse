@@ -113,7 +113,7 @@ struct Loupe: View {
             } else {
                 VStack(spacing: 10) {
                     ProgressView()
-                    Text(allowNetwork ? "dociągam oryginał…" : "szukam oryginału na urządzeniu…")
+                    Text(allowNetwork ? "fetching original…" : "looking for the original on this device…")
                         .font(.callout)
                         .foregroundStyle(.secondary)
                 }
@@ -183,8 +183,8 @@ struct Loupe: View {
                         .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 7))
 
                     #if os(macOS)
-                    Label(aiming ? "celuje za kursorem — klik zamraża"
-                                 : "zamrożona — klik wznawia",
+                    Label(aiming ? "follows the cursor — click to freeze"
+                                 : "frozen — click to resume",
                           systemImage: aiming ? "scope" : "lock.fill")
                         .font(.caption)
                         .foregroundStyle(.secondary)
@@ -217,9 +217,9 @@ struct Loupe: View {
     /// oryginałów leży wyłącznie w iCloud.
     private var unavailable: some View {
         ContentUnavailableView {
-            Label("Brak oryginału na urządzeniu", systemImage: "icloud.slash")
+            Label("Original not on this device", systemImage: "icloud.slash")
         } description: {
-            Text("Podgląd, który widzisz, jest zmniejszony — nie da się z niego ocenić ostrości. Oryginału nie pobieram, bo zostałby tu na stałe.")
+            Text("The preview you see is downscaled — you can't judge sharpness from it. I don't fetch the original, because it would stay here for good.")
         }
     }
 

@@ -228,7 +228,7 @@ struct SwipeCard<Content: View>: View {
                     .font(.system(size: 52, weight: .semibold))
 
                 Text(weight == nil
-                     ? "pierwsza ocena · \(Self.number(target))"
+                     ? "first rating · \(Self.number(target))"
                      : "\(Self.number(weight ?? 0)) → \(Self.number(target))")
                     .font(.callout.weight(.semibold).monospacedDigit())
             }

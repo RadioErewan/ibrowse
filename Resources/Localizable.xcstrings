@@ -1,0 +1,2239 @@
+{
+  "sourceLanguage": "en",
+  "version": "1.0",
+  "strings": {
+    ")). Tap again to deselect.": {
+      "extractionState": "manual",
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": ")). Stuknij ponownie, żeby odznaczyć."
+          }
+        }
+      }
+    },
+    "Actions": {
+      "extractionState": "manual",
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Akcje"
+          }
+        }
+      }
+    },
+    "All photos. Tap a position to narrow down.": {
+      "extractionState": "manual",
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Wszystkie zdjęcia. Stuknij pozycję, żeby zawęzić."
+          }
+        }
+      }
+    },
+    "All resolved": {
+      "extractionState": "manual",
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Wszystko rozstrzygnięte"
+          }
+        }
+      }
+    },
+    "Animals": {
+      "extractionState": "manual",
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Zwierzęta"
+          }
+        }
+      }
+    },
+    "Bursts": {
+      "extractionState": "manual",
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Serie"
+          }
+        }
+      }
+    },
+    "Camera": {
+      "extractionState": "manual",
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Aparat"
+          }
+        }
+      }
+    },
+    "Cancel": {
+      "extractionState": "manual",
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Anuluj"
+          }
+        }
+      }
+    },
+    "Check for Updates…": {
+      "extractionState": "manual",
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sprawdź aktualizacje…"
+          }
+        }
+      }
+    },
+    "Checking…": {
+      "extractionState": "manual",
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sprawdzam…"
+          }
+        }
+      }
+    },
+    "Choose": {
+      "extractionState": "manual",
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Wybierz"
+          }
+        }
+      }
+    },
+    "Choose a shared folder first.": {
+      "extractionState": "manual",
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Wskaż najpierw folder wymiany."
+          }
+        }
+      }
+    },
+    "Click a tile in the grid to see it here.": {
+      "extractionState": "manual",
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kliknij kafelek w siatce, żeby zobaczyć go tutaj."
+          }
+        }
+      }
+    },
+    "Close": {
+      "extractionState": "manual",
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Zamknij"
+          }
+        }
+      }
+    },
+    "Compute visual fingerprints first.": {
+      "extractionState": "manual",
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Policz najpierw odciski wizualne."
+          }
+        }
+      }
+    },
+    "Computes visual fingerprints for the whole library": {
+      "extractionState": "manual",
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Liczy odciski wizualne dla całej biblioteki"
+          }
+        }
+      }
+    },
+    "Couldn't find a Photos library in ~/Pictures.": {
+      "extractionState": "manual",
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nie znalazłem biblioteki Zdjęć w ~/Pictures."
+          }
+        }
+      }
+    },
+    "Couldn't write the shared file.": {
+      "extractionState": "manual",
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nie udało się zapisać pliku wymiany."
+          }
+        }
+      }
+    },
+    "Date": {
+      "extractionState": "manual",
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Data"
+          }
+        }
+      }
+    },
+    "Deleted photos go to Recently Deleted and can be restored from there for 30 days.": {
+      "extractionState": "manual",
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Usunięte trafią do albumu Ostatnio usunięte i wrócą stamtąd przez 30 dni."
+          }
+        }
+      }
+    },
+    "Dimensions": {
+      "extractionState": "manual",
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Wymiary"
+          }
+        }
+      }
+    },
+    "Done": {
+      "extractionState": "manual",
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Gotowe"
+          }
+        }
+      }
+    },
+    "Empty": {
+      "extractionState": "manual",
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pusto"
+          }
+        }
+      }
+    },
+    "Favourite": {
+      "extractionState": "manual",
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ulubione"
+          }
+        }
+      }
+    },
+    "File": {
+      "extractionState": "manual",
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Plik"
+          }
+        }
+      }
+    },
+    "Filter": {
+      "extractionState": "manual",
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Filtr"
+          }
+        }
+      }
+    },
+    "Found no files from other devices. Wrote mine.": {
+      "extractionState": "manual",
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nie znalazłem plików z innych urządzeń. Zapisałem swój."
+          }
+        }
+      }
+    },
+    "High share — try lowering the sensitivity": {
+      "extractionState": "manual",
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Wysoki odsetek — spróbuj obniżyć czułość"
+          }
+        }
+      }
+    },
+    "Kind": {
+      "extractionState": "manual",
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Rodzaj"
+          }
+        }
+      }
+    },
+    "Lens": {
+      "extractionState": "manual",
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Obiektyw"
+          }
+        }
+      }
+    },
+    "Live": {
+      "extractionState": "manual",
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Live"
+          }
+        }
+      }
+    },
+    "Load them on the Mac, sync both devices, then come back here.": {
+      "extractionState": "manual",
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Wczytaj je na Macu, zsynchronizuj oba urządzenia i wróć tutaj."
+          }
+        }
+      }
+    },
+    "Loading library…": {
+      "extractionState": "manual",
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Wczytuję bibliotekę…"
+          }
+        }
+      }
+    },
+    "Matching": {
+      "extractionState": "manual",
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pasuje"
+          }
+        }
+      }
+    },
+    "Measures aren't loaded yet. The Mac computes them and they arrive here by sync.": {
+      "extractionState": "manual",
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nie wczytano jeszcze cech. Liczy je Mac i przyjeżdżają tu synchronizacją."
+          }
+        }
+      }
+    },
+    "Measures aren't loaded yet. Use the toolbar button — it needs Full Disk Access.": {
+      "extractionState": "manual",
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nie wczytano jeszcze cech. Przycisk w belce narzędzi — wymaga Pełnego dostępu do dysku."
+          }
+        }
+      }
+    },
+    "Metadata": {
+      "extractionState": "manual",
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Metadane"
+          }
+        }
+      }
+    },
+    "Metadata panel (key I)": {
+      "extractionState": "manual",
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Panel metadanych (klawisz I)"
+          }
+        }
+      }
+    },
+    "No access": {
+      "extractionState": "manual",
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Brak dostępu"
+          }
+        }
+      }
+    },
+    "No bursts": {
+      "extractionState": "manual",
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Brak serii"
+          }
+        }
+      }
+    },
+    "No photo": {
+      "extractionState": "manual",
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Brak zdjęcia"
+          }
+        }
+      }
+    },
+    "No photo matches the filter.": {
+      "extractionState": "manual",
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Żadne zdjęcie nie spełnia warunków filtru."
+          }
+        }
+      }
+    },
+    "No shared folder chosen.": {
+      "extractionState": "manual",
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nie wskazano folderu wymiany."
+          }
+        }
+      }
+    },
+    "Nothing matches": {
+      "extractionState": "manual",
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nic nie pasuje"
+          }
+        }
+      }
+    },
+    "Nothing selected": {
+      "extractionState": "manual",
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nic nie zaznaczono"
+          }
+        }
+      }
+    },
+    "Occasion": {
+      "extractionState": "manual",
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Okoliczność"
+          }
+        }
+      }
+    },
+    "Open access settings…": {
+      "extractionState": "manual",
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Otwórz ustawienia dostępu…"
+          }
+        }
+      }
+    },
+    "Open the download page": {
+      "extractionState": "manual",
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Otwórz stronę pobierania"
+          }
+        }
+      }
+    },
+    "Order": {
+      "extractionState": "manual",
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kolejność"
+          }
+        }
+      }
+    },
+    "Original not on this device": {
+      "extractionState": "manual",
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Brak oryginału na urządzeniu"
+          }
+        }
+      }
+    },
+    "PREVIEW": {
+      "extractionState": "manual",
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "PODGLĄD"
+          }
+        }
+      }
+    },
+    "People": {
+      "extractionState": "manual",
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Osoby"
+          }
+        }
+      }
+    },
+    "Photo library access": {
+      "extractionState": "manual",
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dostęp do biblioteki zdjęć"
+          }
+        }
+      }
+    },
+    "Place": {
+      "extractionState": "manual",
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Miejsce"
+          }
+        }
+      }
+    },
+    "Preview and metadata": {
+      "extractionState": "manual",
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Podgląd i metadane"
+          }
+        }
+      }
+    },
+    "Rating": {
+      "extractionState": "manual",
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ocena"
+          }
+        }
+      }
+    },
+    "Reads sharpness, exposure and faces from the Photos library databases": {
+      "extractionState": "manual",
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Czyta ostrość, ekspozycję i twarze z baz biblioteki Zdjęć"
+          }
+        }
+      }
+    },
+    "Request access": {
+      "extractionState": "manual",
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Poproś o dostęp"
+          }
+        }
+      }
+    },
+    "Right-click a row to pin that measure to the top.": {
+      "extractionState": "manual",
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Prawy przycisk na wierszu przypina miarę na wierzch."
+          }
+        }
+      }
+    },
+    "S — swap sides": {
+      "extractionState": "manual",
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "S — zamień strony"
+          }
+        }
+      }
+    },
+    "Scene labels, people's names, place names and text found in photos.": {
+      "extractionState": "manual",
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Etykiety scen, imiona osób, nazwy miejsc i tekst ze zdjęć."
+          }
+        }
+      }
+    },
+    "Search contents": {
+      "extractionState": "manual",
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Szukaj w treści"
+          }
+        }
+      }
+    },
+    "Shared folder": {
+      "extractionState": "manual",
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Folder wymiany"
+          }
+        }
+      }
+    },
+    "Sync": {
+      "extractionState": "manual",
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Synchronizacja"
+          }
+        }
+      }
+    },
+    "System measures": {
+      "extractionState": "manual",
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cechy systemu"
+          }
+        }
+      }
+    },
+    "Technique": {
+      "extractionState": "manual",
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Technika"
+          }
+        }
+      }
+    },
+    "The library database has no computed measures.": {
+      "extractionState": "manual",
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Baza biblioteki nie ma policzonych cech."
+          }
+        }
+      }
+    },
+    "Unmark": {
+      "extractionState": "manual",
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Zdejmij oznaczenie"
+          }
+        }
+      }
+    },
+    "Update": {
+      "extractionState": "manual",
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Aktualizacja"
+          }
+        }
+      }
+    },
+    "Use the toolbar button — it needs Full Disk Access.": {
+      "extractionState": "manual",
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Zrób to przyciskiem w belce — wymaga Pełnego dostępu do dysku."
+          }
+        }
+      }
+    },
+    "Visual fingerprints": {
+      "extractionState": "manual",
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Odciski wizualne"
+          }
+        }
+      }
+    },
+    "What the system sees": {
+      "extractionState": "manual",
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Co widzi system"
+          }
+        }
+      }
+    },
+    "Year range": {
+      "extractionState": "manual",
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Zakres lat"
+          }
+        }
+      }
+    },
+    "above": {
+      "extractionState": "manual",
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "powyżej"
+          }
+        }
+      }
+    },
+    "activity": {
+      "extractionState": "manual",
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "aktywność w kadrze"
+          }
+        }
+      }
+    },
+    "archive status": {
+      "extractionState": "manual",
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "stan w archiwum"
+          }
+        }
+      }
+    },
+    "back to the grid": {
+      "extractionState": "manual",
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "wróć do siatki"
+          }
+        }
+      }
+    },
+    "background blur": {
+      "extractionState": "manual",
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "rozmycie tła"
+          }
+        }
+      }
+    },
+    "below": {
+      "extractionState": "manual",
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "poniżej"
+          }
+        }
+      }
+    },
+    "below %.2f": {
+      "extractionState": "manual",
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "poniżej %.2f"
+          }
+        }
+      }
+    },
+    "best tenth": {
+      "extractionState": "manual",
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "najlepsza dziesiąta część"
+          }
+        }
+      }
+    },
+    "burst": {
+      "extractionState": "manual",
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "seria"
+          }
+        }
+      }
+    },
+    "camera burst": {
+      "extractionState": "manual",
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "seria aparatu"
+          }
+        }
+      }
+    },
+    "camera tilt": {
+      "extractionState": "manual",
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "przechył kadru"
+          }
+        }
+      }
+    },
+    "change folder…": {
+      "extractionState": "manual",
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "zmień folder…"
+          }
+        }
+      }
+    },
+    "change shared folder…": {
+      "extractionState": "manual",
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "zmień folder wymiany…"
+          }
+        }
+      }
+    },
+    "choose folder…": {
+      "extractionState": "manual",
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "wskaż folder…"
+          }
+        }
+      }
+    },
+    "choose shared folder…": {
+      "extractionState": "manual",
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "wybierz folder wymiany…"
+          }
+        }
+      }
+    },
+    "cleaning up orphans…": {
+      "extractionState": "manual",
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "sprzątam sieroty…"
+          }
+        }
+      }
+    },
+    "clear": {
+      "extractionState": "manual",
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "wyczyść"
+          }
+        }
+      }
+    },
+    "clear rating": {
+      "extractionState": "manual",
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "wyzeruj ocenę"
+          }
+        }
+      }
+    },
+    "click selects · double-click for full screen": {
+      "extractionState": "manual",
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "klik zaznacza · dwuklik pełny ekran"
+          }
+        }
+      }
+    },
+    "colour harmony": {
+      "extractionState": "manual",
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "harmonia kolorów"
+          }
+        }
+      }
+    },
+    "compare selected": {
+      "extractionState": "manual",
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "porównaj zaznaczone"
+          }
+        }
+      }
+    },
+    "comparison": {
+      "extractionState": "manual",
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "porównanie"
+          }
+        }
+      }
+    },
+    "composition": {
+      "extractionState": "manual",
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "kompozycja"
+          }
+        }
+      }
+    },
+    "compute fingerprints": {
+      "extractionState": "manual",
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "policz odciski"
+          }
+        }
+      }
+    },
+    "computing visual fingerprints": {
+      "extractionState": "manual",
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "liczę odciski wizualne"
+          }
+        }
+      }
+    },
+    "curation": {
+      "extractionState": "manual",
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "kuracja"
+          }
+        }
+      }
+    },
+    "current leader": {
+      "extractionState": "manual",
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "dotychczasowy lider"
+          }
+        }
+      }
+    },
+    "deselect": {
+      "extractionState": "manual",
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "odznacz"
+          }
+        }
+      }
+    },
+    "downloading": {
+      "extractionState": "manual",
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "pobieram"
+          }
+        }
+      }
+    },
+    "esc — back to the grid": {
+      "extractionState": "manual",
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "esc — powrót do siatki"
+          }
+        }
+      }
+    },
+    "failed shot": {
+      "extractionState": "manual",
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "nieudane ujęcie"
+          }
+        }
+      }
+    },
+    "favourite": {
+      "extractionState": "manual",
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ulubione"
+          }
+        }
+      }
+    },
+    "fetching from iCloud": {
+      "extractionState": "manual",
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "dociągam z iCloud"
+          }
+        }
+      }
+    },
+    "fetching original…": {
+      "extractionState": "manual",
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "dociągam oryginał…"
+          }
+        }
+      }
+    },
+    "filter": {
+      "extractionState": "manual",
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "filtr"
+          }
+        }
+      }
+    },
+    "flash": {
+      "extractionState": "manual",
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "lampa"
+          }
+        }
+      }
+    },
+    "follows the cursor — click to freeze": {
+      "extractionState": "manual",
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "celuje za kursorem — klik zamraża"
+          }
+        }
+      }
+    },
+    "forest, sign, Kraków…": {
+      "extractionState": "manual",
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "las, tablica, Kraków…"
+          }
+        }
+      }
+    },
+    "framing": {
+      "extractionState": "manual",
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "skadrowanie"
+          }
+        }
+      }
+    },
+    "from": {
+      "extractionState": "manual",
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "od"
+          }
+        }
+      }
+    },
+    "from the start": {
+      "extractionState": "manual",
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "od początku"
+          }
+        }
+      }
+    },
+    "frozen — click to resume": {
+      "extractionState": "manual",
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "zamrożona — klik wznawia"
+          }
+        }
+      }
+    },
+    "full range": {
+      "extractionState": "manual",
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "cały zakres"
+          }
+        }
+      }
+    },
+    "hide": {
+      "extractionState": "manual",
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ukryj"
+          }
+        }
+      }
+    },
+    "iconic": {
+      "extractionState": "manual",
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ikoniczność"
+          }
+        }
+      }
+    },
+    "immersiveness": {
+      "extractionState": "manual",
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "immersyjność"
+          }
+        }
+      }
+    },
+    "in flight": {
+      "extractionState": "manual",
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "w locie"
+          }
+        }
+      }
+    },
+    "interesting subject": {
+      "extractionState": "manual",
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ciekawy temat"
+          }
+        }
+      }
+    },
+    "intrusive object": {
+      "extractionState": "manual",
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "natrętny obiekt"
+          }
+        }
+      }
+    },
+    "less used": {
+      "extractionState": "manual",
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "rzadziej używane"
+          }
+        }
+      }
+    },
+    "library order": {
+      "extractionState": "manual",
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "kolejność biblioteki"
+          }
+        }
+      }
+    },
+    "lighting": {
+      "extractionState": "manual",
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "oświetlenie"
+          }
+        }
+      }
+    },
+    "lively colour": {
+      "extractionState": "manual",
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "żywe kolory"
+          }
+        }
+      }
+    },
+    "load measures": {
+      "extractionState": "manual",
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "wczytaj cechy"
+          }
+        }
+      }
+    },
+    "looking for files…": {
+      "extractionState": "manual",
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "szukam plików…"
+          }
+        }
+      }
+    },
+    "looking for the original on this device…": {
+      "extractionState": "manual",
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "szukam oryginału na urządzeniu…"
+          }
+        }
+      }
+    },
+    "low light": {
+      "extractionState": "manual",
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "słabe światło"
+          }
+        }
+      }
+    },
+    "low resolution": {
+      "extractionState": "manual",
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "niska rozdzielczość"
+          }
+        }
+      }
+    },
+    "mark for deletion": {
+      "extractionState": "manual",
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "oznacz do usunięcia"
+          }
+        }
+      }
+    },
+    "matching photos…": {
+      "extractionState": "manual",
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "dopasowuję zdjęcia…"
+          }
+        }
+      }
+    },
+    "max hitch": {
+      "extractionState": "manual",
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "max zacięcie"
+          }
+        }
+      }
+    },
+    "memory": {
+      "extractionState": "manual",
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "pamięć"
+          }
+        }
+      }
+    },
+    "merging ratings and fingerprints…": {
+      "extractionState": "manual",
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "scalam oceny i odciski…"
+          }
+        }
+      }
+    },
+    "metadata": {
+      "extractionState": "manual",
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "metadane"
+          }
+        }
+      }
+    },
+    "never viewed": {
+      "extractionState": "manual",
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "nigdy nieoglądane"
+          }
+        }
+      }
+    },
+    "no faces": {
+      "extractionState": "manual",
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "bez twarzy"
+          }
+        }
+      }
+    },
+    "no location": {
+      "extractionState": "manual",
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "bez lokalizacji"
+          }
+        }
+      }
+    },
+    "noise": {
+      "extractionState": "manual",
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "szum"
+          }
+        }
+      }
+    },
+    "not a burst": {
+      "extractionState": "manual",
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "to nie seria"
+          }
+        }
+      }
+    },
+    "not chosen": {
+      "extractionState": "manual",
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "nie wskazany"
+          }
+        }
+      }
+    },
+    "order": {
+      "extractionState": "manual",
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "kolejność"
+          }
+        }
+      }
+    },
+    "overall aesthetics": {
+      "extractionState": "manual",
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "estetyka ogólna"
+          }
+        }
+      }
+    },
+    "panorama": {
+      "extractionState": "manual",
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "panorama"
+          }
+        }
+      }
+    },
+    "patterns": {
+      "extractionState": "manual",
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "wzory"
+          }
+        }
+      }
+    },
+    "people in frame": {
+      "extractionState": "manual",
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "osoby w kadrze"
+          }
+        }
+      }
+    },
+    "perspective": {
+      "extractionState": "manual",
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "perspektywa"
+          }
+        }
+      }
+    },
+    "photo in this filter": {
+      "extractionState": "manual",
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "zdjęcie w tym filtrze"
+          }
+        }
+      }
+    },
+    "photo qualities": {
+      "extractionState": "manual",
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "właściwości zdjęcia"
+          }
+        }
+      }
+    },
+    "photos": {
+      "extractionState": "manual",
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "zdjęć"
+          }
+        }
+      }
+    },
+    "photos in this filter": {
+      "extractionState": "manual",
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "zdjęć w tym filtrze"
+          }
+        }
+      }
+    },
+    "pin to top": {
+      "extractionState": "manual",
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "przypnij na wierzch"
+          }
+        }
+      }
+    },
+    "portrait": {
+      "extractionState": "manual",
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "portret"
+          }
+        }
+      }
+    },
+    "portrait with depth map": {
+      "extractionState": "manual",
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "portret z mapą głębi"
+          }
+        }
+      }
+    },
+    "post-processing": {
+      "extractionState": "manual",
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "obróbka"
+          }
+        }
+      }
+    },
+    "preview": {
+      "extractionState": "manual",
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "podgląd"
+          }
+        }
+      }
+    },
+    "quick ranges": {
+      "extractionState": "manual",
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "szybkie przedziały"
+          }
+        }
+      }
+    },
+    "read": {
+      "extractionState": "manual",
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "odczytaj"
+          }
+        }
+      }
+    },
+    "reading": {
+      "extractionState": "manual",
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "czytam"
+          }
+        }
+      }
+    },
+    "reading file…": {
+      "extractionState": "manual",
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "czytam plik…"
+          }
+        }
+      }
+    },
+    "recomputing bursts…": {
+      "extractionState": "manual",
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "przeliczam serie…"
+          }
+        }
+      }
+    },
+    "reflections": {
+      "extractionState": "manual",
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "odbicia"
+          }
+        }
+      }
+    },
+    "reset": {
+      "extractionState": "manual",
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "wyzeruj"
+          }
+        }
+      }
+    },
+    "resolving name…": {
+      "extractionState": "manual",
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ustalam nazwę…"
+          }
+        }
+      }
+    },
+    "screenshot": {
+      "extractionState": "manual",
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "zrzut ekranu"
+          }
+        }
+      }
+    },
+    "search measures": {
+      "extractionState": "manual",
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "szukaj miary"
+          }
+        }
+      }
+    },
+    "select day": {
+      "extractionState": "manual",
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "zaznacz dzień"
+          }
+        }
+      }
+    },
+    "sensitivity": {
+      "extractionState": "manual",
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "czułość"
+          }
+        }
+      }
+    },
+    "shared at some point": {
+      "extractionState": "manual",
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "kiedyś udostępnione"
+          }
+        }
+      }
+    },
+    "shared file · never read": {
+      "extractionState": "manual",
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "plik wymiany · nigdy nieodczytany"
+          }
+        }
+      }
+    },
+    "shared zoom": {
+      "extractionState": "manual",
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "wspólne powiększenie"
+          }
+        }
+      }
+    },
+    "show": {
+      "extractionState": "manual",
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "pokaż"
+          }
+        }
+      }
+    },
+    "skip": {
+      "extractionState": "manual",
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "pomiń"
+          }
+        }
+      }
+    },
+    "subject choice": {
+      "extractionState": "manual",
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "dobór tematu"
+          }
+        }
+      }
+    },
+    "subject sharpness": {
+      "extractionState": "manual",
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ostrość tematu"
+          }
+        }
+      }
+    },
+    "symmetry": {
+      "extractionState": "manual",
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "symetria"
+          }
+        }
+      }
+    },
+    "sync": {
+      "extractionState": "manual",
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "synchronizuj"
+          }
+        }
+      }
+    },
+    "sync now": {
+      "extractionState": "manual",
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "synchronizuj teraz"
+          }
+        }
+      }
+    },
+    "syncing": {
+      "extractionState": "manual",
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "synchronizuję"
+          }
+        }
+      }
+    },
+    "system duplicate": {
+      "extractionState": "manual",
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "duplikat wg systemu"
+          }
+        }
+      }
+    },
+    "technique": {
+      "extractionState": "manual",
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "technika"
+          }
+        }
+      }
+    },
+    "threshold": {
+      "extractionState": "manual",
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "próg"
+          }
+        }
+      }
+    },
+    "thumbnails": {
+      "extractionState": "manual",
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "miniatur"
+          }
+        }
+      }
+    },
+    "tile size": {
+      "extractionState": "manual",
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "rozmiar kafelka"
+          }
+        }
+      }
+    },
+    "timing": {
+      "extractionState": "manual",
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "moment ujęcia"
+          }
+        }
+      }
+    },
+    "to": {
+      "extractionState": "manual",
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "do"
+          }
+        }
+      }
+    },
+    "to delete": {
+      "extractionState": "manual",
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "do usunięcia"
+          }
+        }
+      }
+    },
+    "to delete — X": {
+      "extractionState": "manual",
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "do usunięcia — X"
+          }
+        }
+      }
+    },
+    "to the end": {
+      "extractionState": "manual",
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "do końca"
+          }
+        }
+      }
+    },
+    "unpin": {
+      "extractionState": "manual",
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "odepnij"
+          }
+        }
+      }
+    },
+    "unrated": {
+      "extractionState": "manual",
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "bez oceny"
+          }
+        }
+      }
+    },
+    "untitled": {
+      "extractionState": "manual",
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "bez nazwy"
+          }
+        }
+      }
+    },
+    "video": {
+      "extractionState": "manual",
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "wideo"
+          }
+        }
+      }
+    },
+    "wallpaper suitability": {
+      "extractionState": "manual",
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "przydatność na tapetę"
+          }
+        }
+      }
+    },
+    "working…": {
+      "extractionState": "manual",
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "pracuję…"
+          }
+        }
+      }
+    },
+    "worst tenth": {
+      "extractionState": "manual",
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "najgorsza dziesiąta część"
+          }
+        }
+      }
+    },
+    "writing my file…": {
+      "extractionState": "manual",
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "zapisuję swój plik…"
+          }
+        }
+      }
+    },
+    "writing ratings to albums": {
+      "extractionState": "manual",
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "zapisuję oceny do albumów"
+          }
+        }
+      }
+    },
+    "“next” follows the same queue": {
+      "extractionState": "manual",
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "„następne” idzie tą samą kolejką"
+          }
+        }
+      }
+    },
+    "← better · worse →": {
+      "extractionState": "manual",
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "← lepiej · gorzej →"
+          }
+        }
+      }
+    },
+    "← worse · better →": {
+      "extractionState": "manual",
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "← gorzej · lepiej →"
+          }
+        }
+      }
+    }
+  }
+}

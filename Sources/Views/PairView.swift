@@ -53,9 +53,9 @@ struct PairView: View {
         Group {
             if series.isEmpty {
                 ContentUnavailableView(
-                    "Brak serii",
+                    "No bursts",
                     systemImage: "square.on.square.dashed",
-                    description: Text("Policz najpierw odciski wizualne.")
+                    description: Text("Compute visual fingerprints first.")
                 )
             } else if let current,
                       let championID = current.championID ?? current.members.first,
@@ -65,9 +65,9 @@ struct PairView: View {
                 comparison(left: left, right: right, series: current)
             } else {
                 ContentUnavailableView(
-                    "Wszystko rozstrzygnięte",
+                    "All resolved",
                     systemImage: "checkmark.circle",
-                    description: Text("Serie od \(minimumSize) zdjęć w górę są przejrzane. Zejdź niżej progiem, żeby wziąć mniejsze.")
+                    description: Text("Bursts of \(minimumSize) photos and up are reviewed. Lower the threshold to take smaller ones.")
                 )
             }
         }
@@ -118,7 +118,7 @@ struct PairView: View {
         #if os(iOS)
         VStack(spacing: 5) {
             HStack(spacing: 8) {
-                Text("\(current.members.count) zdjęć")
+                Text("\(current.members.count) photos")
                     .font(.subheadline.weight(.semibold))
                 Text("· \(current.challengerIndex) z \(current.members.count - 1)")
                     .font(.subheadline)
@@ -134,9 +134,9 @@ struct PairView: View {
             // widoczne. „To nie seria" jest osobne od „pomiń" celowo:
             // pierwsze niesie informację o jakości grupowania, drugie nie.
             HStack(spacing: 10) {
-                Button("pomiń") { resolveCurrent() }
+                Button("skip") { resolveCurrent() }
                     .buttonStyle(.bordered)
-                Button("to nie seria") { reject() }
+                Button("not a burst") { reject() }
                     .buttonStyle(.bordered)
                     .tint(.orange)
                 Spacer()
@@ -158,9 +158,9 @@ struct PairView: View {
         .padding(.vertical, 8)
         #else
         HStack(spacing: 12) {
-            Text("\(current.members.count) zdjęć")
+            Text("\(current.members.count) photos")
                 .font(.callout.weight(.semibold))
-            Text("pojedynek \(current.challengerIndex) z \(current.members.count - 1)")
+            Text("duel \(current.challengerIndex) of \(current.members.count - 1)")
                 .font(.callout)
                 .foregroundStyle(.secondary)
 
@@ -168,7 +168,7 @@ struct PairView: View {
             // bez niego kilka tysięcy serii wygląda jak ściana bez drzwi.
             ProgressView(value: Double(resolvedCount), total: Double(max(inScope.count, 1)))
                 .frame(width: 120)
-            Text("\(resolvedCount) / \(inScope.count) serii")
+            Text("\(resolvedCount) / \(inScope.count) bursts")
                 .font(.caption.monospacedDigit())
                 .foregroundStyle(.secondary)
 
@@ -179,7 +179,7 @@ struct PairView: View {
             // w siatce, gdzie nie znaczy nic. Dobra wartość zależy od tego, co
             // się fotografuje — serie startów samolotu rozjeżdżają się znacznie
             // bardziej niż kilka ujęć tego samego drzewa.
-            Text("czułość")
+            Text("sensitivity")
                 .font(.caption)
                 .foregroundStyle(.secondary)
             Slider(value: $similarity.threshold, in: 0.25...0.75, step: 0.01)
@@ -192,13 +192,13 @@ struct PairView: View {
             Divider().frame(height: 14)
 
             Stepper(value: $minimumSize, in: 2...12) {
-                Text("od \(minimumSize) zdjęć")
+                Text("from \(minimumSize) photos")
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }
             .fixedSize()
 
-            Text("←/→ wybierz lepsze · spacja pomiń · N to nie seria")
+            Text("←/→ pick the better · space to skip · N not a burst")
                 .font(.caption)
                 .foregroundStyle(.tertiary)
         }
@@ -213,7 +213,7 @@ struct PairView: View {
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
 
             if isChampion {
-                Text("dotychczasowy lider")
+                Text("current leader")
                     .font(.caption2.weight(.semibold))
                     .padding(.horizontal, 8)
                     .padding(.vertical, 3)
@@ -318,10 +318,10 @@ struct RejectionRate: View {
         let rejected = judged.filter(\.wasRejected).count
         if judged.count >= 5 {
             let ratio = Double(rejected) / Double(judged.count)
-            Text("· \(rejected)/\(judged.count) odrzuconych")
+            Text("· \(rejected)/\(judged.count) rejected")
                 .font(.caption)
                 .foregroundStyle(ratio > 0.3 ? .orange : .secondary)
-                .help(ratio > 0.3 ? "Wysoki odsetek — spróbuj obniżyć czułość" : "")
+                .help(ratio > 0.3 ? "High share — try lowering the sensitivity" : "")
         }
     }
 }

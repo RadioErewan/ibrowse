@@ -41,7 +41,7 @@ struct StatusStrip: View {
         HStack(spacing: 8) {
             if let pending = sync.pending {
                 Label {
-                    Text("w folderze nowszy: \(pending.name), \(pending.modified, style: .relative)")
+                    Text("newer in the folder: \(pending.name), \(pending.modified, style: .relative)")
                 } icon: {
                     Image(systemName: "exclamationmark.triangle.fill")
                 }
@@ -49,16 +49,16 @@ struct StatusStrip: View {
                 .foregroundStyle(.yellow)
                 .lineLimit(1)
 
-                Button("odczytaj", action: onRead)
+                Button("read", action: onRead)
                     .buttonStyle(.link)
                     .font(.caption)
             } else if let read = sync.lastRead {
-                Text("plik wymiany · odczytany \(read, style: .relative) temu")
+                Text("shared file · read \(read, style: .relative) ago")
                     .font(.caption)
                     .foregroundStyle(.secondary)
                     .lineLimit(1)
             } else {
-                Text("plik wymiany · nigdy nieodczytany")
+                Text("shared file · never read")
                     .font(.caption)
                     .foregroundStyle(.secondary)
                     .lineLimit(1)
@@ -70,14 +70,14 @@ struct StatusStrip: View {
     private var progress: some View {
         if similarity.isWorking {
             strip(
-                title: "liczę odciski wizualne",
+                title: "computing visual fingerprints",
                 detail: "\(similarity.progress) / \(similarity.total)",
                 fraction: Double(similarity.progress) / Double(max(similarity.total, 1))
             )
         } else if sync.isWorking {
-            strip(title: sync.stage ?? "synchronizuję", detail: nil, fraction: nil)
+            strip(title: sync.stage ?? "syncing", detail: nil, fraction: nil)
         } else if albums.isSyncing {
-            strip(title: "zapisuję oceny do albumów", detail: nil, fraction: nil)
+            strip(title: "writing ratings to albums", detail: nil, fraction: nil)
         } else if let note = similarity.note {
             done(note)
         }

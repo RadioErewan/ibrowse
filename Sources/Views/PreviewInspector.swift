@@ -48,9 +48,9 @@ struct PreviewInspector: View {
                 MetadataPanel(asset: asset, index: metadata)
             } else {
                 ContentUnavailableView(
-                    "Nic nie zaznaczono",
+                    "Nothing selected",
                     systemImage: "photo.on.rectangle",
-                    description: Text("Kliknij kafelek w siatce, żeby zobaczyć go tutaj.")
+                    description: Text("Click a tile in the grid to see it here.")
                 )
                 .frame(maxHeight: .infinity)
             }
@@ -59,13 +59,13 @@ struct PreviewInspector: View {
 
     private var header: some View {
         HStack {
-            Text("PODGLĄD")
+            Text("PREVIEW")
                 .font(.caption2.weight(.semibold))
                 .foregroundStyle(.tertiary)
             Spacer()
             Text(selectionCount > 1
                  ? "zaznaczono \(selectionCount) · ocena dotyczy pierwszego"
-                 : "klik zaznacza · dwuklik pełny ekran")
+                 : "click selects · double-click for full screen")
                 .font(.caption2.monospacedDigit())
                 .foregroundStyle(.tertiary)
                 .lineLimit(1)
@@ -120,7 +120,7 @@ struct PreviewInspector: View {
     private func rating(_ asset: PHAsset) -> some View {
         HStack(spacing: 6) {
             cell(symbol: review?.markedForDeletion == true ? "trash.fill" : "trash",
-                 tint: AnyShapeStyle(Color.red), isOn: review?.markedForDeletion == true, help: "do usunięcia") {
+                 tint: AnyShapeStyle(Color.red), isOn: review?.markedForDeletion == true, help: "to delete") {
                 Review.upsert(assetID: asset.localIdentifier, in: context) {
                     $0.markedForDeletion.toggle()
                 }
@@ -133,7 +133,7 @@ struct PreviewInspector: View {
                 let clears = value == 1 && review?.isRated == true && review?.stars == 1
                 cell(symbol: lit ? "star.fill" : "star",
                      tint: AnyShapeStyle(Color.yellow), isOn: lit,
-                     help: clears ? "wyzeruj ocenę" : "\(value)") {
+                     help: clears ? "clear rating" : "\(value)") {
                     Review.upsert(assetID: asset.localIdentifier, in: context) {
                         $0.set(clears ? 0 : Double(value))
                     }

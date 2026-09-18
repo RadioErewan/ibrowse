@@ -24,32 +24,32 @@ struct MetadataSheet: View {
             List {
                 Section {
                     if let filename = facts.filename {
-                        LabeledContent("Plik", value: filename)
+                        LabeledContent("File", value: filename)
                     }
                     if let date = asset.creationDate {
-                        LabeledContent("Data", value: date.formatted(date: .long, time: .shortened))
+                        LabeledContent("Date", value: date.formatted(date: .long, time: .shortened))
                     }
-                    LabeledContent("Wymiary") {
+                    LabeledContent("Dimensions") {
                         Text("\(asset.pixelWidth) × \(asset.pixelHeight) · \(AssetFacts.megapixels(asset))")
                             .monospacedDigit()
                     }
                     let traits = AssetFacts.traits(asset)
                     if !traits.isEmpty {
-                        LabeledContent("Rodzaj", value: traits.joined(separator: " · "))
+                        LabeledContent("Kind", value: traits.joined(separator: " · "))
                     }
                     if asset.isFavorite {
-                        LabeledContent("Ulubione") { Image(systemName: "heart.fill").foregroundStyle(.pink) }
+                        LabeledContent("Favourite") { Image(systemName: "heart.fill").foregroundStyle(.pink) }
                     }
                 }
 
                 exposure
                 place
             }
-            .navigationTitle("Metadane")
+            .navigationTitle("Metadata")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .confirmationAction) {
-                    Button("Gotowe") { dismiss() }
+                    Button("Done") { dismiss() }
                 }
             }
         }
@@ -67,11 +67,11 @@ struct MetadataSheet: View {
 
     @ViewBuilder
     private var exposure: some View {
-        Section("Technika") {
+        Section("Technique") {
             if isLoading {
                 HStack {
                     ProgressView().controlSize(.small)
-                    Text("czytam plik…").foregroundStyle(.secondary)
+                    Text("reading file…").foregroundStyle(.secondary)
                 }
             } else if let line = AssetFacts.exposureLine(
                 focalLength: facts.focalLength, aperture: facts.aperture,
@@ -79,16 +79,16 @@ struct MetadataSheet: View {
             ) {
                 Text(line).font(.body.monospaced())
                 if let camera = facts.camera {
-                    LabeledContent("Aparat", value: camera)
+                    LabeledContent("Camera", value: camera)
                 }
                 if let lens = facts.lens {
-                    LabeledContent("Obiektyw", value: lens)
+                    LabeledContent("Lens", value: lens)
                 }
             } else {
                 // Oryginał siedzi w iCloud. Nie pobieramy go, bo zostałby na
                 // telefonie na stałe — a PhotoKit nie daje sposobu, żeby go
                 // potem usunąć.
-                Text("Oryginału nie ma na tym urządzeniu, więc nie znam ustawień aparatu. Nie pobieram go, bo zostałby tu na stałe.")
+                Text("The original isn't on this device, so I don't know the camera settings. I don't fetch it, because it would stay here for good.")
                     .font(.callout)
                     .foregroundStyle(.secondary)
             }
@@ -98,14 +98,14 @@ struct MetadataSheet: View {
     @ViewBuilder
     private var place: some View {
         if let named = facts.place {
-            Section("Miejsce") {
+            Section("Place") {
                 Text(named)
             }
         } else if asset.location != nil {
-            Section("Miejsce") {
+            Section("Place") {
                 HStack {
                     ProgressView().controlSize(.small)
-                    Text("ustalam nazwę…").foregroundStyle(.secondary)
+                    Text("resolving name…").foregroundStyle(.secondary)
                 }
             }
         }

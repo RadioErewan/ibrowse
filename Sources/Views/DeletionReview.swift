@@ -26,10 +26,10 @@ struct DeletionReview: View {
     var body: some View {
         VStack(spacing: 0) {
             HStack {
-                Text("Do usunięcia: \(assets.count)")
+                Text("To delete: \(assets.count)")
                     .font(.headline)
                 Spacer()
-                Button("Zamknij") { dismiss() }
+                Button("Close") { dismiss() }
             }
             .padding(14)
 
@@ -55,7 +55,7 @@ struct DeletionReview: View {
                             }
                             .buttonStyle(.plain)
                             .padding(4)
-                            .help("Zdejmij oznaczenie")
+                            .help("Unmark")
                         }
                     }
                 }
@@ -68,7 +68,7 @@ struct DeletionReview: View {
                 if let error {
                     Text(error).font(.caption).foregroundStyle(.red)
                 } else {
-                    Text("Usunięte trafią do albumu Ostatnio usunięte i wrócą stamtąd przez 30 dni.")
+                    Text("Deleted photos go to Recently Deleted and can be restored from there for 30 days.")
                         .font(.caption)
                         .foregroundStyle(.secondary)
                 }
@@ -79,7 +79,7 @@ struct DeletionReview: View {
                     if isDeleting {
                         ProgressView().controlSize(.small)
                     } else {
-                        Text("Usuń \(assets.count)")
+                        Text("Delete \(assets.count)")
                     }
                 }
                 .buttonStyle(.borderedProminent)
@@ -107,7 +107,7 @@ struct DeletionReview: View {
             try? context.save()
             dismiss()
         } catch {
-            self.error = "Nie udało się usunąć: \(error.localizedDescription)"
+            self.error = "Couldn't delete: \(error.localizedDescription)"
         }
         isDeleting = false
     }
