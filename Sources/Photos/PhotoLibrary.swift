@@ -37,14 +37,40 @@ final class PhotoLibrary: ObservableObject {
     func start() async {
         authorization = PHPhotoLibrary.authorizationStatus(for: .readWrite)
         if authorization == .authorized || authorization == .limited {
+            await Self.nextRunLoopTurn()
             loadAssets()
         }
     }
 
+    /// Zgoda przychodzi, a zaraz po niej — bez żadnego oddechu — `loadAssets()`
+    /// zapełnia `assets`. Dwie zmiany `@Published` jedna po drugiej, bez
+    /// zawieszenia między nimi, SwiftUI zlepia w jedną aktualizację: widok
+    /// uprawnień znika, a w jego miejsce wchodzi od razu pełna przestrzeń
+    /// robocza — cała siatka, panel filtrów, trzy kolumny na raz.
+    ///
+    /// Dwa różne crashe z dwóch różnych Maców (ten sam wyjątek AppKit,
+    /// `_postWindowNeedsUpdateConstraints` w trakcie już trwającego
+    /// `layoutIfNeeded`, ale za każdym razem inny wewnętrzny tor: raz przez
+    /// `@FocusState`, raz przez `NSHostingView.invalidateSafeAreaInsets()`)
+    /// wskazują, że problemem nie jest jedna linia w jednym widoku, tylko sam
+    /// moment tej podmiany — zachodzi ona w tej samej kontynuacji, w której
+    /// dopiero co domknęło się systemowe okno zgody, więc AppKit może wciąż
+    /// kończyć własną transakcję układu wywołaną jego zamknięciem.
+    ///
+    /// `nextRunLoopTurn()` wstawia tu prawdziwą, gwarantowaną przez GCD
+    /// granicę obiegu pętli zdarzeń — patrz ten sam wzorzec w `GridView`,
+    /// `CullView` i `PairView`, gdzie zawiódł odpowiednik przez `Task`.
     func requestAccess() async {
         authorization = await PHPhotoLibrary.requestAuthorization(for: .readWrite)
         if authorization == .authorized || authorization == .limited {
+            await Self.nextRunLoopTurn()
             loadAssets()
+        }
+    }
+
+    private static func nextRunLoopTurn() async {
+        await withCheckedContinuation { continuation in
+            DispatchQueue.main.async { continuation.resume() }
         }
     }
 
