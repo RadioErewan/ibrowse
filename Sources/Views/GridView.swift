@@ -176,12 +176,20 @@ struct GridView: View {
                 // system fokusu o przeliczenie ograniczeń, zanim poprzednie
                 // przeliczenie się skończyło. AppKit tego zabrania i rzuca
                 // wyjątkiem zamiast zostawić okno w niespójnym stanie —
-                // widziane na trzech różnych Makach jako crash zaraz po
+                // widziane na czterech różnych Makach jako crash zaraz po
                 // nadaniu dostępu do biblioteki, bo to właśnie wtedy cały
                 // widok podmienia się w trakcie już trwającego odświeżenia.
-                // `Task` przesuwa przypisanie na kolejny obieg pętli zdarzeń,
-                // gdy układ jest już rozstrzygnięty.
-                .onAppear { Task { @MainActor in focused = true } }
+                //
+                // **`Task { @MainActor in }` tego nie naprawiło** — ten sam
+                // wyjątek wrócił na innym Macu, z identycznym `slice_uuid`
+                // binarki, czyli dokładnie w tej wersji. Hop przez `Task`
+                // trafia na kolejkę współpracującą z aktorem głównym, ale nie
+                // gwarantuje przejścia na kolejny obieg pętli zdarzeń — SwiftUI
+                // potrafi domknąć taką kontynuację jeszcze w tej samej
+                // transakcji układu. `DispatchQueue.main.async` ma silniejszą,
+                // sprawdzoną gwarancję: GCD odkłada blok do końca bieżącego
+                // obiegu pętli, już po zamknięciu `CATransaction`.
+                .onAppear { DispatchQueue.main.async { focused = true } }
                 .onKeyPress(.leftArrow) { move(-1, in: shown); return .handled }
                 .onKeyPress(.rightArrow) { move(1, in: shown); return .handled }
                 .onKeyPress(.upArrow) { move(-columns, in: shown); return .handled }

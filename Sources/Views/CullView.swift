@@ -171,9 +171,9 @@ struct CullView: View {
         // przełączeniu trybu klawiatura trafiała w poprzedni widok i strzałki
         // milczały, dopóki nie kliknęło się w zdjęcie.
         .focused($focused)
-        // Poza bieżącym przebiegiem układu okna — patrz komentarz przy tym
-        // samym wzorcu w `GridView`.
-        .onAppear { Task { @MainActor in focused = true } }
+        // Poza bieżącym przebiegiem układu okna, przez `DispatchQueue.main.async`
+        // (nie `Task` — patrz komentarz przy tym samym wzorcu w `GridView`).
+        .onAppear { DispatchQueue.main.async { focused = true } }
         // Arkusz zabiera focus i **nie oddaje go sam**. Po zamknięciu lupy
         // milkły więc wszystkie klawisze, nie tylko `esc`: ocena, strzałki
         // i przewijanie. Objawiało się to jako „drugie esc nie działa", ale
