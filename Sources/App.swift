@@ -28,6 +28,18 @@ struct LightbraryApp: App {
         }
         .modelContainer(container)
         #if os(macOS)
+        // Rozmiar startowy **tylko przy pierwszym otwarciu** — potem macOS
+        // pamięta ramkę okna sam.
+        //
+        // Bez tego świeża instalacja dostawała okno w domyślnym rozmiarze
+        // SwiftUI, a to bywa węższe niż suma minimalnych szerokości obu paneli
+        // bocznych: 190 na filtry plus 300 na podgląd, czyli 490 punktów, zanim
+        // siatka dostanie pierwszy piksel. System musiał wtedy któryś panel
+        // zamknąć — i to właśnie zamykanie domykało pętlę, przez którą program
+        // ginął przy pierwszym uruchomieniu. Pętle są już rozerwane w obu
+        // bindingach, ale okno, w którym wszystko się mieści, jest po prostu
+        // lepszym pierwszym wrażeniem niż okno, które samo coś chowa.
+        .defaultSize(width: 1280, height: 820)
         .commands {
             // Pod „O programie", czyli tam, gdzie każdy Mac trzyma tę pozycję.
             CommandGroup(after: .appInfo) {
@@ -489,9 +501,34 @@ struct RootView: View {
         return library.asset(id: focusID)
     }
 
+    /// **Zapis poza przebiegiem układu, i tylko gdy to decyzja człowieka.**
+    ///
+    /// Setter bindingu jest wołany przez SwiftUI *w trakcie* układania okna —
+    /// także wtedy, gdy to nie użytkownik zamyka panel, tylko system, bo panel
+    /// przestał się mieścić. Zapis do `@AppStorage` w tym momencie unieważnia
+    /// widok w środku jego własnego układu: kolumna zmienia szerokość,
+    /// `setFrameSize:` rozsyła powiadomienia, ktoś prosi o nowe ograniczenia,
+    /// prośba idzie w górę do okna — a okno jest w połowie poprzedniego
+    /// przeliczenia i rzuca wyjątkiem. Tak ginęła aplikacja na czterech obcych
+    /// Makach, zawsze przy pierwszym uruchomieniu.
+    ///
+    /// Trzy zabezpieczenia, w kolejności ważności:
+    /// 1. **Nie zapisujemy stanu, którego nie kontrolujemy** — gdy `get` i tak
+    ///    zwraca fałsz z innego powodu (tryb, porównanie), zamknięcie panelu
+    ///    nie jest wyborem użytkownika i nie ma czego utrwalać.
+    /// 2. **Nie zapisujemy echa** — wartość równa obecnej nie niesie decyzji,
+    ///    a zapis i tak unieważniłby widok.
+    /// 3. **Zapis dopiero po zakończeniu układu** — rozrywa cykl nawet wtedy,
+    ///    gdy pierwsze dwa warunki przepuszczą prawdziwą zmianę.
     private var inspectorBinding: Binding<Bool> {
-        Binding(get: { inspectorVisible && mode == .grid && comparePair == nil },
-                set: { inspectorVisible = $0 })
+        Binding(
+            get: { inspectorVisible && mode == .grid && comparePair == nil },
+            set: { wanted in
+                guard mode == .grid, comparePair == nil else { return }
+                guard wanted != inspectorVisible else { return }
+                DispatchQueue.main.async { inspectorVisible = wanted }
+            }
+        )
     }
 
     /// Tylko przełącznik podglądu — pasek filtru ma **systemowy** przycisk
@@ -529,10 +566,20 @@ struct RootView: View {
     /// interesują dwa. `.all` i `.detailOnly` to jedyne, które ma sens przy
     /// dwóch kolumnach; `.automatic` zostawiamy systemowi przy pierwszym
     /// otwarciu i zapisujemy dopiero to, co użytkownik wybierze sam.
+    /// Zapis odroczony i odsiany z ech — dokładnie z tego samego powodu co
+    /// w `inspectorBinding`, patrz tamtejszy komentarz. To są **dwie osobne
+    /// pętle** i obie trzeba było rozerwać: przy wąskim oknie system zamyka
+    /// raz jeden panel, raz drugi, i stąd ten sam wyjątek potrafił przychodzić
+    /// dwiema różnymi drogami przez `NSHostingView`.
     private var sidebarBinding: Binding<NavigationSplitViewVisibility> {
         Binding(
             get: { sidebarVisible && !fullScreen && comparePair == nil ? .all : .detailOnly },
-            set: { if !fullScreen && comparePair == nil { sidebarVisible = $0 != .detailOnly } }
+            set: { wanted in
+                guard !fullScreen, comparePair == nil else { return }
+                let visible = wanted != .detailOnly
+                guard visible != sidebarVisible else { return }
+                DispatchQueue.main.async { sidebarVisible = visible }
+            }
         )
     }
     #endif
