@@ -1138,6 +1138,67 @@ dysku i dystrybucję poza sklepem.
 Czego **nie** brać: jasnego motywu w widokach ze zdjęciami. Powód się nie
 zmienił, choć oni się nim chwalą.
 
+## Zouti Photos — bliżej niż Cullibrate, wrzesień 2026
+
+`zouti.app/photos` — macOS, wciąż w budowie, sklep + wersja próbna poza nim.
+Warto zapisać osobno od Cullibrate, bo to nie jest wariant tej samej kategorii —
+to ten sam pomysł źródłowy.
+
+### Co jest wspólne, i to dosłownie
+
+Czytają **wprost z baz biblioteki Zdjęć**, nie przez PhotoKit — „a purpose-made
+engine that reads data directly from Photos… the real data, not a simplified
+summary." To jest dokładnie nasze zdanie o `Photos.sqlite`, tylko po angielsku.
+
+Pokazują **miary jakości jako histogram** — „plot quality and curation scores
+as histograms or scatter plots and filter straight from the chart." To jest
+nasz suwak nad histogramem, opisany od strony marketingu zamiast interakcji.
+Nie skopiowali — trafili na te same kolumny i ten sam oczywisty sposób ich
+pokazania. Dwie osoby czytające ten sam plik SQLite dochodzą do tego samego
+wykresu.
+
+Mają też **triage: Keep / Maybe / Reject, jeden klawisz, przejście dalej samo**
+— nasza ocena gwiazdkowa plus filtr w innej postaci, i **piszą wyłącznie przez
+oficjalne API Zdjęć**, nigdy do bazy — dokładnie nasza zasada z `PhotoLibrary`.
+
+### Gdzie przebiega prawdziwa różnica
+
+Oni budują **skrzynkę narzędziową dla ludzi, którzy chcą kontroli**: zagnieżdżone
+grupy warunków all/any po dowolnym polu, edytor metadanych jak arkusz kalkulacyjny
+z szablonami, eksport z szablonami nazw plików, AppleScript, serwer MCP dla
+asystentów AI. To jest program dla kogoś, kto **wie, czego szuka**, i chce
+zapytać bazę wprost.
+
+My budujemy **jedno przejście przez archiwum**: siatka, filtr, ocena, kasowanie.
+Nie ma tu query buildera i nie ma po co — cały wysiłek szedł w to, żeby nie
+trzeba było umieć formułować warunku, tylko przesuwać suwak nad tym, co
+faktycznie jest w bibliotece.
+
+Dwie rzeczy nie mają u nich odpowiednika: **telefon** — Zouti jest wyłącznie
+biurkowe — i **darmowość**. Oni brzmią jak narzędzie płatne, profesjonalne;
+u nas cena nie pada, bo jej nie ma.
+
+### Czego pilnować
+
+**Dystrybucja przez Mac App Store, a czytanie wprost z bazy.** To są dwie rzeczy,
+które u nas się wykluczały — sklep nie akceptuje aplikacji sięgających poza
+piaskownicę, a `Photos.sqlite` wymaga Pełnego dostępu do dysku, którego sklep
+nie rozdaje. Jeśli im się to uda, znaczy że jest droga, której nie znamy;
+jeśli nie — ich „macOS 15.7+, sklep + wersja próbna" może się zmienić na coś
+bliższego naszemu modelowi. Warto sprawdzić za parę miesięcy, jak faktycznie
+wydali.
+
+### Co warto od nich wziąć
+
+- **Wykres punktowy obok histogramu** — dwie miary naraz, oś X i oś Y, zamiast
+  jednej na raz. Przy trzydziestu ośmiu wymiarach realny sposób na pytanie
+  „które zdjęcia są złe na dwa sposoby jednocześnie".
+- **Wymuszone dociąganie oryginałów z iCloud** — pojedyncze zaznaczenie albo
+  cała biblioteka na raz. Nie mamy tego wcale.
+
+Czego **nie** brać: query buildera i edytora metadanych jako arkusza. To inny
+produkt dla innego człowieka, i mieszanie tych dwóch pomysłów rozmyłoby oba.
+
 ## Wydanie poza sklepem ma inne prawa niż kompilacja u siebie
 
 Pierwsza instalacja na cudzym Macu skończyła się odmową dostępu do biblioteki
