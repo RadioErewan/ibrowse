@@ -122,7 +122,7 @@ struct PairView: View {
             HStack(spacing: 8) {
                 Text("\(current.members.count) photos")
                     .font(.subheadline.weight(.semibold))
-                Text("· \(current.challengerIndex) z \(current.members.count - 1)")
+                Text("· \(current.challengerIndex) of \(current.members.count - 1)")
                     .font(.subheadline)
                     .foregroundStyle(.secondary)
                 Spacer()
@@ -148,7 +148,7 @@ struct PairView: View {
                 // należy do systemu, nie do nas — więc kontrolka wraca tam,
                 // gdzie jest używana, do nagłówka parowania.
                 Stepper(value: $minimumSize, in: 2...12) {
-                    Text("od \(minimumSize)")
+                    Text("from \(minimumSize)")
                         .font(.caption.monospacedDigit())
                         .foregroundStyle(.secondary)
                 }

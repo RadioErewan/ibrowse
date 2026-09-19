@@ -273,7 +273,7 @@ struct FilterPanel: View {
             if grade.isUnrated { return "unrated" }
             return String(grade.rawValue)
         }
-        return "Tylko: \(names.joined(separator: ", ")). Tap again to deselect."
+        return "Only: \(names.joined(separator: ", ")). Tap again to deselect."
     }
 
     // MARK: - Cechy
@@ -379,7 +379,7 @@ struct FilterPanel: View {
                     VStack(alignment: .leading, spacing: 0) {
                         Text(active.label)
                             .font(.caption.weight(.semibold))
-                        Text("od \(String(format: "%.2f", current.lowerBound)) do \(String(format: "%.2f", current.upperBound))")
+                        Text("from \(String(format: "%.2f", current.lowerBound)) to \(String(format: "%.2f", current.upperBound))")
                             .font(.caption.monospacedDigit())
                             .foregroundStyle(.secondary)
                     }
@@ -492,7 +492,7 @@ struct FilterPanel: View {
                     TextField("search measures", text: $measureQuery)
                         .textFieldStyle(.plain)
                         .font(.callout)
-                    Text("\(matching.count) z \(rest.count)")
+                    Text("\(matching.count) of \(rest.count)")
                         .font(.caption.monospacedDigit())
                         .foregroundStyle(.tertiary)
                 }

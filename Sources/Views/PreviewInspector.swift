@@ -64,7 +64,7 @@ struct PreviewInspector: View {
                 .foregroundStyle(.tertiary)
             Spacer()
             Text(selectionCount > 1
-                 ? "zaznaczono \(selectionCount) · ocena dotyczy pierwszego"
+                 ? "selected \(selectionCount) · rating applies to the first"
                  : "click selects · double-click for full screen")
                 .font(.caption2.monospacedDigit())
                 .foregroundStyle(.tertiary)

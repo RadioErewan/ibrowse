@@ -1,7 +1,62 @@
 {
   "sourceLanguage": "en",
-  "version": "1.0",
   "strings": {
+    "": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": ""
+          }
+        }
+      },
+      "extractionState": "manual"
+    },
+    "· %lld of %lld": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "new",
+            "value": "· %1$lld of %2$lld"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "· %lld z %lld"
+          }
+        }
+      },
+      "extractionState": "manual"
+    },
+    "· %lld/%lld rejected": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "new",
+            "value": "· %1$lld/%2$lld rejected"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "· %lld/%lld odrzuconych"
+          }
+        }
+      },
+      "extractionState": "manual"
+    },
+    "“next” follows the same queue": {
+      "extractionState": "manual",
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "„następne” idzie tą samą kolejką"
+          }
+        }
+      }
+    },
     ")). Tap again to deselect.": {
       "extractionState": "manual",
       "localizations": {
@@ -13,6 +68,236 @@
         }
       }
     },
+    "%@  ·  %lld": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "new",
+            "value": "%1$@  ·  %2$lld"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@  ·  %lld"
+          }
+        }
+      },
+      "extractionState": "manual"
+    },
+    "%@ → %@": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "new",
+            "value": "%1$@ → %2$@"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ → %@"
+          }
+        }
+      },
+      "extractionState": "manual"
+    },
+    "%lld": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld"
+          }
+        }
+      },
+      "extractionState": "manual"
+    },
+    "%lld / %lld": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "new",
+            "value": "%1$lld / %2$lld"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld / %lld"
+          }
+        }
+      },
+      "extractionState": "manual"
+    },
+    "%lld / %lld bursts": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "new",
+            "value": "%1$lld / %2$lld bursts"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld / %lld serii"
+          }
+        }
+      },
+      "extractionState": "manual"
+    },
+    "%lld %@": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "new",
+            "value": "%1$lld %2$@"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld %@"
+          }
+        }
+      },
+      "extractionState": "manual"
+    },
+    "%lld × %lld": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "new",
+            "value": "%1$lld × %2$lld"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld × %lld"
+          }
+        }
+      },
+      "extractionState": "manual"
+    },
+    "%lld × %lld · %@": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "new",
+            "value": "%1$lld × %2$lld · %3$@"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld × %lld · %@"
+          }
+        }
+      },
+      "extractionState": "manual"
+    },
+    "%lld of %lld": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "new",
+            "value": "%1$lld of %2$lld"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld z %lld"
+          }
+        }
+      },
+      "extractionState": "manual"
+    },
+    "%lld photos": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld zdjęć"
+          }
+        }
+      },
+      "extractionState": "manual"
+    },
+    "%lld to delete": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld do usunięcia"
+          }
+        }
+      },
+      "extractionState": "manual"
+    },
+    "← better · worse →": {
+      "extractionState": "manual",
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "← lepiej · gorzej →"
+          }
+        }
+      }
+    },
+    "← worse · better →": {
+      "extractionState": "manual",
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "← gorzej · lepiej →"
+          }
+        }
+      }
+    },
+    "←/→ pick the better · space to skip · N not a burst": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "←/→ wybierz lepsze · spacja pomiń · N to nie seria"
+          }
+        }
+      },
+      "extractionState": "manual"
+    },
+    "1:1 · %lld×%lld": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "new",
+            "value": "1:1 · %1$lld×%2$lld"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "1:1 · %lld×%lld"
+          }
+        }
+      },
+      "extractionState": "manual"
+    },
+    "above": {
+      "extractionState": "manual",
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "powyżej"
+          }
+        }
+      }
+    },
     "Actions": {
       "extractionState": "manual",
       "localizations": {
@@ -20,6 +305,17 @@
           "stringUnit": {
             "state": "translated",
             "value": "Akcje"
+          }
+        }
+      }
+    },
+    "activity": {
+      "extractionState": "manual",
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "aktywność w kadrze"
           }
         }
       }
@@ -57,6 +353,138 @@
         }
       }
     },
+    "archive status": {
+      "extractionState": "manual",
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "stan w archiwum"
+          }
+        }
+      }
+    },
+    "as in library": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "jak w bibliotece"
+          }
+        }
+      },
+      "extractionState": "manual"
+    },
+    "back to the grid": {
+      "extractionState": "manual",
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "wróć do siatki"
+          }
+        }
+      }
+    },
+    "background blur": {
+      "extractionState": "manual",
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "rozmycie tła"
+          }
+        }
+      }
+    },
+    "badly exposed": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "źle naświetlone"
+          }
+        }
+      },
+      "extractionState": "manual"
+    },
+    "below": {
+      "extractionState": "manual",
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "poniżej"
+          }
+        }
+      }
+    },
+    "below %.2f": {
+      "extractionState": "manual",
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "poniżej %.2f"
+          }
+        }
+      }
+    },
+    "best first": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "od najlepszych"
+          }
+        }
+      },
+      "extractionState": "manual"
+    },
+    "best tenth": {
+      "extractionState": "manual",
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "najlepsza dziesiąta część"
+          }
+        }
+      }
+    },
+    "blurriest first": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "od poruszonych"
+          }
+        }
+      },
+      "extractionState": "manual"
+    },
+    "blurry": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "poruszone"
+          }
+        }
+      },
+      "extractionState": "manual"
+    },
+    "burst": {
+      "extractionState": "manual",
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "seria"
+          }
+        }
+      }
+    },
     "Bursts": {
       "extractionState": "manual",
       "localizations": {
@@ -67,6 +495,50 @@
           }
         }
       }
+    },
+    "Bursts of %lld photos and up are reviewed. Lower the threshold to take smaller ones.": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Serie od %lld zdjęć w górę są przejrzane. Zejdź niżej progiem, żeby wziąć mniejsze."
+          }
+        }
+      },
+      "extractionState": "manual"
+    },
+    "by chosen measure": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "wg wybranej miary"
+          }
+        }
+      },
+      "extractionState": "manual"
+    },
+    "by day": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "po dniu"
+          }
+        }
+      },
+      "extractionState": "manual"
+    },
+    "C": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "C"
+          }
+        }
+      },
+      "extractionState": "manual"
     },
     "Camera": {
       "extractionState": "manual",
@@ -79,6 +551,28 @@
         }
       }
     },
+    "camera burst": {
+      "extractionState": "manual",
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "seria aparatu"
+          }
+        }
+      }
+    },
+    "camera tilt": {
+      "extractionState": "manual",
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "przechył kadru"
+          }
+        }
+      }
+    },
     "Cancel": {
       "extractionState": "manual",
       "localizations": {
@@ -86,6 +580,28 @@
           "stringUnit": {
             "state": "translated",
             "value": "Anuluj"
+          }
+        }
+      }
+    },
+    "change folder…": {
+      "extractionState": "manual",
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "zmień folder…"
+          }
+        }
+      }
+    },
+    "change shared folder…": {
+      "extractionState": "manual",
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "zmień folder wymiany…"
           }
         }
       }
@@ -134,820 +650,6 @@
         }
       }
     },
-    "Click a tile in the grid to see it here.": {
-      "extractionState": "manual",
-      "localizations": {
-        "pl": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Kliknij kafelek w siatce, żeby zobaczyć go tutaj."
-          }
-        }
-      }
-    },
-    "Close": {
-      "extractionState": "manual",
-      "localizations": {
-        "pl": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Zamknij"
-          }
-        }
-      }
-    },
-    "Compute visual fingerprints first.": {
-      "extractionState": "manual",
-      "localizations": {
-        "pl": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Policz najpierw odciski wizualne."
-          }
-        }
-      }
-    },
-    "Computes visual fingerprints for the whole library": {
-      "extractionState": "manual",
-      "localizations": {
-        "pl": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Liczy odciski wizualne dla całej biblioteki"
-          }
-        }
-      }
-    },
-    "Couldn't find a Photos library in ~/Pictures.": {
-      "extractionState": "manual",
-      "localizations": {
-        "pl": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Nie znalazłem biblioteki Zdjęć w ~/Pictures."
-          }
-        }
-      }
-    },
-    "Couldn't write the shared file.": {
-      "extractionState": "manual",
-      "localizations": {
-        "pl": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Nie udało się zapisać pliku wymiany."
-          }
-        }
-      }
-    },
-    "Date": {
-      "extractionState": "manual",
-      "localizations": {
-        "pl": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Data"
-          }
-        }
-      }
-    },
-    "Deleted photos go to Recently Deleted and can be restored from there for 30 days.": {
-      "extractionState": "manual",
-      "localizations": {
-        "pl": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Usunięte trafią do albumu Ostatnio usunięte i wrócą stamtąd przez 30 dni."
-          }
-        }
-      }
-    },
-    "Dimensions": {
-      "extractionState": "manual",
-      "localizations": {
-        "pl": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Wymiary"
-          }
-        }
-      }
-    },
-    "Done": {
-      "extractionState": "manual",
-      "localizations": {
-        "pl": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Gotowe"
-          }
-        }
-      }
-    },
-    "Empty": {
-      "extractionState": "manual",
-      "localizations": {
-        "pl": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Pusto"
-          }
-        }
-      }
-    },
-    "Favourite": {
-      "extractionState": "manual",
-      "localizations": {
-        "pl": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Ulubione"
-          }
-        }
-      }
-    },
-    "File": {
-      "extractionState": "manual",
-      "localizations": {
-        "pl": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Plik"
-          }
-        }
-      }
-    },
-    "Filter": {
-      "extractionState": "manual",
-      "localizations": {
-        "pl": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Filtr"
-          }
-        }
-      }
-    },
-    "Found no files from other devices. Wrote mine.": {
-      "extractionState": "manual",
-      "localizations": {
-        "pl": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Nie znalazłem plików z innych urządzeń. Zapisałem swój."
-          }
-        }
-      }
-    },
-    "High share — try lowering the sensitivity": {
-      "extractionState": "manual",
-      "localizations": {
-        "pl": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Wysoki odsetek — spróbuj obniżyć czułość"
-          }
-        }
-      }
-    },
-    "Kind": {
-      "extractionState": "manual",
-      "localizations": {
-        "pl": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Rodzaj"
-          }
-        }
-      }
-    },
-    "Lens": {
-      "extractionState": "manual",
-      "localizations": {
-        "pl": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Obiektyw"
-          }
-        }
-      }
-    },
-    "Live": {
-      "extractionState": "manual",
-      "localizations": {
-        "pl": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Live"
-          }
-        }
-      }
-    },
-    "Load them on the Mac, sync both devices, then come back here.": {
-      "extractionState": "manual",
-      "localizations": {
-        "pl": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Wczytaj je na Macu, zsynchronizuj oba urządzenia i wróć tutaj."
-          }
-        }
-      }
-    },
-    "Loading library…": {
-      "extractionState": "manual",
-      "localizations": {
-        "pl": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Wczytuję bibliotekę…"
-          }
-        }
-      }
-    },
-    "Matching": {
-      "extractionState": "manual",
-      "localizations": {
-        "pl": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Pasuje"
-          }
-        }
-      }
-    },
-    "Measures aren't loaded yet. The Mac computes them and they arrive here by sync.": {
-      "extractionState": "manual",
-      "localizations": {
-        "pl": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Nie wczytano jeszcze cech. Liczy je Mac i przyjeżdżają tu synchronizacją."
-          }
-        }
-      }
-    },
-    "Measures aren't loaded yet. Use the toolbar button — it needs Full Disk Access.": {
-      "extractionState": "manual",
-      "localizations": {
-        "pl": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Nie wczytano jeszcze cech. Przycisk w belce narzędzi — wymaga Pełnego dostępu do dysku."
-          }
-        }
-      }
-    },
-    "Metadata": {
-      "extractionState": "manual",
-      "localizations": {
-        "pl": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Metadane"
-          }
-        }
-      }
-    },
-    "Metadata panel (key I)": {
-      "extractionState": "manual",
-      "localizations": {
-        "pl": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Panel metadanych (klawisz I)"
-          }
-        }
-      }
-    },
-    "No access": {
-      "extractionState": "manual",
-      "localizations": {
-        "pl": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Brak dostępu"
-          }
-        }
-      }
-    },
-    "No bursts": {
-      "extractionState": "manual",
-      "localizations": {
-        "pl": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Brak serii"
-          }
-        }
-      }
-    },
-    "No photo": {
-      "extractionState": "manual",
-      "localizations": {
-        "pl": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Brak zdjęcia"
-          }
-        }
-      }
-    },
-    "No photo matches the filter.": {
-      "extractionState": "manual",
-      "localizations": {
-        "pl": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Żadne zdjęcie nie spełnia warunków filtru."
-          }
-        }
-      }
-    },
-    "No shared folder chosen.": {
-      "extractionState": "manual",
-      "localizations": {
-        "pl": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Nie wskazano folderu wymiany."
-          }
-        }
-      }
-    },
-    "Nothing matches": {
-      "extractionState": "manual",
-      "localizations": {
-        "pl": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Nic nie pasuje"
-          }
-        }
-      }
-    },
-    "Nothing selected": {
-      "extractionState": "manual",
-      "localizations": {
-        "pl": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Nic nie zaznaczono"
-          }
-        }
-      }
-    },
-    "Occasion": {
-      "extractionState": "manual",
-      "localizations": {
-        "pl": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Okoliczność"
-          }
-        }
-      }
-    },
-    "Open access settings…": {
-      "extractionState": "manual",
-      "localizations": {
-        "pl": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Otwórz ustawienia dostępu…"
-          }
-        }
-      }
-    },
-    "Open the download page": {
-      "extractionState": "manual",
-      "localizations": {
-        "pl": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Otwórz stronę pobierania"
-          }
-        }
-      }
-    },
-    "Order": {
-      "extractionState": "manual",
-      "localizations": {
-        "pl": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Kolejność"
-          }
-        }
-      }
-    },
-    "Original not on this device": {
-      "extractionState": "manual",
-      "localizations": {
-        "pl": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Brak oryginału na urządzeniu"
-          }
-        }
-      }
-    },
-    "PREVIEW": {
-      "extractionState": "manual",
-      "localizations": {
-        "pl": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "PODGLĄD"
-          }
-        }
-      }
-    },
-    "People": {
-      "extractionState": "manual",
-      "localizations": {
-        "pl": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Osoby"
-          }
-        }
-      }
-    },
-    "Photo library access": {
-      "extractionState": "manual",
-      "localizations": {
-        "pl": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Dostęp do biblioteki zdjęć"
-          }
-        }
-      }
-    },
-    "Place": {
-      "extractionState": "manual",
-      "localizations": {
-        "pl": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Miejsce"
-          }
-        }
-      }
-    },
-    "Preview and metadata": {
-      "extractionState": "manual",
-      "localizations": {
-        "pl": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Podgląd i metadane"
-          }
-        }
-      }
-    },
-    "Rating": {
-      "extractionState": "manual",
-      "localizations": {
-        "pl": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Ocena"
-          }
-        }
-      }
-    },
-    "Reads sharpness, exposure and faces from the Photos library databases": {
-      "extractionState": "manual",
-      "localizations": {
-        "pl": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Czyta ostrość, ekspozycję i twarze z baz biblioteki Zdjęć"
-          }
-        }
-      }
-    },
-    "Request access": {
-      "extractionState": "manual",
-      "localizations": {
-        "pl": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Poproś o dostęp"
-          }
-        }
-      }
-    },
-    "Right-click a row to pin that measure to the top.": {
-      "extractionState": "manual",
-      "localizations": {
-        "pl": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Prawy przycisk na wierszu przypina miarę na wierzch."
-          }
-        }
-      }
-    },
-    "S — swap sides": {
-      "extractionState": "manual",
-      "localizations": {
-        "pl": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "S — zamień strony"
-          }
-        }
-      }
-    },
-    "Scene labels, people's names, place names and text found in photos.": {
-      "extractionState": "manual",
-      "localizations": {
-        "pl": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Etykiety scen, imiona osób, nazwy miejsc i tekst ze zdjęć."
-          }
-        }
-      }
-    },
-    "Search contents": {
-      "extractionState": "manual",
-      "localizations": {
-        "pl": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Szukaj w treści"
-          }
-        }
-      }
-    },
-    "Shared folder": {
-      "extractionState": "manual",
-      "localizations": {
-        "pl": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Folder wymiany"
-          }
-        }
-      }
-    },
-    "Sync": {
-      "extractionState": "manual",
-      "localizations": {
-        "pl": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Synchronizacja"
-          }
-        }
-      }
-    },
-    "System measures": {
-      "extractionState": "manual",
-      "localizations": {
-        "pl": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Cechy systemu"
-          }
-        }
-      }
-    },
-    "Technique": {
-      "extractionState": "manual",
-      "localizations": {
-        "pl": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Technika"
-          }
-        }
-      }
-    },
-    "The library database has no computed measures.": {
-      "extractionState": "manual",
-      "localizations": {
-        "pl": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Baza biblioteki nie ma policzonych cech."
-          }
-        }
-      }
-    },
-    "Unmark": {
-      "extractionState": "manual",
-      "localizations": {
-        "pl": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Zdejmij oznaczenie"
-          }
-        }
-      }
-    },
-    "Update": {
-      "extractionState": "manual",
-      "localizations": {
-        "pl": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Aktualizacja"
-          }
-        }
-      }
-    },
-    "Use the toolbar button — it needs Full Disk Access.": {
-      "extractionState": "manual",
-      "localizations": {
-        "pl": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Zrób to przyciskiem w belce — wymaga Pełnego dostępu do dysku."
-          }
-        }
-      }
-    },
-    "Visual fingerprints": {
-      "extractionState": "manual",
-      "localizations": {
-        "pl": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Odciski wizualne"
-          }
-        }
-      }
-    },
-    "What the system sees": {
-      "extractionState": "manual",
-      "localizations": {
-        "pl": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Co widzi system"
-          }
-        }
-      }
-    },
-    "Year range": {
-      "extractionState": "manual",
-      "localizations": {
-        "pl": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Zakres lat"
-          }
-        }
-      }
-    },
-    "above": {
-      "extractionState": "manual",
-      "localizations": {
-        "pl": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "powyżej"
-          }
-        }
-      }
-    },
-    "activity": {
-      "extractionState": "manual",
-      "localizations": {
-        "pl": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "aktywność w kadrze"
-          }
-        }
-      }
-    },
-    "archive status": {
-      "extractionState": "manual",
-      "localizations": {
-        "pl": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "stan w archiwum"
-          }
-        }
-      }
-    },
-    "back to the grid": {
-      "extractionState": "manual",
-      "localizations": {
-        "pl": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "wróć do siatki"
-          }
-        }
-      }
-    },
-    "background blur": {
-      "extractionState": "manual",
-      "localizations": {
-        "pl": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "rozmycie tła"
-          }
-        }
-      }
-    },
-    "below": {
-      "extractionState": "manual",
-      "localizations": {
-        "pl": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "poniżej"
-          }
-        }
-      }
-    },
-    "below %.2f": {
-      "extractionState": "manual",
-      "localizations": {
-        "pl": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "poniżej %.2f"
-          }
-        }
-      }
-    },
-    "best tenth": {
-      "extractionState": "manual",
-      "localizations": {
-        "pl": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "najlepsza dziesiąta część"
-          }
-        }
-      }
-    },
-    "burst": {
-      "extractionState": "manual",
-      "localizations": {
-        "pl": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "seria"
-          }
-        }
-      }
-    },
-    "camera burst": {
-      "extractionState": "manual",
-      "localizations": {
-        "pl": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "seria aparatu"
-          }
-        }
-      }
-    },
-    "camera tilt": {
-      "extractionState": "manual",
-      "localizations": {
-        "pl": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "przechył kadru"
-          }
-        }
-      }
-    },
-    "change folder…": {
-      "extractionState": "manual",
-      "localizations": {
-        "pl": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "zmień folder…"
-          }
-        }
-      }
-    },
-    "change shared folder…": {
-      "extractionState": "manual",
-      "localizations": {
-        "pl": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "zmień folder wymiany…"
-          }
-        }
-      }
-    },
     "choose folder…": {
       "extractionState": "manual",
       "localizations": {
@@ -969,6 +671,17 @@
           }
         }
       }
+    },
+    "Choose the same folder as on the other device — ideally in iCloud Drive. Fingerprints and ratings arrive from there, so the phone doesn't have to compute them.": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Wskaż ten sam folder co na drugim urządzeniu — najlepiej w iCloud Drive. Odciski i oceny przyjadą stamtąd, więc telefon nie musi ich liczyć."
+          }
+        }
+      },
+      "extractionState": "manual"
     },
     "cleaning up orphans…": {
       "extractionState": "manual",
@@ -1003,6 +716,17 @@
         }
       }
     },
+    "Click a tile in the grid to see it here.": {
+      "extractionState": "manual",
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kliknij kafelek w siatce, żeby zobaczyć go tutaj."
+          }
+        }
+      }
+    },
     "click selects · double-click for full screen": {
       "extractionState": "manual",
       "localizations": {
@@ -1013,6 +737,39 @@
           }
         }
       }
+    },
+    "Close": {
+      "extractionState": "manual",
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Zamknij"
+          }
+        }
+      }
+    },
+    "closed eyes": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "zamknięte oczy"
+          }
+        }
+      },
+      "extractionState": "manual"
+    },
+    "closed eyes first": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "od zamkniętych oczu"
+          }
+        }
+      },
+      "extractionState": "manual"
     },
     "colour harmony": {
       "extractionState": "manual",
@@ -1069,6 +826,28 @@
         }
       }
     },
+    "Compute visual fingerprints first.": {
+      "extractionState": "manual",
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Policz najpierw odciski wizualne."
+          }
+        }
+      }
+    },
+    "Computes visual fingerprints for the whole library": {
+      "extractionState": "manual",
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Liczy odciski wizualne dla całej biblioteki"
+          }
+        }
+      }
+    },
     "computing visual fingerprints": {
       "extractionState": "manual",
       "localizations": {
@@ -1076,6 +855,28 @@
           "stringUnit": {
             "state": "translated",
             "value": "liczę odciski wizualne"
+          }
+        }
+      }
+    },
+    "Couldn't find a Photos library in ~/Pictures.": {
+      "extractionState": "manual",
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nie znalazłem biblioteki Zdjęć w ~/Pictures."
+          }
+        }
+      }
+    },
+    "Couldn't write the shared file.": {
+      "extractionState": "manual",
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nie udało się zapisać pliku wymiany."
           }
         }
       }
@@ -1102,6 +903,50 @@
         }
       }
     },
+    "darkest first": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "od niedoświetlonych"
+          }
+        }
+      },
+      "extractionState": "manual"
+    },
+    "Date": {
+      "extractionState": "manual",
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Data"
+          }
+        }
+      }
+    },
+    "Delete %lld": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Usuń %lld"
+          }
+        }
+      },
+      "extractionState": "manual"
+    },
+    "Deleted photos go to Recently Deleted and can be restored from there for 30 days.": {
+      "extractionState": "manual",
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Usunięte trafią do albumu Ostatnio usunięte i wrócą stamtąd przez 30 dni."
+          }
+        }
+      }
+    },
     "deselect": {
       "extractionState": "manual",
       "localizations": {
@@ -1109,6 +954,28 @@
           "stringUnit": {
             "state": "translated",
             "value": "odznacz"
+          }
+        }
+      }
+    },
+    "Dimensions": {
+      "extractionState": "manual",
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Wymiary"
+          }
+        }
+      }
+    },
+    "Done": {
+      "extractionState": "manual",
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Gotowe"
           }
         }
       }
@@ -1124,6 +991,45 @@
         }
       }
     },
+    "duel %lld of %lld": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "new",
+            "value": "duel %1$lld of %2$lld"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "pojedynek %lld z %lld"
+          }
+        }
+      },
+      "extractionState": "manual"
+    },
+    "Empty": {
+      "extractionState": "manual",
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pusto"
+          }
+        }
+      }
+    },
+    "esc": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "esc"
+          }
+        }
+      },
+      "extractionState": "manual"
+    },
     "esc — back to the grid": {
       "extractionState": "manual",
       "localizations": {
@@ -1134,6 +1040,17 @@
           }
         }
       }
+    },
+    "everything that passed the other conditions": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "wszystko, co przeszło pozostałe warunki"
+          }
+        }
+      },
+      "extractionState": "manual"
     },
     "failed shot": {
       "extractionState": "manual",
@@ -1153,6 +1070,17 @@
           "stringUnit": {
             "state": "translated",
             "value": "ulubione"
+          }
+        }
+      }
+    },
+    "Favourite": {
+      "extractionState": "manual",
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ulubione"
           }
         }
       }
@@ -1179,6 +1107,17 @@
         }
       }
     },
+    "File": {
+      "extractionState": "manual",
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Plik"
+          }
+        }
+      }
+    },
     "filter": {
       "extractionState": "manual",
       "localizations": {
@@ -1190,6 +1129,28 @@
         }
       }
     },
+    "Filter": {
+      "extractionState": "manual",
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Filtr"
+          }
+        }
+      }
+    },
+    "first rating · %@": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "pierwsza ocena · %@"
+          }
+        }
+      },
+      "extractionState": "manual"
+    },
     "flash": {
       "extractionState": "manual",
       "localizations": {
@@ -1200,6 +1161,17 @@
           }
         }
       }
+    },
+    "folder: %@": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "folder: %@"
+          }
+        }
+      },
+      "extractionState": "manual"
     },
     "follows the cursor — click to freeze": {
       "extractionState": "manual",
@@ -1219,6 +1191,17 @@
           "stringUnit": {
             "state": "translated",
             "value": "las, tablica, Kraków…"
+          }
+        }
+      }
+    },
+    "Found no files from other devices. Wrote mine.": {
+      "extractionState": "manual",
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nie znalazłem plików z innych urządzeń. Zapisałem swój."
           }
         }
       }
@@ -1244,6 +1227,45 @@
           }
         }
       }
+    },
+    "from %@ to %@": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "new",
+            "value": "from %1$@ to %2$@"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "od %@ do %@"
+          }
+        }
+      },
+      "extractionState": "manual"
+    },
+    "from %lld": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "od %lld"
+          }
+        }
+      },
+      "extractionState": "manual"
+    },
+    "from %lld photos": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "od %lld zdjęć"
+          }
+        }
+      },
+      "extractionState": "manual"
     },
     "from the start": {
       "extractionState": "manual",
@@ -1278,6 +1300,17 @@
         }
       }
     },
+    "grid": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "siatka"
+          }
+        }
+      },
+      "extractionState": "manual"
+    },
     "hide": {
       "extractionState": "manual",
       "localizations": {
@@ -1285,6 +1318,17 @@
           "stringUnit": {
             "state": "translated",
             "value": "ukryj"
+          }
+        }
+      }
+    },
+    "High share — try lowering the sensitivity": {
+      "extractionState": "manual",
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Wysoki odsetek — spróbuj obniżyć czułość"
           }
         }
       }
@@ -1344,6 +1388,28 @@
         }
       }
     },
+    "Kind": {
+      "extractionState": "manual",
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Rodzaj"
+          }
+        }
+      }
+    },
+    "Lens": {
+      "extractionState": "manual",
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Obiektyw"
+          }
+        }
+      }
+    },
     "less used": {
       "extractionState": "manual",
       "localizations": {
@@ -1377,6 +1443,17 @@
         }
       }
     },
+    "Live": {
+      "extractionState": "manual",
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Live"
+          }
+        }
+      }
+    },
     "lively colour": {
       "extractionState": "manual",
       "localizations": {
@@ -1395,6 +1472,28 @@
           "stringUnit": {
             "state": "translated",
             "value": "wczytaj cechy"
+          }
+        }
+      }
+    },
+    "Load them on the Mac, sync both devices, then come back here.": {
+      "extractionState": "manual",
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Wczytaj je na Macu, zsynchronizuj oba urządzenia i wróć tutaj."
+          }
+        }
+      }
+    },
+    "Loading library…": {
+      "extractionState": "manual",
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Wczytuję bibliotekę…"
           }
         }
       }
@@ -1443,6 +1542,50 @@
         }
       }
     },
+    "lower = more blurred": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "niżej = bardziej rozmyte"
+          }
+        }
+      },
+      "extractionState": "manual"
+    },
+    "lower = worse exposed": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "niżej = gorzej naświetlone"
+          }
+        }
+      },
+      "extractionState": "manual"
+    },
+    "Mark %lld": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Oznacz %lld"
+          }
+        }
+      },
+      "extractionState": "manual"
+    },
+    "Mark %lld photos for deletion?": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Oznaczyć %lld zdjęć do usunięcia?"
+          }
+        }
+      },
+      "extractionState": "manual"
+    },
     "mark for deletion": {
       "extractionState": "manual",
       "localizations": {
@@ -1450,6 +1593,28 @@
           "stringUnit": {
             "state": "translated",
             "value": "oznacz do usunięcia"
+          }
+        }
+      }
+    },
+    "marked %lld": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "oznaczono %lld"
+          }
+        }
+      },
+      "extractionState": "manual"
+    },
+    "Matching": {
+      "extractionState": "manual",
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pasuje"
           }
         }
       }
@@ -1472,6 +1637,28 @@
           "stringUnit": {
             "state": "translated",
             "value": "max zacięcie"
+          }
+        }
+      }
+    },
+    "Measures aren't loaded yet. The Mac computes them and they arrive here by sync.": {
+      "extractionState": "manual",
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nie wczytano jeszcze cech. Liczy je Mac i przyjeżdżają tu synchronizacją."
+          }
+        }
+      }
+    },
+    "Measures aren't loaded yet. Use the toolbar button — it needs Full Disk Access.": {
+      "extractionState": "manual",
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nie wczytano jeszcze cech. Przycisk w belce narzędzi — wymaga Pełnego dostępu do dysku."
           }
         }
       }
@@ -1509,6 +1696,28 @@
         }
       }
     },
+    "Metadata": {
+      "extractionState": "manual",
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Metadane"
+          }
+        }
+      }
+    },
+    "Metadata panel (key I)": {
+      "extractionState": "manual",
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Panel metadanych (klawisz I)"
+          }
+        }
+      }
+    },
     "never viewed": {
       "extractionState": "manual",
       "localizations": {
@@ -1519,6 +1728,56 @@
           }
         }
       }
+    },
+    "newer in the folder: %@, %@": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "new",
+            "value": "newer in the folder: %1$@, %2$@"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "w folderze nowszy: %@, %@"
+          }
+        }
+      },
+      "extractionState": "manual"
+    },
+    "No access": {
+      "extractionState": "manual",
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Brak dostępu"
+          }
+        }
+      }
+    },
+    "No bursts": {
+      "extractionState": "manual",
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Brak serii"
+          }
+        }
+      }
+    },
+    "no condition": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "bez warunku"
+          }
+        }
+      },
+      "extractionState": "manual"
     },
     "no faces": {
       "extractionState": "manual",
@@ -1538,6 +1797,39 @@
           "stringUnit": {
             "state": "translated",
             "value": "bez lokalizacji"
+          }
+        }
+      }
+    },
+    "No photo": {
+      "extractionState": "manual",
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Brak zdjęcia"
+          }
+        }
+      }
+    },
+    "No photo matches the filter.": {
+      "extractionState": "manual",
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Żadne zdjęcie nie spełnia warunków filtru."
+          }
+        }
+      }
+    },
+    "No shared folder chosen.": {
+      "extractionState": "manual",
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nie wskazano folderu wymiany."
           }
         }
       }
@@ -1575,6 +1867,72 @@
         }
       }
     },
+    "Nothing matches": {
+      "extractionState": "manual",
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nic nie pasuje"
+          }
+        }
+      }
+    },
+    "Nothing selected": {
+      "extractionState": "manual",
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nic nie zaznaczono"
+          }
+        }
+      }
+    },
+    "Occasion": {
+      "extractionState": "manual",
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Okoliczność"
+          }
+        }
+      }
+    },
+    "of %lld": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "z %lld"
+          }
+        }
+      },
+      "extractionState": "manual"
+    },
+    "Open access settings…": {
+      "extractionState": "manual",
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Otwórz ustawienia dostępu…"
+          }
+        }
+      }
+    },
+    "Open the download page": {
+      "extractionState": "manual",
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Otwórz stronę pobierania"
+          }
+        }
+      }
+    },
     "order": {
       "extractionState": "manual",
       "localizations": {
@@ -1582,6 +1940,28 @@
           "stringUnit": {
             "state": "translated",
             "value": "kolejność"
+          }
+        }
+      }
+    },
+    "Order": {
+      "extractionState": "manual",
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kolejność"
+          }
+        }
+      }
+    },
+    "Original not on this device": {
+      "extractionState": "manual",
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Brak oryginału na urządzeniu"
           }
         }
       }
@@ -1596,6 +1976,17 @@
           }
         }
       }
+    },
+    "pair up": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "parowanie"
+          }
+        }
+      },
+      "extractionState": "manual"
     },
     "panorama": {
       "extractionState": "manual",
@@ -1615,6 +2006,17 @@
           "stringUnit": {
             "state": "translated",
             "value": "wzory"
+          }
+        }
+      }
+    },
+    "People": {
+      "extractionState": "manual",
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Osoby"
           }
         }
       }
@@ -1648,6 +2050,17 @@
           "stringUnit": {
             "state": "translated",
             "value": "zdjęcie w tym filtrze"
+          }
+        }
+      }
+    },
+    "Photo library access": {
+      "extractionState": "manual",
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dostęp do biblioteki zdjęć"
           }
         }
       }
@@ -1696,6 +2109,17 @@
         }
       }
     },
+    "Place": {
+      "extractionState": "manual",
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Miejsce"
+          }
+        }
+      }
+    },
     "portrait": {
       "extractionState": "manual",
       "localizations": {
@@ -1740,6 +2164,28 @@
         }
       }
     },
+    "PREVIEW": {
+      "extractionState": "manual",
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "PODGLĄD"
+          }
+        }
+      }
+    },
+    "Preview and metadata": {
+      "extractionState": "manual",
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Podgląd i metadane"
+          }
+        }
+      }
+    },
     "quick ranges": {
       "extractionState": "manual",
       "localizations": {
@@ -1747,6 +2193,28 @@
           "stringUnit": {
             "state": "translated",
             "value": "szybkie przedziały"
+          }
+        }
+      }
+    },
+    "rate": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ocenianie"
+          }
+        }
+      },
+      "extractionState": "manual"
+    },
+    "Rating": {
+      "extractionState": "manual",
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ocena"
           }
         }
       }
@@ -1784,6 +2252,28 @@
         }
       }
     },
+    "Reads sharpness, exposure and faces from the Photos library databases": {
+      "extractionState": "manual",
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Czyta ostrość, ekspozycję i twarze z baz biblioteki Zdjęć"
+          }
+        }
+      }
+    },
+    "recognised by the system": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "rozpoznane przez system"
+          }
+        }
+      },
+      "extractionState": "manual"
+    },
     "recomputing bursts…": {
       "extractionState": "manual",
       "localizations": {
@@ -1802,6 +2292,17 @@
           "stringUnit": {
             "state": "translated",
             "value": "odbicia"
+          }
+        }
+      }
+    },
+    "Request access": {
+      "extractionState": "manual",
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Poproś o dostęp"
           }
         }
       }
@@ -1828,6 +2329,56 @@
         }
       }
     },
+    "Right-click a row to pin that measure to the top.": {
+      "extractionState": "manual",
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Prawy przycisk na wierszu przypina miarę na wierzch."
+          }
+        }
+      }
+    },
+    "S — swap sides": {
+      "extractionState": "manual",
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "S — zamień strony"
+          }
+        }
+      }
+    },
+    "same set · %lld%@": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "new",
+            "value": "same set · %1$lld%2$@"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ten sam zbiór · %lld%@"
+          }
+        }
+      },
+      "extractionState": "manual"
+    },
+    "Scene labels, people's names, place names and text found in photos.": {
+      "extractionState": "manual",
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Etykiety scen, imiona osób, nazwy miejsc i tekst ze zdjęć."
+          }
+        }
+      }
+    },
     "screenshot": {
       "extractionState": "manual",
       "localizations": {
@@ -1835,6 +2386,28 @@
           "stringUnit": {
             "state": "translated",
             "value": "zrzut ekranu"
+          }
+        }
+      }
+    },
+    "screenshots": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "zrzuty ekranu"
+          }
+        }
+      },
+      "extractionState": "manual"
+    },
+    "Search contents": {
+      "extractionState": "manual",
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Szukaj w treści"
           }
         }
       }
@@ -1860,6 +2433,28 @@
           }
         }
       }
+    },
+    "selected · %lld in this filter": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "zaznaczone · %lld w tym filtrze"
+          }
+        }
+      },
+      "extractionState": "manual"
+    },
+    "selected %lld · rating applies to the first": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "zaznaczono %lld · ocena dotyczy pierwszego"
+          }
+        }
+      },
+      "extractionState": "manual"
     },
     "sensitivity": {
       "extractionState": "manual",
@@ -1890,6 +2485,28 @@
           "stringUnit": {
             "state": "translated",
             "value": "plik wymiany · nigdy nieodczytany"
+          }
+        }
+      }
+    },
+    "shared file · read %@ ago": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "plik wymiany · odczytany %@ temu"
+          }
+        }
+      },
+      "extractionState": "manual"
+    },
+    "Shared folder": {
+      "extractionState": "manual",
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Folder wymiany"
           }
         }
       }
@@ -1926,6 +2543,17 @@
           }
         }
       }
+    },
+    "someone in the photo has their eyes closed": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ktoś na zdjęciu ma zamknięte oczy"
+          }
+        }
+      },
+      "extractionState": "manual"
     },
     "subject choice": {
       "extractionState": "manual",
@@ -1971,6 +2599,17 @@
         }
       }
     },
+    "Sync": {
+      "extractionState": "manual",
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Synchronizacja"
+          }
+        }
+      }
+    },
     "sync now": {
       "extractionState": "manual",
       "localizations": {
@@ -2004,6 +2643,17 @@
         }
       }
     },
+    "System measures": {
+      "extractionState": "manual",
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cechy systemu"
+          }
+        }
+      }
+    },
     "technique": {
       "extractionState": "manual",
       "localizations": {
@@ -2014,6 +2664,78 @@
           }
         }
       }
+    },
+    "Technique": {
+      "extractionState": "manual",
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Technika"
+          }
+        }
+      }
+    },
+    "Text in the photo (%lld)": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tekst na zdjęciu (%lld)"
+          }
+        }
+      },
+      "extractionState": "manual"
+    },
+    "The library database has no computed measures.": {
+      "extractionState": "manual",
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Baza biblioteki nie ma policzonych cech."
+          }
+        }
+      }
+    },
+    "The original isn't on this device, so I don't know the camera settings. I don't fetch it, because it would stay here for good.": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Oryginału nie ma na tym urządzeniu, więc nie znam ustawień aparatu. Nie pobieram go, bo zostałby tu na stałe."
+          }
+        }
+      },
+      "extractionState": "manual"
+    },
+    "The preview you see is downscaled — you can't judge sharpness from it. I don't fetch the original, because it would stay here for good.": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Podgląd, który widzisz, jest zmniejszony — nie da się z niego ocenić ostrości. Oryginału nie pobieram, bo zostałby tu na stałe."
+          }
+        }
+      },
+      "extractionState": "manual"
+    },
+    "the system started computing **%@** · %lld photos have a value": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "new",
+            "value": "the system started computing **%1$@** · %2$lld photos have a value"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "system zaczął liczyć **%@** · %lld zdjęć ma pomiar"
+          }
+        }
+      },
+      "extractionState": "manual"
     },
     "threshold": {
       "extractionState": "manual",
@@ -2092,6 +2814,17 @@
         }
       }
     },
+    "To delete: %lld": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Do usunięcia: %lld"
+          }
+        }
+      },
+      "extractionState": "manual"
+    },
     "to the end": {
       "extractionState": "manual",
       "localizations": {
@@ -2099,6 +2832,17 @@
           "stringUnit": {
             "state": "translated",
             "value": "do końca"
+          }
+        }
+      }
+    },
+    "Unmark": {
+      "extractionState": "manual",
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Zdejmij oznaczenie"
           }
         }
       }
@@ -2136,6 +2880,45 @@
         }
       }
     },
+    "Update": {
+      "extractionState": "manual",
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Aktualizacja"
+          }
+        }
+      }
+    },
+    "Use the toolbar button — it needs Full Disk Access.": {
+      "extractionState": "manual",
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Zrób to przyciskiem w belce — wymaga Pełnego dostępu do dysku."
+          }
+        }
+      }
+    },
+    "Version %@ is out. You have %@.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Version %1$@ is out. You have %2$@."
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Jest wersja %@. Masz %@."
+          }
+        }
+      },
+      "extractionState": "manual"
+    },
     "video": {
       "extractionState": "manual",
       "localizations": {
@@ -2143,6 +2926,17 @@
           "stringUnit": {
             "state": "translated",
             "value": "wideo"
+          }
+        }
+      }
+    },
+    "Visual fingerprints": {
+      "extractionState": "manual",
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Odciski wizualne"
           }
         }
       }
@@ -2158,6 +2952,17 @@
         }
       }
     },
+    "What the system sees": {
+      "extractionState": "manual",
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Co widzi system"
+          }
+        }
+      }
+    },
     "working…": {
       "extractionState": "manual",
       "localizations": {
@@ -2168,6 +2973,17 @@
           }
         }
       }
+    },
+    "worst first": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "od najgorszych"
+          }
+        }
+      },
+      "extractionState": "manual"
     },
     "worst tenth": {
       "extractionState": "manual",
@@ -2202,38 +3018,28 @@
         }
       }
     },
-    "“next” follows the same queue": {
+    "Year range": {
       "extractionState": "manual",
       "localizations": {
         "pl": {
           "stringUnit": {
             "state": "translated",
-            "value": "„następne” idzie tą samą kolejką"
+            "value": "Zakres lat"
           }
         }
       }
     },
-    "← better · worse →": {
-      "extractionState": "manual",
+    "You have the latest version (%@).": {
       "localizations": {
         "pl": {
           "stringUnit": {
             "state": "translated",
-            "value": "← lepiej · gorzej →"
+            "value": "Masz najnowszą wersję (%@)."
           }
         }
-      }
-    },
-    "← worse · better →": {
-      "extractionState": "manual",
-      "localizations": {
-        "pl": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "← gorzej · lepiej →"
-          }
-        }
-      }
+      },
+      "extractionState": "manual"
     }
-  }
+  },
+  "version": "1.0"
 }

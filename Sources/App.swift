@@ -778,8 +778,8 @@ extension RootView {
 
         let from = filters.fromYear, to = filters.toYear
         if from > 0 || to < 9999 {
-            if from > 0 && to >= 9999 { parts.append("od \(String(from))") }
-            else if from <= 0 { parts.append("do \(String(to))") }
+            if from > 0 && to >= 9999 { parts.append("from \(String(from))") }
+            else if from <= 0 { parts.append("to \(String(to))") }
             else { parts.append(from == to ? String(from) : "\(String(from))–\(String(to))") }
         }
 

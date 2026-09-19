@@ -257,7 +257,7 @@ final class LibrarySync: ObservableObject {
                 let size = (try? url.resourceValues(forKeys: [.fileSizeKey]).fileSize) ?? 0
                 let onDisk = FileManager.default.fileExists(atPath: url.path)
                 report(
-                    (onDisk ? "reading" : "downloading") + " plik \(position + 1) z \(others.count)"
+                    (onDisk ? "reading" : "downloading") + " file \(position + 1) of \(others.count)"
                     + (size > 0 ? " (\(size / 1_048_576) MB)" : "") + "…"
                 )
 

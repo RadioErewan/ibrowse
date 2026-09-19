@@ -542,7 +542,7 @@ struct GridView: View {
             "Mark \(targets.count) photos for deletion?",
             isPresented: $confirming, titleVisibility: .visible
         ) {
-            Button("Oznacz \(targets.count)", role: .destructive) {
+            Button("Mark \(targets.count)", role: .destructive) {
                 lastMarked = Review.mark(targets, deleted: true, in: context)
             }
             Button("Cancel", role: .cancel) {}

@@ -489,7 +489,7 @@ final class Filters: ObservableObject {
         case .exposure: return row.exposure > 0 ? String(format: "%.2f", row.exposure) : nil
         case .eyes:
             guard row.eyesClosed > 0 else { return nil }
-            return "\(row.eyesClosed) z \(max(row.faces, row.eyesClosed))"
+            return "\(row.eyesClosed) of \(max(row.faces, row.eyesClosed))"
         case .screenshot: return row.isScreenshot ? "screenshot" : nil
         }
     }
