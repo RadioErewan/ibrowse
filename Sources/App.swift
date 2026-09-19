@@ -794,54 +794,66 @@ extension RootView {
     /// widoczna poza tą aplikacją. **Plik wymiany** przenosi całą resztę:
     /// dokładną wagę, liczbę ocen, odciski i stan turniejów.
     @ViewBuilder
+    /// **Menu zostaje menu**, nawet w trakcie pracy — tylko ikona w środku
+    /// zamienia się na kręciołek, w ramce tej samej wielkości.
+    ///
+    /// Wcześniej cały widok zamieniał się w gołego `ProgressView`, który ma
+    /// inną szerokość niż pigułka z menu — reszta paska narzędzi przeskakiwała
+    /// w bok na czas synchronizacji i wracała po jej końcu. Ten sam błąd,
+    /// który `busyButton` naprawił gdzie indziej w tym pasku, ominął akurat
+    /// to miejsce.
     fileprivate var syncControl: some View {
-        if albums.isSyncing || sync.isWorking {
-            ProgressView().controlSize(.small)
-        } else {
-            Menu {
-                Button {
-                    Task {
-                        // Plik przed albumami: album niesie samą gwiazdkę
-                        // i stempluje ją bieżącym czasem, więc puszczony
-                        // pierwszy wygrywałby z dokładną wagą z pliku.
-                        await sync.synchronise(context: context, similarity: similarity, library: library)
-                        _ = albums.pull(into: context)
-                        await albums.push(from: context)
-                    }
-                } label: {
-                    Label("sync now", systemImage: "arrow.triangle.2.circlepath")
-                }
-                .disabled(!SyncFolder.isChosen)
-
-                Divider()
-
-                Button {
-                    chooseFolder()
-                } label: {
-                    Label(
-                        SyncFolder.isChosen ? "change shared folder…" : "choose shared folder…",
-                        systemImage: "folder"
-                    )
-                }
-
-                if let name = SyncFolder.displayName {
-                    Text("folder: \(name)")
-                }
-                if let note = sync.summary {
-                    Divider()
-                    Text(note)
+        let working = albums.isSyncing || sync.isWorking
+        return Menu {
+            Button {
+                Task {
+                    // Plik przed albumami: album niesie samą gwiazdkę
+                    // i stempluje ją bieżącym czasem, więc puszczony
+                    // pierwszy wygrywałby z dokładną wagą z pliku.
+                    await sync.synchronise(context: context, similarity: similarity, library: library)
+                    _ = albums.pull(into: context)
+                    await albums.push(from: context)
                 }
             } label: {
-                Label("sync", systemImage: "arrow.triangle.2.circlepath")
+                Label("sync now", systemImage: "arrow.triangle.2.circlepath")
             }
-            #if os(iOS)
-            .fileImporter(
-                isPresented: $choosingFolder, allowedContentTypes: [.folder]
-            ) { result in
-                if case .success(let url) = result { try? SyncFolder.remember(url) }
+            .disabled(!SyncFolder.isChosen)
+
+            Divider()
+
+            Button {
+                chooseFolder()
+            } label: {
+                Label(
+                    SyncFolder.isChosen ? "change shared folder…" : "choose shared folder…",
+                    systemImage: "folder"
+                )
             }
-            #endif
+
+            if let name = SyncFolder.displayName {
+                Text("folder: \(name)")
+            }
+            if let note = sync.summary {
+                Divider()
+                Text(note)
+            }
+        } label: {
+            ZStack {
+                Image(systemName: "arrow.triangle.2.circlepath").opacity(working ? 0 : 1)
+                if working { ProgressView().controlSize(.mini) }
+            }
+            .frame(width: 18, height: 16)
+            .accessibilityLabel("sync")
         }
+        .disabled(working)
+        .help("sync")
+        #if os(iOS)
+        .fileImporter(
+            isPresented: $choosingFolder, allowedContentTypes: [.folder]
+        ) { result in
+            if case .success(let url) = result { try? SyncFolder.remember(url) }
+        }
+        #endif
     }
 
     /// Folder wskazuje użytkownik, bo to jego iCloud Drive i jego dane —
