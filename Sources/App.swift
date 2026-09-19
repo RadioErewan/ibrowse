@@ -187,6 +187,20 @@ struct LightbraryApp: App {
         where key.hasPrefix("NSWindow Frame") || key.hasPrefix("NSSplitView Subview Frames") {
             defaults.removeObject(forKey: key)
         }
+
+        // Drugie, osobne miejsce, w którym macOS trzyma stan okna — mechanizm
+        // przywracania po restarcie, kompletnie niezależny od `UserDefaults`.
+        // Log od kolejnego testera pokazał `hasPersistentStateToRestore=1`:
+        // system miał zakodowany stan czekający na przywrócenie, którego
+        // powyższe czyszczenie w ogóle nie dotyka. Jeśli w tym zakodowanym
+        // stanie siedzi ta sama sprzeczność co w kluczach `NSSplitView`, ten
+        // sam wyjątek wróci trzecią drogą.
+        if let saved = try? FileManager.default.url(
+            for: .libraryDirectory, in: .userDomainMask, appropriateFor: nil, create: false
+        ).appending(path: "Saved Application State/pl.3210.lightbrary.savedState") {
+            try? FileManager.default.removeItem(at: saved)
+        }
+
         defaults.set(true, forKey: "settings.clearedWindowState")
     }
 
