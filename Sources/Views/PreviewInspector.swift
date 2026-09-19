@@ -134,9 +134,10 @@ struct PreviewInspector: View {
         HStack(spacing: 6) {
             cell(symbol: review?.markedForDeletion == true ? "trash.fill" : "trash",
                  tint: AnyShapeStyle(Color.red), isOn: review?.markedForDeletion == true, help: "to delete") {
-                Review.upsert(assetID: asset.localIdentifier, in: context) {
+                let updated = Review.upsert(assetID: asset.localIdentifier, in: context) {
                     $0.markedForDeletion.toggle()
                 }
+                Task { await library.setHidden(updated.markedForDeletion, for: [asset.localIdentifier]) }
             }
 
             // Ocena zerowa to pięć zgaszonych gwiazdek, a wyzerowanie —

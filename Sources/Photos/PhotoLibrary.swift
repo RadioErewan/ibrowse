@@ -253,4 +253,28 @@ final class PhotoLibrary: ObservableObject {
         }
         loadAssets()
     }
+
+    /// Emisja natywna przy oznaczeniu do usunięcia — `isHidden` na `PHAsset`.
+    ///
+    /// **Nie jest źródłem prawdy.** Tym zostaje `Review.markedForDeletion`:
+    /// odwracalne, czeka na przegląd w `DeletionReview`, jedzie naszym
+    /// plikiem wymiany. `isHidden` to dodatkowy, szybszy sygnał — Apple
+    /// synchronizuje go sam przez iCloud, zwykle zanim zdążymy zsynchronizować
+    /// własny plik ręcznie. Piszemy go, nigdy nie czytamy z powrotem jako
+    /// źródła prawdy: ukrycie mogło przyjść z zupełnie innego powodu,
+    /// niezwiązanego z naszym cullingiem, i mylenie jednego z drugim
+    /// oznaczałoby cudzą decyzję jako naszą.
+    ///
+    /// Błędy połykamy celowo — to emisja poboczna, nie akcja, którą
+    /// użytkownik świadomie wywołał. Nasz własny zapis już się odbył
+    /// niezależnie od tego, czy PhotoKit się zgodzi.
+    func setHidden(_ hidden: Bool, for assetIDs: [String]) async {
+        let assets = assetIDs.compactMap(asset(id:))
+        guard !assets.isEmpty else { return }
+        try? await PHPhotoLibrary.shared().performChanges {
+            for asset in assets {
+                PHAssetChangeRequest(for: asset).isHidden = hidden
+            }
+        }
+    }
 }
