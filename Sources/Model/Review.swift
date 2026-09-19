@@ -201,6 +201,30 @@ extension Review {
         return review
     }
 
+    /// Jak `upsert`, ale mówi też, czy **widoczna gwiazdka** naprawdę się
+    /// zmieniła — nie sama waga.
+    ///
+    /// Ten model celowo nie zna `Photos` ani `PhotoKit` — pisanie natywnej
+    /// oceny należy do `PhotoLibrary`, jedynego miejsca w aplikacji, które
+    /// pisze do systemu. Ale to wywołujący musi wiedzieć, **kiedy** warto to
+    /// zrobić, bo waga zmienia się przy każdym mikroruchu (swipe, pojedynek),
+    /// a gwiazdka — zaokrąglenie — tylko przy co którymś. Pisanie do PhotoKit
+    /// za każdą zmianą wagi zabiłoby tempo oceniania, dokładnie tak samo jak
+    /// pisanie do albumu przy każdym swipie zabijało je wcześniej.
+    @discardableResult
+    static func upsertRating(
+        assetID: String,
+        in context: ModelContext,
+        mutate: (Review) -> Void
+    ) -> (review: Review, starsChanged: Bool) {
+        var before = 0
+        let review = upsert(assetID: assetID, in: context) { existing in
+            before = existing.stars
+            mutate(existing)
+        }
+        return (review, review.stars != before)
+    }
+
     /// Oznacza albo odznacza **całą pulę** jednym przebiegiem.
     ///
     /// Nie przez `upsert` w pętli: tamto robi zapytanie i zapis na każde

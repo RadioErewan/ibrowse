@@ -13,7 +13,6 @@ import SwiftUI
 struct StatusStrip: View {
     @ObservedObject var similarity: Similarity
     @ObservedObject var sync: LibrarySync
-    @ObservedObject var albums: AlbumSync
 
     /// Co zrobić, gdy w folderze leży nowszy plik.
     var onRead: () -> Void = {}
@@ -76,8 +75,6 @@ struct StatusStrip: View {
             )
         } else if sync.isWorking {
             strip(title: sync.stage ?? "syncing", detail: nil, fraction: nil)
-        } else if albums.isSyncing {
-            strip(title: "writing ratings to albums", detail: nil, fraction: nil)
         } else if let note = similarity.note {
             done(note)
         }

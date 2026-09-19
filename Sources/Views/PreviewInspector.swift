@@ -148,8 +148,11 @@ struct PreviewInspector: View {
                 cell(symbol: lit ? "star.fill" : "star",
                      tint: AnyShapeStyle(Color.yellow), isOn: lit,
                      help: clears ? "clear rating" : "\(value)") {
-                    Review.upsert(assetID: asset.localIdentifier, in: context) {
-                        $0.set(clears ? 0 : Double(value))
+                    let (updated, changed) = Review.upsertRating(
+                        assetID: asset.localIdentifier, in: context
+                    ) { $0.set(clears ? 0 : Double(value)) }
+                    if changed {
+                        Task { await library.setRating(updated.stars, for: asset.localIdentifier) }
                     }
                 }
             }

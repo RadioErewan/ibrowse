@@ -25,7 +25,7 @@ struct ActionsSheet: View {
     /// i zdjęcie uprawnienia), więc nie liczymy jej przy każdym rysowaniu.
     @State private var folderName: String?
 
-    private var busy: Bool { similarity.isWorking || sync.isWorking || albums.isSyncing }
+    private var busy: Bool { similarity.isWorking || sync.isWorking }
 
     var body: some View {
         NavigationStack {
@@ -45,14 +45,10 @@ struct ActionsSheet: View {
                     }
                     Button {
                         Task {
-                            // Plik **przed** albumami, i to nie jest obojętne.
-                            // Album niesie samą gwiazdkę i przy zasiewie
-                            // stempluje ocenę bieżącym czasem — czyli zawsze
-                            // nowszym niż dokładna waga z pliku. Odwrotna
-                            // kolejność podmieniała 3,75 na okrągłe 4.
                             await sync.synchronise(context: context, similarity: similarity, library: library)
+                            // Tylko odczyt — patrz komentarz przy tym samym
+                            // wywołaniu w `App.swift`.
                             _ = albums.pull(into: context)
-                            await albums.push(from: context)
                             folderName = SyncFolder.displayName
                         }
                     } label: {

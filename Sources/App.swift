@@ -465,7 +465,7 @@ struct RootView: View {
                 } else {
                     workspace
                 }
-                StatusStrip(similarity: similarity, sync: sync, albums: albums) {
+                StatusStrip(similarity: similarity, sync: sync) {
                     Task {
                         await sync.synchronise(
                             context: context, similarity: similarity, library: library
@@ -803,16 +803,18 @@ extension RootView {
     /// który `busyButton` naprawił gdzie indziej w tym pasku, ominął akurat
     /// to miejsce.
     fileprivate var syncControl: some View {
-        let working = albums.isSyncing || sync.isWorking
+        let working = sync.isWorking
         return Menu {
             Button {
                 Task {
-                    // Plik przed albumami: album niesie samą gwiazdkę
-                    // i stempluje ją bieżącym czasem, więc puszczony
-                    // pierwszy wygrywałby z dokładną wagą z pliku.
                     await sync.synchronise(context: context, similarity: similarity, library: library)
+                    // Tylko odczyt, już nie zapis. Gwiazdka jedzie teraz
+                    // natywnie przez `PhotoLibrary.setRating`, na bieżąco,
+                    // przy każdej realnej zmianie — patrz komentarz przy
+                    // `AlbumSync`. `pull` zostaje jako jednorazowa siatka
+                    // bezpieczeństwa na to, co ewentualnie leży w starych
+                    // albumach z czasu, zanim `PHAsset.rating` istniało.
                     _ = albums.pull(into: context)
-                    await albums.push(from: context)
                 }
             } label: {
                 Label("sync now", systemImage: "arrow.triangle.2.circlepath")

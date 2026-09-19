@@ -268,6 +268,29 @@ final class PhotoLibrary: ObservableObject {
     /// Błędy połykamy celowo — to emisja poboczna, nie akcja, którą
     /// użytkownik świadomie wywołał. Nasz własny zapis już się odbył
     /// niezależnie od tego, czy PhotoKit się zgodzi.
+    /// Prawdziwa, zapisywalna, natywnie synchronizowana gwiazdka —
+    /// `PHAssetChangeRequest.rating`, dostępna od macOS 27 / iOS 27.
+    ///
+    /// **Zastępuje `AlbumSync`**, nie uzupełnia go. Album był obejściem na
+    /// czas, gdy PhotoKit nie znał ocen — pięć sztucznych albumów w cudzej
+    /// bibliotece, żeby przemycić to, co teraz jest jednym polem. Ten sam
+    /// efekt (gwiazdka widoczna w natywnych Zdjęciach, zsynchronizowana przez
+    /// iCloud), bez bałaganu i bez pośrednika.
+    ///
+    /// `0` i „nieustawiona" są tym samym po stronie Apple — `PHAssetRating`
+    /// ma `unset = 0`, więc zero gwiazdek i brak oceny to jedna wartość
+    /// w typie systemu. To nie jest nasza strata: nasz `stars == 0` przy
+    /// `isRated == true` („wyzerowana ocena", odróżniona od „nietknięta")
+    /// zostaje wewnętrznym rozróżnieniem — na zewnątrz i tak nie da się go
+    /// wyrazić inaczej niż brakiem gwiazdek.
+    func setRating(_ stars: Int, for assetID: String) async {
+        guard let asset = asset(id: assetID) else { return }
+        let rating = PHAsset.Rating(rawValue: stars) ?? .unset
+        try? await PHPhotoLibrary.shared().performChanges {
+            PHAssetChangeRequest(for: asset).rating = rating
+        }
+    }
+
     func setHidden(_ hidden: Bool, for assetIDs: [String]) async {
         let assets = assetIDs.compactMap(asset(id:))
         guard !assets.isEmpty else { return }

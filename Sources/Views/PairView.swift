@@ -267,7 +267,20 @@ struct PairView: View {
         // tak zestawić.
         let winner = Review.upsert(assetID: winnerID, in: context) { _ in }
         let loser = Review.upsert(assetID: loserID, in: context) { _ in }
+        let winnerStarsBefore = winner.stars
+        let loserStarsBefore = loser.stars
         Review.settleDuel(winner: winner, loser: loser)
+
+        // Pojedynek rzadko przesuwa zaokrągloną gwiazdkę — `duelStep` maleje
+        // z liczbą osądów właśnie po to, żeby ustalona pozycja nie skakała.
+        // Piszemy natywnie tylko wtedy, gdy naprawdę przeskoczyła, z tego
+        // samego powodu co w `Review.upsertRating`.
+        if winner.stars != winnerStarsBefore {
+            Task { await library.setRating(winner.stars, for: winnerID) }
+        }
+        if loser.stars != loserStarsBefore {
+            Task { await library.setRating(loser.stars, for: loserID) }
+        }
 
         current.championID = winnerID
         current.challengerIndex += 1

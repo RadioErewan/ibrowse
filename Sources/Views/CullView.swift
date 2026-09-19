@@ -518,7 +518,12 @@ struct CullView: View {
 
     private func rate(_ value: Double, advance: Bool = true) {
         guard let asset = current else { return }
-        Review.upsert(assetID: asset.localIdentifier, in: context) { $0.set(value) }
+        let (updated, changed) = Review.upsertRating(assetID: asset.localIdentifier, in: context) {
+            $0.set(value)
+        }
+        if changed {
+            Task { await library.setRating(updated.stars, for: asset.localIdentifier) }
+        }
         if advance { step(1) }
     }
 
@@ -526,7 +531,12 @@ struct CullView: View {
     /// z telefonu, żeby oba urządzenia pisały do tej samej liczby.
     private func nudge(_ direction: Double) {
         guard let asset = current else { return }
-        Review.upsert(assetID: asset.localIdentifier, in: context) { $0.nudge(direction) }
+        let (updated, changed) = Review.upsertRating(assetID: asset.localIdentifier, in: context) {
+            $0.nudge(direction)
+        }
+        if changed {
+            Task { await library.setRating(updated.stars, for: asset.localIdentifier) }
+        }
     }
 
     private func toggleDeletion(advance: Bool = true) {

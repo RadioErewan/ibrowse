@@ -218,8 +218,11 @@ struct CompareView: View {
                                      ? Color.yellow : Color.white.opacity(0.35))
                     .contentShape(Rectangle())
                     .onTapGesture {
-                        Review.upsert(assetID: asset.localIdentifier, in: context) {
-                            $0.set(Double(value))
+                        let (updated, changed) = Review.upsertRating(
+                            assetID: asset.localIdentifier, in: context
+                        ) { $0.set(Double(value)) }
+                        if changed {
+                            Task { await library.setRating(updated.stars, for: asset.localIdentifier) }
                         }
                     }
             }

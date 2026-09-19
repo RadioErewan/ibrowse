@@ -262,8 +262,11 @@ struct GridView: View {
         }
         switch key {
         case "0"..."5":
-            Review.upsert(assetID: asset.localIdentifier, in: context) {
+            let (updated, changed) = Review.upsertRating(assetID: asset.localIdentifier, in: context) {
                 $0.set(Double(String(key)) ?? 0)
+            }
+            if changed {
+                Task { await library.setRating(updated.stars, for: asset.localIdentifier) }
             }
             move(1, in: shown)
             return .handled
