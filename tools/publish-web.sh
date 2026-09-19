@@ -12,6 +12,12 @@
 #   2. przestawia stronę pobierania (numer, nazwa pliku, rozmiar, suma),
 #   3. odświeża `wersja.json`, z którego aplikacja czyta „Sprawdź aktualizacje".
 #
+# **Czego ten skrypt NIE rusza**: napisu „macOS XX or later" na stronie
+# głównej i stronie pobierania. To zwykły tekst w HTML-u, nie zmienna —
+# przy zmianie `deploymentTarget` w project.yml trzeba go poprawić ręcznie
+# (`grep -rn "macOS.*or later" na serwerze). Przeoczone raz przy skoku
+# z macOS 14 na 27 — strona kłamała przez jedno wydanie.
+#
 # Pominięcie punktu trzeciego jest najgroźniejsze i najcichsze: wydanie leży
 # na stronie, a program w komputerach ludzi dalej twierdzi, że jest aktualny.
 set -euo pipefail
