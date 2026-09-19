@@ -205,8 +205,11 @@ struct MetadataPanel: View {
 
     // MARK: - Drobiazgi
 
-    private func heading(_ title: String) -> some View {
-        Text(title.uppercased())
+    /// `LocalizedStringKey`, nie `String` — patrz komentarz przy `group()`
+    /// w `FilterPanel`, ten sam błąd, ten sam powód.
+    private func heading(_ title: LocalizedStringKey) -> some View {
+        Text(title)
+            .textCase(.uppercase)
             .font(.caption2.weight(.semibold))
             .foregroundStyle(.tertiary)
     }
@@ -216,11 +219,11 @@ struct MetadataPanel: View {
 /// Lista wartości jako zawijające się plakietki. Etykiet scen bywa
 /// kilkanaście — w kolumnie zjadłyby cały panel.
 private struct Section: View {
-    let title: String
+    let title: LocalizedStringKey
     let values: [String]
     let tint: Color
 
-    init(_ title: String, values: [String], tint: Color) {
+    init(_ title: LocalizedStringKey, values: [String], tint: Color) {
         self.title = title
         self.values = values
         self.tint = tint
@@ -229,7 +232,8 @@ private struct Section: View {
     var body: some View {
         if !values.isEmpty {
             VStack(alignment: .leading, spacing: 5) {
-                Text(title.uppercased())
+                Text(title)
+                    .textCase(.uppercase)
                     .font(.caption2.weight(.semibold))
                     .foregroundStyle(.tertiary)
                 FlowLayout(spacing: 4) {

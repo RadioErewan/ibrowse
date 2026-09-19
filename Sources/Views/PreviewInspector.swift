@@ -102,8 +102,21 @@ struct PreviewInspector: View {
         .padding(8)
     }
 
+    /// Dwa przeciążenia celowo. `LocalizedStringKey` dla stałych napisów jak
+    /// „Z — 1:1" — patrz komentarz przy `group()` w `FilterPanel`. Osobne
+    /// przeciążenie na zwykły `String` dla treści policzonej w locie
+    /// (`measureNote`), której i tak nie wolno szukać w katalogu tłumaczeń —
+    /// to nie jest klucz, to gotowy wynik.
+    private func stamp(_ text: LocalizedStringKey) -> some View {
+        stampLabel(Text(text))
+    }
+
     private func stamp(_ text: String) -> some View {
-        Text(text)
+        stampLabel(Text(text))
+    }
+
+    private func stampLabel(_ text: Text) -> some View {
+        text
             .font(.system(size: 10).monospacedDigit())
             .foregroundStyle(.white)
             .padding(.horizontal, 6)

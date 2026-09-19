@@ -110,7 +110,14 @@ struct GridView: View {
                     .foregroundStyle(.tertiary)
                     .lineLimit(1)
                 Spacer(minLength: 8)
+                // Narzędzie deweloperskie, nie coś do pokazywania na co
+                // dzień — `tik/s` i `max hitch` nic nie mówią komuś, kto
+                // przyszedł ocenić zdjęcia, a na pierwszym zrzucie ekranu na
+                // Reddicie czytało się jak przyznanie się do zacinania.
+                // Zostaje w kompilacji deweloperskiej, gdzie się dziś przydał.
+                #if DEBUG
                 PerfOverlay(monitor: monitor, total: shown.count)
+                #endif
             }
             .padding(.horizontal, 12)
             .padding(.vertical, 6)

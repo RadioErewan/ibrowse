@@ -138,11 +138,19 @@ struct FilterPanel: View {
     }
 
     @ViewBuilder
+    /// `LocalizedStringKey`, nie `String`. Wołanie `.uppercased()` na zwykłym
+    /// `String` wymusza dosłowny inicjalizator `Text(String)`, który nigdy nie
+    /// sięga do katalogu tłumaczeń — nagłówki sekcji zostawały po angielsku
+    /// niezależnie od języka systemu, mimo że katalog miał dla nich wpisy.
+    /// Wersaliki idą teraz przez `.textCase(.uppercase)`, które działa
+    /// **po** przetłumaczeniu, nie przed — inaczej trzeba by uppercase'ować
+    /// klucz w każdym języku z osobna.
     private func group<Content: View>(
-        _ title: String, @ViewBuilder content: () -> Content
+        _ title: LocalizedStringKey, @ViewBuilder content: () -> Content
     ) -> some View {
         VStack(alignment: .leading, spacing: 6) {
-            Text(title.uppercased())
+            Text(title)
+                .textCase(.uppercase)
                 .font(.caption2.weight(.semibold))
                 .foregroundStyle(.tertiary)
                 .padding(.bottom, 2)
@@ -284,7 +292,12 @@ struct FilterPanel: View {
             // wracasz, i bez niej nie widać, ile kosztuje każdy warunek.
             // Cechy i miary są jedną listą wyboru, więc „bez warunku" świeci
             // tylko wtedy, gdy nie jest wybrana ani cecha, ani miara.
-            row(value.rawValue,
+            // `.label`, nie `.rawValue` — rawValue jest kluczem zapisu
+            // (patrz komentarz w `Filters.Feature`), nie tekstem dla człowieka.
+            // Pokazywanie go tutaj było prawdziwym błędem, nie tylko brakiem
+            // tłumaczenia: nawet po angielsku wiersz mówił „any"/„dark"
+            // zamiast „no condition"/„badly exposed", we wszystkich językach.
+            row(value.label,
                 count: tally.feature[value] ?? 0,
                 isOn: filters.feature == value && (value != .any || filters.measure == nil)) {
                 filters.feature = value
@@ -561,7 +574,8 @@ struct FilterPanel: View {
     /// po geście w ocenianiu. Bez licznika, bo kolejność niczego nie odsiewa.
     private var orderRows: some View {
         ForEach(Filters.Order.allCases) { value in
-            row(value.rawValue, count: nil,
+            // `.label`, nie `.rawValue` — patrz komentarz w `featureRows`.
+            row(value.label, count: nil,
                 isOn: filters.order == value) { filters.order = value }
         }
     }
@@ -600,8 +614,20 @@ struct FilterPanel: View {
         }
     }
 
+    /// Dwa przeciążenia — jak przy `stamp()` w `PreviewInspector`. Stałe
+    /// napisy przez `LocalizedStringKey`, treść policzona w locie
+    /// (`filters.feature.hint`, `filters.searchNote`) przez zwykły `String`,
+    /// bo to już gotowy wynik, nie klucz do szukania w katalogu.
+    private func note(_ text: LocalizedStringKey, colour: Color) -> some View {
+        noteLabel(Text(text), colour: colour)
+    }
+
     private func note(_ text: String, colour: Color) -> some View {
-        Text(text)
+        noteLabel(Text(text), colour: colour)
+    }
+
+    private func noteLabel(_ text: Text, colour: Color) -> some View {
+        text
             .font(.caption)
             .foregroundStyle(colour)
             .fixedSize(horizontal: false, vertical: true)
@@ -633,9 +659,10 @@ struct FilterPanel: View {
         }
     }
 
+    /// `LocalizedStringKey` — patrz komentarz przy `group()`, ten sam błąd.
     @ViewBuilder
     private func labelled<Content: View>(
-        _ title: String, @ViewBuilder content: () -> Content
+        _ title: LocalizedStringKey, @ViewBuilder content: () -> Content
     ) -> some View {
         VStack(alignment: .leading, spacing: 2) {
             Text(title).font(.caption).foregroundStyle(.secondary)
