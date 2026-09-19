@@ -94,7 +94,6 @@ struct DeletionReview: View {
         Review.upsert(assetID: asset.localIdentifier, in: context) {
             $0.markedForDeletion = false
         }
-        Task { await library.setHidden(false, for: [asset.localIdentifier]) }
     }
 
     private func deleteAll() async {

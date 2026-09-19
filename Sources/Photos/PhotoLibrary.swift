@@ -254,20 +254,6 @@ final class PhotoLibrary: ObservableObject {
         loadAssets()
     }
 
-    /// Emisja natywna przy oznaczeniu do usunięcia — `isHidden` na `PHAsset`.
-    ///
-    /// **Nie jest źródłem prawdy.** Tym zostaje `Review.markedForDeletion`:
-    /// odwracalne, czeka na przegląd w `DeletionReview`, jedzie naszym
-    /// plikiem wymiany. `isHidden` to dodatkowy, szybszy sygnał — Apple
-    /// synchronizuje go sam przez iCloud, zwykle zanim zdążymy zsynchronizować
-    /// własny plik ręcznie. Piszemy go, nigdy nie czytamy z powrotem jako
-    /// źródła prawdy: ukrycie mogło przyjść z zupełnie innego powodu,
-    /// niezwiązanego z naszym cullingiem, i mylenie jednego z drugim
-    /// oznaczałoby cudzą decyzję jako naszą.
-    ///
-    /// Błędy połykamy celowo — to emisja poboczna, nie akcja, którą
-    /// użytkownik świadomie wywołał. Nasz własny zapis już się odbył
-    /// niezależnie od tego, czy PhotoKit się zgodzi.
     /// Prawdziwa, zapisywalna, natywnie synchronizowana gwiazdka —
     /// `PHAssetChangeRequest.rating`, dostępna od macOS 27 / iOS 27.
     ///
@@ -291,6 +277,25 @@ final class PhotoLibrary: ObservableObject {
         }
     }
 
+    /// Ukrycie zdjęcia przez `PHAsset.isHidden`.
+    ///
+    /// **Sprawdzone empirycznie: system pyta o zgodę za każdym wywołaniem**,
+    /// niezależnie od nadanego wcześniej dostępu do biblioteki — Apple
+    /// traktuje ukrycie jak operację destrukcyjną, tak samo jak kasowanie,
+    /// i wymaga potwierdzenia przy każdym zdjęciu, nie raz na aplikację.
+    ///
+    /// Dlatego funkcja **nie jest dziś podpięta pod żadne pojedyncze
+    /// oznaczenie do usunięcia** — próba (X w GridView/CullView/Preview
+    /// Inspector, zbiorcze oznaczenie) przerywała klawiaturowe ocenianie
+    /// oknem systemowym po każdym kliknięciu, co zabija cały sens szybkiego
+    /// przechodzenia przez archiwum. `Review.markedForDeletion` zostaje
+    /// jedynym kanałem — jedzie naszym plikiem wymiany, bez okna zgody.
+    ///
+    /// Funkcja zostaje, bo działa i może się przydać w innej roli: jako
+    /// **jedna, świadoma, zbiorcza operacja** wywoływana rzadko (na przykład
+    /// przy przeglądzie w `DeletionReview`, gdzie i tak pyta się o zgodę na
+    /// kasowanie) — tam jedno okno na sto zdjęć jest do przyjęcia, jedno na
+    /// każde pojedyncze `X` nie jest.
     func setHidden(_ hidden: Bool, for assetIDs: [String]) async {
         let assets = assetIDs.compactMap(asset(id:))
         guard !assets.isEmpty else { return }
