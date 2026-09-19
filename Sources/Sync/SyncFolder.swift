@@ -105,9 +105,21 @@ enum SyncFolder {
     /// To samo dotyczy rozszerzenia `ibsync`. Format jest ten sam, więc
     /// przemianowanie kupowałoby wyłącznie spójność nazw, a kosztowałoby
     /// zgodność z tym, co już leży w folderze wymiany.
-    static var fileName: String {
-        "ibrowse-\(deviceID).\(SyncFile.fileExtension)"
-    }
+    private static var stem: String { "ibrowse-\(deviceID)" }
+
+    /// **Dwa pliki, nie jeden.** W jednym wspólnym pliku odciski ważyły
+    /// 92% z 56 MB, a oceny — to, co realnie zmienia się przy każdej sesji
+    /// oceniania — zaledwie 5%. Telefon płacił pełną cenę pliku za każdym
+    /// razem, żeby dostać ułamek, który go obchodzi.
+    ///
+    /// Rozdział wzdłuż tej samej linii, którą już rządzi się scalanie
+    /// w `LibrarySync`: odciski są deterministyczne i zmieniają się tylko
+    /// wtedy, gdy jawnie każesz je policzyć; oceny zmieniają się przy każdym
+    /// dotknięciu klawiatury. Dwa pliki o różnym tempie zmian, każdy
+    /// przepisywany tylko wtedy, gdy jego własna treść faktycznie się zmienia
+    /// — patrz `LibrarySync.exportFingerprints`.
+    static var ratingsFileName: String { "\(stem)-ratings.\(SyncFile.fileExtension)" }
+    static var fingerprintsFileName: String { "\(stem)-fingerprints.\(SyncFile.fileExtension)" }
 }
 
 #if os(iOS)

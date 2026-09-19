@@ -58,7 +58,8 @@ final class LibrarySync: ObservableObject {
         guard let folder = SyncFolder.resolve() else { return }
         defer { folder.release() }
 
-        let mine = SyncFolder.fileName
+        // Dwa własne pliki teraz, nie jeden — patrz komentarz w `SyncFolder`.
+        let mine: Set<String> = [SyncFolder.ratingsFileName, SyncFolder.fingerprintsFileName]
         let source = folder.url
         let seen = lastRead
 
@@ -76,7 +77,7 @@ final class LibrarySync: ObservableObject {
                 let real = name.hasPrefix(".") && name.hasSuffix(".icloud")
                     ? String(name.dropFirst().dropLast(".icloud".count))
                     : name
-                guard real.hasSuffix("." + SyncFile.fileExtension), real != mine else { continue }
+                guard real.hasSuffix("." + SyncFile.fileExtension), !mine.contains(real) else { continue }
                 guard let date = try? url.resourceValues(
                     forKeys: [.contentModificationDateKey]
                 ).contentModificationDate else { continue }
@@ -123,7 +124,7 @@ final class LibrarySync: ObservableObject {
         // mieć 50 MB i przy pierwszym razie musi się dopiero ściągnąć z chmury.
         // Na głównym wątku zamroziłoby to okno na cały ten czas.
         let source = folder.url
-        let mine = SyncFolder.fileName
+        let mine: Set<String> = [SyncFolder.ratingsFileName, SyncFolder.fingerprintsFileName]
         let report: @Sendable (String) -> Void = { [weak self] text in
             Task { @MainActor in self?.stage = text }
         }
@@ -219,7 +220,7 @@ final class LibrarySync: ObservableObject {
     /// wyłącznie z iCloud. Koordynator rozmawia z **dowolnym** dostawcą, więc
     /// folder wymiany może równie dobrze leżeć na Google Drive czy OneDrive.
     nonisolated private static func readOthers(
-        in folder: URL, excluding mine: String, report: @Sendable (String) -> Void
+        in folder: URL, excluding mine: Set<String>, report: @Sendable (String) -> Void
     ) -> [SyncFile.Payload] {
         let contents = (try? FileManager.default.contentsOfDirectory(
             at: folder, includingPropertiesForKeys: nil
@@ -246,7 +247,7 @@ final class LibrarySync: ObservableObject {
                 guard real.hasSuffix("." + SyncFile.fileExtension) else { return nil }
                 return folder.appending(path: real)
             }
-            .filter { $0.lastPathComponent != mine }
+            .filter { !mine.contains($0.lastPathComponent) }
 
         return others.enumerated()
             .compactMap { position, url in
@@ -448,12 +449,19 @@ final class LibrarySync: ObservableObject {
 
     // MARK: - Zapis
 
-    /// Wypisujemy **cały** stan, nie różnicę. Plik jest jedyną prawdą o tym
-    /// urządzeniu i musi dać się przeczytać w oderwaniu od historii — inaczej
-    /// zgubienie jednego przyrostu psułoby wszystkie następne. Odciski to
-    /// około 39 MB przy 25 tysiącach zdjęć; zapis trwa moment, a upraszcza
-    /// całą resztę.
+    /// **Dwa pliki, dwa tempa.** Oceny i werdykty wypisujemy zawsze — lekkie,
+    /// zmieniają się przy każdej sesji. Odciski wypisujemy **tylko wtedy, gdy
+    /// się zmieniły** — patrz `exportFingerprints`. To jest cały sens
+    /// rozdziału: telefon nie płaci już pełnej ceny 50 MB za każdą sesję
+    /// oceniania, tylko za odciski przenosi się kilka kilobajtów wagi i ocen.
     private func export(
+        context: ModelContext, to folder: URL, translating toCloud: [String: String]
+    ) async throws {
+        try await exportRatings(context: context, to: folder, translating: toCloud)
+        try await exportFingerprints(context: context, to: folder, translating: toCloud)
+    }
+
+    private func exportRatings(
         context: ModelContext, to folder: URL, translating toCloud: [String: String]
     ) async throws {
         var payload = SyncFile.Payload()
@@ -464,10 +472,7 @@ final class LibrarySync: ObservableObject {
         // pomiary systemu na Macu, a telefon nie ma jak policzyć ich sam.
         let reviews = ((try? context.fetch(FetchDescriptor<Review>())) ?? [])
             .filter { $0.isRated || $0.markedForDeletion || $0.hasFeatures }
-        let fingerprints = (try? context.fetch(FetchDescriptor<Fingerprint>())) ?? []
 
-        // Jedno tłumaczenie na cały zapis. Wpisy bez odpowiednika w chmurze
-        // pomijamy — dotyczą zdjęć, których inne urządzenia i tak nie znajdą.
         payload.ratings = reviews.compactMap { review in
             guard let cloud = toCloud[review.assetID] else { return nil }
             return SyncFile.Rating(
@@ -481,11 +486,6 @@ final class LibrarySync: ObservableObject {
             )
         }
 
-        payload.prints = fingerprints.compactMap { print in
-            guard let cloud = toCloud[print.assetID] else { return nil }
-            return SyncFile.Print(assetID: cloud, vector: print.vector, takenAt: print.takenAt)
-        }
-
         payload.verdicts = ((try? context.fetch(FetchDescriptor<Series>())) ?? [])
             .filter { $0.resolvedAt != nil || $0.challengerIndex > 1 }
             .compactMap { item in
@@ -497,10 +497,50 @@ final class LibrarySync: ObservableObject {
                 )
             }
 
-        // Zapis też poza głównym wątkiem — 50 MB przez SQLite to nie jest
-        // czas, przez który okno ma stać.
-        let destination = folder.appending(path: SyncFolder.fileName)
+        let destination = folder.appending(path: SyncFolder.ratingsFileName)
         let outgoing = payload
         try await Task.detached { try SyncFile.write(outgoing, to: destination) }.value
+    }
+
+    /// Klucz w `UserDefaults`, pod którym pamiętamy, ile odcisków niósł
+    /// ostatni **zapisany** plik.
+    private static let lastFingerprintCountKey = "sync.lastFingerprintCount"
+
+    /// Przepisuje plik odcisków **tylko wtedy, gdy ich liczba się zmieniła**
+    /// od ostatniego zapisu.
+    ///
+    /// Odciski są deterministyczne — ten sam model Vision na tym samym
+    /// zdjęciu daje ten sam wektor, więc raz zapisany wektor nigdy się nie
+    /// zmienia. Jedyne, co się zmienia, to **które** zdjęcia mają odcisk,
+    /// a to rośnie tylko wtedy, gdy jawnie każesz je policzyć — rzadka,
+    /// świadoma operacja, nie coś, co dzieje się przy zwykłym ocenianiu.
+    ///
+    /// Licznik, nie skrót kryptograficzny — prostsze, tańsze i wystarczające:
+    /// jedyny sposób, w jaki liczba mogłaby zostać ta sama przy innej
+    /// zawartości, to usunięcie jednego zdjęcia i dodanie innego tego samego
+    /// dnia synchronizacji, co jest rzadkie i naprawia się samo przy
+    /// następnej zmianie liczby.
+    private func exportFingerprints(
+        context: ModelContext, to folder: URL, translating toCloud: [String: String]
+    ) async throws {
+        let fingerprints = (try? context.fetch(FetchDescriptor<Fingerprint>())) ?? []
+        let defaults = UserDefaults.standard
+        guard fingerprints.count != defaults.integer(forKey: Self.lastFingerprintCountKey) else {
+            return
+        }
+
+        var payload = SyncFile.Payload()
+        payload.deviceName = SyncFolder.deviceName
+        payload.prints = fingerprints.compactMap { print in
+            guard let cloud = toCloud[print.assetID] else { return nil }
+            return SyncFile.Print(assetID: cloud, vector: print.vector, takenAt: print.takenAt)
+        }
+
+        let destination = folder.appending(path: SyncFolder.fingerprintsFileName)
+        let outgoing = payload
+        // Zapis poza głównym wątkiem — 50 MB przez SQLite to nie jest czas,
+        // przez który okno ma stać.
+        try await Task.detached { try SyncFile.write(outgoing, to: destination) }.value
+        defaults.set(fingerprints.count, forKey: Self.lastFingerprintCountKey)
     }
 }

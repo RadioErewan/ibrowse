@@ -9,9 +9,16 @@ options:
   # jest przekładem w katalogu. Tak apka idzie za językiem systemu, a nieznany
   # język dostaje angielski, nie polski.
   developmentLanguage: en
+  # macOS 27 / iOS 27 celowo, nie zaniedbanie. `PHAsset.rating` — prawdziwa,
+  # zapisywalna, natywnie synchronizowana gwiazdka — wymaga dokładnie tego:
+  # API_AVAILABLE(macos(27), ios(27)) w nagłówkach SDK. Decyzja świadoma
+  # kosztu: apka jest betą bez planu monetyzacji, więc dług techniczny po to,
+  # by wspierać starsze systemy, nie ma czego dziś kupować. macOS 27 „Golden
+  # Gate" jest przy tym wyłącznie dla Apple Silicon — Intela odcina sam system,
+  # zanim odetnie go nasz wybór.
   deploymentTarget:
-    macOS: "14.0"
-    iOS: "17.0"
+    macOS: "27.0"
+    iOS: "27.0"
   createIntermediateGroups: true
 
 settings:
@@ -51,7 +58,7 @@ targets:
         # uparcie pokazywał "1.0".
         CFBundleShortVersionString: $(MARKETING_VERSION)
         CFBundleVersion: $(CURRENT_PROJECT_VERSION)
-        LSMinimumSystemVersion: "14.0"
+        LSMinimumSystemVersion: "27.0"
         NSHumanReadableCopyright: ""
         # Bez tego klucza system nie pokaże pytania o dostęp do biblioteki.
         NSPhotoLibraryUsageDescription: >-
@@ -77,13 +84,6 @@ targets:
         # nie brakuje — patrz komentarz w samym pliku uprawnień.
         Release:
           CODE_SIGN_ENTITLEMENTS: Resources/lightbrary-mac.entitlements
-          # Uniwersalna binarka tylko w wydaniu. Xcode domyślnie buduje samą
-          # architekturę maszyny kompilującej — u nas arm64 — więc bez tego
-          # nikt na Intelu nie mógłby nawet spróbować otworzyć programu.
-          # Kompilacja deweloperska zostaje jednoarchitekturowa, bo tak jest
-          # szybciej, a nikt jej nie rozsyła dalej.
-          ARCHS: "arm64 x86_64"
-          ONLY_ACTIVE_ARCH: "NO"
 
   lightbrary-ios:
     type: application
