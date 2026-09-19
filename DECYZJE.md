@@ -1317,6 +1317,44 @@ system z braku miejsca zapisywało się jako wybór użytkownika. Wystarczyło r
 uruchomić program w wąskim oknie, żeby na zawsze zapamiętał „ten człowiek nie
 chce podglądu".
 
+## isHidden nie nadaje się do cichej emisji — Apple pyta za każdym razem
+
+Pomysł wyglądał dobrze na papierze: skoro `markedForDeletion` i tak jedzie
+naszym plikiem wymiany, dorzućmy przy okazji `PHAsset.isHidden` — Apple
+zsynchronizuje to sam przez iCloud, szybciej niż nasza ręczna synchronizacja,
+za darmo. Ten sam wzorzec, który dobrze zadziałał dla `PHAssetChangeRequest
+.rating` tego samego popołudnia.
+
+Nie zadziałał. Pierwszy test na żywo: kliknięcie `X` w siatce wywołało
+natywne okno „Allow 'lightbrary-mac' to hide this photo?" z przyciskami
+Don't Allow / Hide. Drugie oznaczenie — to samo okno, jeszcze raz. Apple
+traktuje ukrycie zdjęcia jak operację destrukcyjną, na równi z kasowaniem,
+i wymaga potwierdzenia **przy każdym wywołaniu**, niezależnie od tego, że
+aplikacja ma już pełny dostęp do biblioteki (`.readWrite`). To nie jest coś,
+co dałoby się obejść entitlementem czy ustawieniem — to świadoma decyzja
+systemu, żeby chronić użytkownika przed cichym znikaniem zdjęć.
+
+Skutek w praktyce: każde `X` w trakcie oceniania przerywałoby klawiaturowe
+przechodzenie przez archiwum oknem systemowym. Dla aplikacji, której cały
+sens polega na szybkim tempie — dokładnie to samo zastrzeżenie, które
+padło przy ocenach ("zapis przez PhotoKit jest o rzędy wielkości wolniejszy
+od SwiftData i wywołanie go przy każdym swipie zabiłoby tempo") — tylko że
+tu nie chodzi o szybkość, tylko o przerywnik wymagający kliknięcia.
+
+Wycofane z gorącej ścieżki. `Review.markedForDeletion` zostaje jedynym
+kanałem tej informacji — jedzie naszym plikiem wymiany, bez okna zgody.
+Sama funkcja `PhotoLibrary.setHidden` zostaje w kodzie: mogłaby się przydać
+jako jedna, świadoma, zbiorcza operacja przy rzadkiej, jawnej okazji (np.
+w `DeletionReview`, gdzie i tak pyta się o zgodę na kasowanie) — tam jedno
+okno na sto zdjęć jest do przyjęcia. Jedno okno na każde pojedyncze `X` nie
+jest.
+
+**Wniosek na przyszłość**: to, że coś jest dostępne przez `PHAssetChangeRequest`
+i chronione tym samym `.readWrite`, nie znaczy, że zachowuje się tak samo po
+cichu. `rating` — cicho. `isHidden` — głośno, za każdym razem. Nie da się
+tego przewidzieć z dokumentacji ani z nagłówków SDK; trzeba to sprawdzić
+na żywo, na jednym kliknięciu i na drugim, zanim się to podłączy wszędzie.
+
 ## Co czeka
 
 ### Przesunięcie zakresu: z sortownika w przeglądarkę
