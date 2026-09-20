@@ -101,6 +101,24 @@ struct ActionsSheet: View {
                     if !similarity.groups.isEmpty {
                         LabeledContent("Bursts", value: "\(similarity.groups.count)")
                     }
+
+                    // Na Macu ta sama suwak mieszka w nagłówku pair-up, bo tam
+                    // jest zawsze na ekranie. Na telefonie pair-up nie ma
+                    // stałego nagłówka poza aktywnym pojedynkiem, więc to
+                    // jedyne miejsce, gdzie się w ogóle da to zmienić —
+                    // bez niego serie raz rozstrzygnięte nigdy się nie
+                    // przegrupowują, nawet gdy nic nowego nie zostało do zrobienia.
+                    VStack(alignment: .leading, spacing: 4) {
+                        HStack {
+                            Text("sensitivity")
+                            Spacer()
+                            Text(String(format: "%.2f", similarity.threshold))
+                                .foregroundStyle(.secondary)
+                                .monospacedDigit()
+                        }
+                        .font(.callout)
+                        Slider(value: $similarity.threshold, in: 0.25...0.75, step: 0.01)
+                    }
                 }
             }
             .navigationTitle("Actions")

@@ -64,11 +64,21 @@ struct PairView: View {
                       let right = library.asset(id: current.members[current.challengerIndex]) {
                 comparison(left: left, right: right, series: current)
             } else {
-                ContentUnavailableView(
-                    "All resolved",
-                    systemImage: "checkmark.circle",
-                    description: Text("Bursts of \(minimumSize) photos and up are reviewed. Lower the threshold to take smaller ones.")
-                )
+                // Sam tekst mówi „obniż próg", ale suwak mieszka w nagłówku
+                // porównania — a ten nie istnieje, gdy nie ma czego porównać.
+                // Bez tego to ślepy zaułek: właściwa rada, zero sposobu, by ją wykonać.
+                VStack(spacing: 16) {
+                    ContentUnavailableView(
+                        "All resolved",
+                        systemImage: "checkmark.circle",
+                        description: Text("Bursts of \(minimumSize) photos and up are reviewed. Lower the threshold to take smaller ones.")
+                    )
+                    Stepper(value: $minimumSize, in: 2...12) {
+                        Text("from \(minimumSize) photos")
+                            .font(.callout)
+                    }
+                    .fixedSize()
+                }
             }
         }
         .focusable()
