@@ -106,8 +106,11 @@ targets:
         # kryptografii ani sieci, więc odpowiedź brzmi „nie".
         ITSAppUsesNonExemptEncryption: false
         UILaunchScreen: {}
+        # Wszystkie cztery, nie trzy — App Store odrzuca upload bez
+        # UpsideDown, bo bez niego iPad nie obsługuje multitaskingu.
         UISupportedInterfaceOrientations:
           - UIInterfaceOrientationPortrait
+          - UIInterfaceOrientationPortraitUpsideDown
           - UIInterfaceOrientationLandscapeLeft
           - UIInterfaceOrientationLandscapeRight
         NSPhotoLibraryUsageDescription: >-
