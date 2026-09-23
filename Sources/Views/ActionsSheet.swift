@@ -17,6 +17,15 @@ struct ActionsSheet: View {
     @ObservedObject var albums: AlbumSync
     @ObservedObject var sync: LibrarySync
 
+    /// Czy zakładka pair-up jest właśnie na ekranie z niedokończonym
+    /// pojedynkiem. Zmiana progu przebudowuje serie od zera — skład grupy
+    /// pod ekranem potrafi się wtedy zmienić i podmienić parę, na którą
+    /// ktoś właśnie patrzy, zanim zdąży wydać werdykt. Na Macu ten sam
+    /// suwak mieszka w nagłówku porównania i jest widoczny tylko podczas
+    /// aktywnego pojedynku, więc kto go rusza, świadomie na to patrzy —
+    /// tu, w arkuszu dostępnym z każdej zakładki, tej świadomości nie ma.
+    var pairInProgress: Bool
+
     @Environment(\.modelContext) private var context
     @Environment(\.dismiss) private var dismiss
 
@@ -118,6 +127,12 @@ struct ActionsSheet: View {
                         }
                         .font(.callout)
                         Slider(value: $similarity.threshold, in: 0.25...0.75, step: 0.01)
+                            .disabled(pairInProgress)
+                        if pairInProgress {
+                            Text("Finish the current duel first — changing this reshuffles bursts.")
+                                .font(.caption)
+                                .foregroundStyle(.tertiary)
+                        }
                     }
                 }
             }

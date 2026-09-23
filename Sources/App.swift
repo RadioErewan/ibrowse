@@ -422,7 +422,8 @@ struct RootView: View {
         .sheet(isPresented: $showingActions) {
             ActionsSheet(
                 library: library, similarity: similarity,
-                albums: albums, sync: sync
+                albums: albums, sync: sync,
+                pairInProgress: mode == .pair
             )
         }
         #else
