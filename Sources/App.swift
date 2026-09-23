@@ -6,6 +6,47 @@ import SwiftUI
 struct LightbraryApp: App {
     private let container = LightbraryApp.makeContainer()
 
+    init() {
+        Self.recordUncaughtExceptions()
+    }
+
+    /// Zapisuje **treść** wyjątku, zanim program zginie.
+    ///
+    /// Systemowy raport awarii pokazuje sam stos wywołań. Przy wyjątkach
+    /// AppKit-u to za mało: cały stos składa się z ramek systemowych, a jedyne,
+    /// co naprawdę mówi, co się stało, to `reason` — zdanie z asercji, którego
+    /// w raporcie nie ma. Przy awarii układu okna na obcym Macu zostawało
+    /// zgadywanie z samych adresów, bo ten jeden napis przepadał.
+    ///
+    /// Plik ląduje tam, gdzie trafiają logi aplikacji, żeby dało się o niego
+    /// poprosić jednym zdaniem: `~/Library/Logs/lightbrary-exception.log`.
+    private static func recordUncaughtExceptions() {
+        NSSetUncaughtExceptionHandler { exception in
+            let report = """
+                \(Date())
+                \(exception.name.rawValue)
+                \(exception.reason ?? "bez opisu")
+
+                \(exception.callStackSymbols.joined(separator: "\n"))
+
+                """
+            FileHandle.standardError.write(Data(report.utf8))
+
+            guard let logs = try? FileManager.default.url(
+                for: .libraryDirectory, in: .userDomainMask, appropriateFor: nil, create: false
+            ).appending(path: "Logs/lightbrary-exception.log") else { return }
+            // Dopisujemy, bo awaria potrafi się powtórzyć, a poprzedni przebieg
+            // bywa tym, który mówi więcej.
+            if let handle = try? FileHandle(forWritingTo: logs) {
+                handle.seekToEndOfFile()
+                handle.write(Data(report.utf8))
+                try? handle.close()
+            } else {
+                try? Data(report.utf8).write(to: logs)
+            }
+        }
+    }
+
     #if os(macOS)
     @StateObject private var updates = UpdateCheck.shared
     #endif
@@ -330,12 +371,9 @@ struct RootView: View {
         Group {
             switch library.authorization {
             case .authorized, .limited:
-                if library.assets.isEmpty {
-                    ProgressView("Loading library…")
-                        .frame(maxWidth: .infinity, maxHeight: .infinity)
-                } else {
-                    main
-                }
+                // **Zawsze** ta sama struktura okna, także w trakcie
+                // ładowania — patrz komentarz przy `screen(_:)`.
+                main
             case .notDetermined:
                 Permission(
                     title: "Photo library access",
@@ -632,8 +670,43 @@ struct RootView: View {
     }
     #endif
 
+    /// Ładowanie jest stanem **wnętrza** okna, nie osobnym oknem.
+    ///
+    /// Wcześniej `body` podmieniał całą zawartość: dopóki biblioteka się
+    /// wczytywała, oknem był sam `ProgressView`, a po wczytaniu wskakiwał na
+    /// jego miejsce `NavigationSplitView` z inspektorem. Oba
+    /// `SplitViewChildController` powstawały więc **wewnątrz okna, które już
+    /// żyje**, a świeży `NSHostingView` zgłaszał wtedy swój pierwszy min/max
+    /// rozmiar — to kolejkuje unieważnienie układu, a ono woła
+    /// `setNeedsUpdateConstraints` na oknie będącym w środku własnego
+    /// `updateConstraintsIfNeeded`.
+    ///
+    /// **To hipoteza, nie ustalony fakt.** Pasuje do raportu (awaria zaraz po
+    /// ekranie ładowania, zmienny czas do niej, stos wyłącznie z ramek
+    /// `SplitViewChildController`) i do tego, że na Macu autora tego nie widać:
+    /// przy szybkim wczytaniu ekran ładowania ledwo mignie i podmiana trafia
+    /// w okno, które jeszcze nie stoi, a przy wolnym kręciołek chodzi kilka
+    /// sekund i sam bez przerwy napędza transakcje CoreAnimation. Nie udało się
+    /// tego odtworzyć lokalnie, więc dowodu nie ma — poprzednia poprawka tej
+    /// awarii (odroczenie `Stepper`a w `PairView`) była opartym na podobnym
+    /// rozumowaniu strzałem i nie pomogła.
+    ///
+    /// Niezależnie od tego zmiana broni się sama: trzymając podział kolumn
+    /// zamontowany od pierwszej klatki, nie ma czego wstawiać do żywego okna —
+    /// zmienia się tylko zawartość kolumny detalu. Gdyby awaria wróciła,
+    /// `recordUncaughtExceptions()` zapisze wreszcie treść asercji.
     @ViewBuilder
     private func screen(_ mode: Mode) -> some View {
+        if library.assets.isEmpty {
+            ProgressView("Loading library…")
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+        } else {
+            loaded(mode)
+        }
+    }
+
+    @ViewBuilder
+    private func loaded(_ mode: Mode) -> some View {
         switch mode {
         case .grid:
             GridView(
