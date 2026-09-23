@@ -27,6 +27,20 @@ struct PairView: View {
 
     @FocusState private var focused: Bool
 
+    /// Kontrolka progu w stanie „wszystko rozstrzygnięte" (linia niżej) potrafi
+    /// zawalić start: gdy okno wraca z zapisanego stanu prosto w ten ekran,
+    /// AppKit jest jeszcze w trakcie własnego przebiegu `updateConstraintsIfNeeded`
+    /// dla tego okna, a nowy `Stepper` w kolumnie inspektora zgłasza wtedy zmianę
+    /// rozmiaru — SwiftUI odpowiada ponownym `setNeedsUpdateConstraints`, AppKit
+    /// tego nie znosi i program pada (SIGABRT, crash 0.1.12/13). Odkładamy więc
+    /// pojawienie się suwaka o jeden obrót pętli — ale tylko raz na cały bieg
+    /// programu: `PairView` na Macu jest tworzony od zera przy każdym przełączeniu
+    /// trybu (to nie `TabView`, który trzyma widoki żywe), więc zwykły `@State`
+    /// resetowałby się i suwak mrugałby przy każdym powrocie do tego ekranu, nie
+    /// tylko przy starcie zagrożonym wyścigiem z AppKit.
+    private static var initialAppearHandled = false
+    @State private var showThresholdControl = PairView.initialAppearHandled
+
     /// Od ilu zdjęć seria trafia do parowania.
     ///
     /// Serie dwuelementowe to jedna decyzja i znikomy zysk, a jest ich kilka
@@ -73,11 +87,18 @@ struct PairView: View {
                         systemImage: "checkmark.circle",
                         description: Text("Bursts of \(minimumSize) photos and up are reviewed. Lower the threshold to take smaller ones.")
                     )
-                    Stepper(value: $minimumSize, in: 2...12) {
-                        Text("from \(minimumSize) photos")
-                            .font(.callout)
+                    if showThresholdControl {
+                        Stepper(value: $minimumSize, in: 2...12) {
+                            Text("from \(minimumSize) photos")
+                                .font(.callout)
+                        }
+                        .fixedSize()
                     }
-                    .fixedSize()
+                }
+                .onAppear {
+                    guard !Self.initialAppearHandled else { return }
+                    Self.initialAppearHandled = true
+                    DispatchQueue.main.async { showThresholdControl = true }
                 }
             }
         }

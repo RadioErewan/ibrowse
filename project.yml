@@ -29,7 +29,7 @@ settings:
     MARKETING_VERSION: "0.1.12"
     # Każde wgranie do App Store Connect musi mieć **inny** numer buildu.
     # Podnieś przed wysyłką; wersja marketingowa zmienia się rzadziej.
-    CURRENT_PROJECT_VERSION: "13"
+    CURRENT_PROJECT_VERSION: "14"
 
 targets:
   lightbrary-mac:
