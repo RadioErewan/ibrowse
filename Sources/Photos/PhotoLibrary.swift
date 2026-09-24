@@ -362,6 +362,19 @@ final class PhotoLibrary: ObservableObject {
     /// Usuwa zdjęcia z biblioteki. System pokazuje własne potwierdzenie,
     /// a skasowane trafiają do „Ostatnio usunięte" na 30 dni — aplikacja
     /// celowo nie próbuje tego obchodzić.
+    /// Ile zdjęć faktycznie zniknie przy skasowaniu tego jednego.
+    ///
+    /// Biblioteka wczytuje serie z aparatu tak, jak PhotoKit robi to domyślnie:
+    /// jako **jedno** zdjęcie, reprezentanta. A skasowanie reprezentanta kasuje
+    /// całą serię — system pytał „Delete 10 photos from this burst?" przy puli,
+    /// którą aplikacja opisywała jako jedno zdjęcie.
+    func deletionSize(of asset: PHAsset) -> Int {
+        guard asset.representsBurst, let burst = asset.burstIdentifier else { return 1 }
+        let options = PHFetchOptions()
+        options.includeAllBurstAssets = true
+        return max(PHAsset.fetchAssets(withBurstIdentifier: burst, options: options).count, 1)
+    }
+
     func delete(_ assets: [PHAsset]) async throws {
         try await PHPhotoLibrary.shared().performChanges {
             PHAssetChangeRequest.deleteAssets(assets as NSArray)

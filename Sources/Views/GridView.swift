@@ -717,6 +717,24 @@ struct Thumbnail: View {
                     .padding(3)
                 }
             }
+            // Seria z aparatu wygląda jak jedno zdjęcie, a skasowanie jej
+            // kasuje wszystkie klatki. Plakietka mówi to już przy oznaczaniu,
+            // nie dopiero w oknie zgody systemu.
+            if asset.representsBurst {
+                VStack {
+                    Spacer()
+                    HStack {
+                        Spacer()
+                        Image(systemName: "square.stack.3d.down.right.fill")
+                            .font(.system(size: 9, weight: .semibold))
+                            .foregroundStyle(.white)
+                            .padding(.horizontal, 4)
+                            .padding(.vertical, 2)
+                            .background(.black.opacity(0.55), in: Capsule())
+                    }
+                }
+                .padding(3)
+            }
         }
         .modifier(TileFrame(side: side, fills: fillsColumn))
         .clipped()

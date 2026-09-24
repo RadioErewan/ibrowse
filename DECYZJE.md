@@ -1479,6 +1479,19 @@ na drugim urządzeniu bez pliku wymiany. `markedForDeletion` nadal jedzie też
 plikiem — wypadnie z pliku decyzji przy jego podziale (krok 3). Album szukamy
 **po nazwie** — `localIdentifier` albumu jest inny na każdym urządzeniu.
 
+**Serie z aparatu (burst) kasują się w całości.** Biblioteka wczytuje je tak,
+jak PhotoKit robi to domyślnie — jako jedno zdjęcie, reprezentanta — a skasowanie
+reprezentanta zabiera wszystkie klatki. Wyszło na żywo: okno kasowania mówiło
+„To delete: 1", system pytał „Delete 10 photos from this burst?". Teraz okno
+liczy klatki (`PhotoLibrary.deletionSize`), pokazuje je na kafelku i przycisku,
+a miniatura serii w siatce ma plakietkę. Sprawdzone też w drugą stronę: po
+„Keep Only Selection" w Zdjęciach stary reprezentant wypada z albumu i lightbrary
+samo zdejmuje oznaczenie.
+
+**Temat na później:** lightbrary w ogóle nie pokazuje pojedynczych klatek serii,
+choć to dokładnie materiał dla parowania. Dziś wybór klatek robi się w Zdjęciach
+(„Make a Selection…" na Macu, „Select…" na iPhonie).
+
 Obejście okna zgody przy kasowaniu nie wchodzi w grę: to świadome
 zabezpieczenie systemu, a każda droga dookoła (skrypt, `Photos.sqlite`,
 klikanie okna) albo nie działa w piaskownicy, albo nie przejdzie review, albo
