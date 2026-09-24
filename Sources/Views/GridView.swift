@@ -154,6 +154,9 @@ struct GridView: View {
                     }
                     .padding(3)
                 }
+                #if os(iOS)
+                .refreshable { library.reload() }
+                #endif
                 .overlay {
                     if shown.isEmpty {
                         ContentUnavailableView(

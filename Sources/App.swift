@@ -86,6 +86,7 @@ struct LightbraryApp: App {
             CommandGroup(after: .appInfo) {
                 Button("Check for Updates…") { updates.check() }
             }
+            LibraryCommands()
         }
         // Belka tytułowa zostaje widoczna, bo teraz **coś w niej jest**.
         // Przy ukrytej toolbar nie ma się w co wpiąć i sterowanie znów
@@ -274,6 +275,30 @@ struct LightbraryApp: App {
     }
 }
 
+extension FocusedValues {
+    /// Biblioteka należy do okna (`RootView`), a menu do aplikacji — polecenie
+    /// sięga do niej przez wartość wystawioną przez okno.
+    @Entry var reloadLibrary: (() -> Void)?
+}
+
+#if os(macOS)
+/// Siatka bezpieczeństwa obok obserwatora zmian, w menu zamiast w belce:
+/// tam nie ma miejsca, a przycisk kuszący przy każdym opóźnieniu iCloud
+/// obiecywałby więcej, niż może dać.
+struct LibraryCommands: Commands {
+    @FocusedValue(\.reloadLibrary) private var reload
+
+    var body: some Commands {
+        CommandGroup(before: .toolbar) {
+            Button("Reload Library") { reload?() }
+                .keyboardShortcut("r")
+                .disabled(reload == nil)
+            Divider()
+        }
+    }
+}
+#endif
+
 /// Rozstrzyga stan uprawnień, zanim cokolwiek pokaże. Bez zgody na bibliotekę
 /// aplikacja nie ma o czym mówić, więc to jest jedyny warunek wejścia.
 struct RootView: View {
@@ -388,6 +413,7 @@ struct RootView: View {
                 )
             }
         }
+        .focusedSceneValue(\.reloadLibrary, { library.reload() })
         .task { await library.start() }
         // Rozejrzenie się po folderze wymiany jest darmowe — czyta same daty
         // plików, nie ich zawartość — a odpowiada na pytanie „czy drugie

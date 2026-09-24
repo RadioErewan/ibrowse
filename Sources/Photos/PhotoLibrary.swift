@@ -74,6 +74,59 @@ final class PhotoLibrary: ObservableObject {
         }
     }
 
+    // MARK: - Zmiany w bibliotece
+
+    /// Bez tego lista zdjęć była migawką z chwili startu: zdjęcia dodane lub
+    /// skasowane na innym urządzeniu i przywiezione przez iCloud pojawiały się
+    /// dopiero po ponownym uruchomieniu.
+    private var fetchResult: PHFetchResult<PHAsset>?
+    private var observer: ChangeObserver?
+    private var pendingReload: Task<Void, Never>?
+
+    private func observeChanges() {
+        guard observer == nil else { return }
+        let observer = ChangeObserver { [weak self] change in
+            // `DispatchQueue.main.async`, nie `Task`: kolejność ma znaczenie,
+            // bo każde powiadomienie liczy się względem poprzedniego wyniku.
+            DispatchQueue.main.async { self?.libraryDidChange(change) }
+        }
+        PHPhotoLibrary.shared().register(observer)
+        self.observer = observer
+    }
+
+    /// Przeładowanie **tylko przy zmianie zestawu** zdjęć. Własne zapisy
+    /// aplikacji — gwiazdka, album do skasowania — też przychodzą tu jako
+    /// zmiana, i przy każdym `X` przeładowanie 25 tysięcy zdjęć zabiłoby tempo
+    /// oceniania. Zmiana samej treści zdjęcia to `changedIndexes`: pomijamy.
+    private func libraryDidChange(_ change: PHChange) {
+        guard let current = fetchResult,
+              let details = change.changeDetails(for: current) else { return }
+        fetchResult = details.fetchResultAfterChanges
+
+        let setChanged = !details.hasIncrementalChanges
+            || (details.insertedIndexes?.count ?? 0) > 0
+            || (details.removedIndexes?.count ?? 0) > 0
+        guard setChanged else { return }
+
+        // Synchronizacja przywozi zmiany seriami — jedno przeładowanie po
+        // ustaniu, nie po każdej.
+        pendingReload?.cancel()
+        pendingReload = Task {
+            try? await Task.sleep(for: .milliseconds(500))
+            guard !Task.isCancelled, let result = fetchResult else { return }
+            rebuild(from: result)
+        }
+    }
+
+    /// Ręczne odświeżenie obok obserwatora — na wypadek, gdyby powiadomienie
+    /// nie przyszło. Nie przyspiesza synchronizacji iCloud: pobiera tylko to,
+    /// co PhotoKit już ma lokalnie.
+    func reload() {
+        guard authorization == .authorized || authorization == .limited else { return }
+        pendingReload?.cancel()
+        loadAssets()
+    }
+
     private func loadAssets() {
         let options = PHFetchOptions()
         options.sortDescriptors = [NSSortDescriptor(key: "creationDate", ascending: true)]
@@ -82,6 +135,12 @@ final class PhotoLibrary: ObservableObject {
         )
 
         let result = PHAsset.fetchAssets(with: options)
+        fetchResult = result
+        observeChanges()
+        rebuild(from: result)
+    }
+
+    private func rebuild(from result: PHFetchResult<PHAsset>) {
         var collected: [PHAsset] = []
         collected.reserveCapacity(result.count)
         result.enumerateObjects { asset, _, _ in collected.append(asset) }
@@ -367,5 +426,19 @@ final class PhotoLibrary: ObservableObject {
         var albums: [PHAssetCollection] = []
         result.enumerateObjects { album, _, _ in albums.append(album) }
         return albums
+    }
+}
+
+/// PhotoKit woła obserwatora z kolejki w tle i wymaga `NSObject`. Osobny mały
+/// obiekt zamiast dziedziczenia `PhotoLibrary` po `NSObject`.
+private final class ChangeObserver: NSObject, PHPhotoLibraryChangeObserver {
+    private let onChange: (PHChange) -> Void
+
+    init(onChange: @escaping (PHChange) -> Void) {
+        self.onChange = onChange
+    }
+
+    func photoLibraryDidChange(_ change: PHChange) {
+        onChange(change)
     }
 }
