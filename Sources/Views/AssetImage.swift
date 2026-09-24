@@ -23,6 +23,13 @@ struct AssetImage: View {
     @State private var request: PHImageRequestID?
     @State private var localRequest: PHImageRequestID?
 
+    /// Numer bieżącego wczytania. PhotoKit woła handler także **anulowanego**
+    /// żądania — z pustym obrazem i bez flagi „zdegradowany". Przy skoku
+    /// tam i z powrotem taka spóźniona odpowiedź ustawiała `isDegraded` na
+    /// fałsz, więc szybki podgląd z dysku był odrzucany jako „starszy od
+    /// pełnej wersji" i zostawał sam spinner, aż oryginał zjechał z iCloud.
+    @State private var ticket = 0
+
     var body: some View {
         ZStack {
             if let image {
@@ -79,14 +86,18 @@ struct AssetImage: View {
         cancel()
         image = nil
         isDegraded = true
+        ticket += 1
+        let mine = ticket
 
         localRequest = library.localImage(for: asset, targetSize: targetSize) { local in
             // Nie nadpisujemy wersji pełnej, gdyby zdążyła przyjść pierwsza.
-            if let local, isDegraded { image = local }
+            guard mine == ticket, let local, isDegraded else { return }
+            image = local
         }
 
         request = library.image(for: asset, targetSize: targetSize) { loaded, degraded in
-            if let loaded { image = loaded }
+            guard mine == ticket, let loaded else { return }
+            image = loaded
             isDegraded = degraded
         }
     }

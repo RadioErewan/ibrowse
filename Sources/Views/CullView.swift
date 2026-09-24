@@ -44,6 +44,12 @@ struct CullView: View {
 
     @FocusState private var focused: Bool
     @State private var index = 0
+
+    /// Czy indeks już wskazuje zdjęcie, z którym wszedłeś. Widok startuje od
+    /// `index = 0`, a na kliknięte przeskakiwał dopiero w zadaniu po pojawieniu
+    /// się — przez chwilę było więc widać pierwsze zdjęcie filtra, a gdy zadanie
+    /// od indeksu ruszyło pierwsze, nadpisywało wskaźnik zdjęciem numer zero.
+    @State private var positioned = false
     @State private var showingDeletions = false
 
     /// Podgląd 1:1. Przełącznik, nie przytrzymanie — przytrzymanie gubi się
@@ -176,7 +182,14 @@ struct CullView: View {
         .focused($focused)
         // Poza bieżącym przebiegiem układu okna, przez `DispatchQueue.main.async`
         // (nie `Task` — patrz komentarz przy tym samym wzorcu w `GridView`).
-        .onAppear { DispatchQueue.main.async { focused = true } }
+        .onAppear {
+            if let focusID,
+               let position = workingSet.firstIndex(where: { $0.localIdentifier == focusID }) {
+                index = position
+            }
+            positioned = true
+            DispatchQueue.main.async { focused = true }
+        }
         // Arkusz zabiera focus i **nie oddaje go sam**. Po zamknięciu lupy
         // milkły więc wszystkie klawisze, nie tylko `esc`: ocena, strzałki
         // i przewijanie. Objawiało się to jako „drugie esc nie działa", ale
@@ -246,6 +259,7 @@ struct CullView: View {
         }
         #endif
         .task(id: index) {
+            guard positioned else { return }
             prefetchNeighbours()
             focusID = current?.localIdentifier
         }
@@ -254,7 +268,9 @@ struct CullView: View {
     private var stage: some View {
         ZStack {
             Color.black
-            if let current {
+            if !positioned {
+                ProgressView()
+            } else if let current {
                 #if os(iOS)
                 // Na telefonie gest zastępuje klawiaturę: w pionie ocena,
                 // w bok przewijanie. Ocena przesuwa tę samą wagę, o ten sam

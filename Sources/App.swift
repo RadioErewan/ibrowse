@@ -430,7 +430,7 @@ struct RootView: View {
         // nic nie kosztuje, a ręczne „sync now" dalej czyta wszystko.
         .onChange(of: scenePhase) { _, phase in
             guard phase == .active else { return }
-            Task { await sync.autoSync(context: context, similarity: similarity, library: library) }
+            Task { await Trace.measure("sync.auto") { await sync.autoSync(context: context, similarity: similarity, library: library) } }
         }
         .task {
             while !Task.isCancelled {
@@ -452,25 +452,23 @@ struct RootView: View {
         // Cechy czytamy raz, do zwykłego słownika. Po wczytaniu z baz systemu
         // i po synchronizacji odświeżamy je jawnie — same z siebie się nie
         // zmieniają, więc nie ma czego pilnować w tle.
-        .task {
-            features.load(context: context)
-            filters.adoptTerms(features.terms)
-        }
-        // Synchronizacja przywozi cechy z drugiego urządzenia, więc po jej
-        // zakończeniu słownik jest nieaktualny.
+        //
+        // Ten sam `.task` wczytuje je przy starcie (rusza przy pojawieniu się
+        // okna) i po synchronizacji, która przywozi cechy z drugiego
+        // urządzenia. Osobny `.task` na sam start czytał wszystko drugi raz.
         .task(id: sync.isWorking) {
             guard !sync.isWorking else { return }
-            features.load(context: context)
+            await Trace.measure("features.load") { await features.load(context: context) }
             filters.adoptTerms(features.terms)
             await sync.refreshFolderState()
         }
-        .task(id: library.assets.count) { filters.adopt(library.assets) }
+        .task(id: library.assets.count) { Trace.measure("filters.adopt") { filters.adopt(library.assets) } }
         // Przy zmianie trybu zwalniamy podgrzane renditiony — inaczej
         // przejście z siatki do parowania trzyma w pamięci dwa komplety.
         .onChange(of: mode) { _, _ in library.releaseCache() }
         .task(id: library.assets.count) {
             guard !library.assets.isEmpty else { return }
-            await similarity.loadGroups(context: context)
+            await Trace.measure("similarity.load") { await similarity.loadGroups(context: context) }
         }
         // Zmiana progu unieważnia cache przez `SeriesStamp`, więc serie
         // przeliczają się same — bez ręcznego czyszczenia czegokolwiek.
@@ -829,7 +827,7 @@ struct RootView: View {
         ) {
             Task {
                 await importer.run(context: context, library: library)
-                features.load(context: context)
+                await features.load(context: context)
                 filters.adoptTerms(features.terms)
             }
         }

@@ -38,7 +38,7 @@ final class PhotoLibrary: ObservableObject {
         authorization = PHPhotoLibrary.authorizationStatus(for: .readWrite)
         if authorization == .authorized || authorization == .limited {
             await Self.nextRunLoopTurn()
-            loadAssets()
+            await loadAssets()
         }
     }
 
@@ -64,7 +64,7 @@ final class PhotoLibrary: ObservableObject {
         authorization = await PHPhotoLibrary.requestAuthorization(for: .readWrite)
         if authorization == .authorized || authorization == .limited {
             await Self.nextRunLoopTurn()
-            loadAssets()
+            await loadAssets()
         }
     }
 
@@ -114,7 +114,7 @@ final class PhotoLibrary: ObservableObject {
                 pendingReload = Task {
                     try? await Task.sleep(for: .milliseconds(500))
                     guard !Task.isCancelled, let result = fetchResult else { return }
-                    rebuild(from: result)
+                    await rebuild(from: result)
                 }
                 return
             }
@@ -131,28 +131,56 @@ final class PhotoLibrary: ObservableObject {
     func reload() {
         guard authorization == .authorized || authorization == .limited else { return }
         pendingReload?.cancel()
-        loadAssets()
+        Task { await loadAssets() }
     }
 
-    private func loadAssets() {
-        let options = PHFetchOptions()
-        options.sortDescriptors = [NSSortDescriptor(key: "creationDate", ascending: true)]
-        options.predicate = NSPredicate(
-            format: "mediaType == %d", PHAssetMediaType.image.rawValue
-        )
-
-        let result = PHAsset.fetchAssets(with: options)
+    /// Pobranie i przejście przez całą bibliotekę trwa na dużej bibliotece
+    /// półtorej sekundy — na głównym wątku to było zamrożone okno przy
+    /// starcie. `PHFetchResult` i `PHAsset` są niezmienne i bezpieczne między
+    /// wątkami, więc liczymy w tle, a tu tylko podmieniamy wynik.
+    private func loadAssets() async {
+        let result = await Task.detached(priority: .userInitiated) {
+            let options = PHFetchOptions()
+            options.sortDescriptors = [NSSortDescriptor(key: "creationDate", ascending: true)]
+            options.predicate = NSPredicate(
+                format: "mediaType == %d", PHAssetMediaType.image.rawValue
+            )
+            return Trace.measure("photos.fetch") { PHAsset.fetchAssets(with: options) }
+        }.value
         fetchResult = result
         observeChanges()
-        rebuild(from: result)
+        await rebuild(from: result)
     }
 
-    private func rebuild(from result: PHFetchResult<PHAsset>) {
+    private struct Collected: @unchecked Sendable {
+        var assets: [PHAsset]
+        var byID: [String: PHAsset]
+        var years: [(year: Int, count: Int)]
+    }
+
+    /// Kolejna przebudowa, która przyszła w trakcie poprzedniej, wygrywa.
+    private var rebuildGeneration = 0
+
+    private func rebuild(from result: PHFetchResult<PHAsset>) async {
+        rebuildGeneration += 1
+        let mine = rebuildGeneration
+        let box = UncheckedBox(result)
+        let collected = await Task.detached(priority: .userInitiated) {
+            Trace.measure("photos.enumerate") { Self.collect(box.value) }
+        }.value
+        guard mine == rebuildGeneration else { return }
+
+        assets = collected.assets
+        byID = collected.byID
+        years = collected.years
+        Trace.measure("photos.native") { emitNative(from: collected.assets, isFull: true) }
+    }
+
+    nonisolated private static func collect(_ result: PHFetchResult<PHAsset>) -> Collected {
         var collected: [PHAsset] = []
         collected.reserveCapacity(result.count)
         result.enumerateObjects { asset, _, _ in collected.append(asset) }
-        assets = collected
-        byID = Dictionary(collected.map { ($0.localIdentifier, $0) }, uniquingKeysWith: { a, _ in a })
+        let byID = Dictionary(collected.map { ($0.localIdentifier, $0) }, uniquingKeysWith: { a, _ in a })
 
         let calendar = Calendar.current
         var tally: [Int: Int] = [:]
@@ -160,9 +188,8 @@ final class PhotoLibrary: ObservableObject {
             guard let date = asset.creationDate else { continue }
             tally[calendar.component(.year, from: date), default: 0] += 1
         }
-        years = tally.map { (year: $0.key, count: $0.value) }.sorted { $0.year < $1.year }
-
-        emitNative(from: collected, isFull: true)
+        let years = tally.map { (year: $0.key, count: $0.value) }.sorted { $0.year < $1.year }
+        return Collected(assets: collected, byID: byID, years: years)
     }
 
     // MARK: - Stan natywny: gwiazdki i album do skasowania
@@ -199,7 +226,7 @@ final class PhotoLibrary: ObservableObject {
             ratings[id] = native
         }
 
-        var marks = Self.deletionAlbumMembers()
+        var marks = Trace.measure("photos.album") { Self.deletionAlbumMembers() }
         for (id, intended) in intendedMarks {
             if marks.contains(id) == intended {
                 intendedMarks[id] = nil
@@ -209,7 +236,9 @@ final class PhotoLibrary: ObservableObject {
                 marks.remove(id)
             }
         }
-        onNativeSnapshot(NativeSnapshot(ratings: ratings, isFull: isFull, deletionMarks: marks))
+        Trace.measure("native.apply") {
+            onNativeSnapshot(NativeSnapshot(ratings: ratings, isFull: isFull, deletionMarks: marks))
+        }
     }
 
     /// Najlepszy wariant dostępny **bez sieci**, oddany natychmiast.
@@ -379,7 +408,7 @@ final class PhotoLibrary: ObservableObject {
         try await PHPhotoLibrary.shared().performChanges {
             PHAssetChangeRequest.deleteAssets(assets as NSArray)
         }
-        loadAssets()
+        await loadAssets()
     }
 
     /// Prawdziwa, zapisywalna, natywnie synchronizowana gwiazdka —
@@ -542,4 +571,11 @@ private final class ChangeObserver: NSObject, PHPhotoLibraryChangeObserver {
     func photoLibraryDidChange(_ change: PHChange) {
         onChange(change)
     }
+}
+
+/// Przenosi przez granicę wątku obiekt, o którym wiemy, że jest bezpieczny,
+/// choć kompilator tego nie widzi (`PHFetchResult`).
+private struct UncheckedBox<T>: @unchecked Sendable {
+    let value: T
+    init(_ value: T) { self.value = value }
 }

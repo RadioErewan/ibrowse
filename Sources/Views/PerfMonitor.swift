@@ -44,6 +44,7 @@ final class PerfMonitor: ObservableObject {
         // wyglądać zdrowo mimo pojedynczych zacięć — a to właśnie one bolą.
         let gap = (now - lastTick) * 1000
         if gap > worstStallMS { worstStallMS = gap }
+        if gap > 100 { Trace.stall(gap) }
         lastTick = now
 
         ticks += 1

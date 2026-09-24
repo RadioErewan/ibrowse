@@ -321,7 +321,7 @@ final class Filters: ObservableObject {
                     carries(features[$0.localIdentifier], slot: slot, measure: active, range: limit)
                 }
             }
-            cached = sorted(result, reviews: reviews, features: features)
+            cached = Trace.measure("filters.sort") { sorted(result, reviews: reviews, features: features) }
             cacheKey = key
         }
 

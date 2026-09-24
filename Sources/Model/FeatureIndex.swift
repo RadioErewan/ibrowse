@@ -132,7 +132,45 @@ final class FeatureIndex: ObservableObject {
         return first > 0 ? ordered[first - 1] : cut
     }
 
-    func load(context: ModelContext) {
+    /// Wynik wczytania, policzony poza głównym wątkiem.
+    private struct Loaded: @unchecked Sendable {
+        var rows: [String: Row]
+        var stats: [UInt8: Stat]
+        var terms: [String: String]
+    }
+
+    /// Kolejne wczytanie, które przyszło, zanim skończyło się poprzednie,
+    /// wygrywa — starszy wynik nie nadpisze nowszego.
+    private var generation = 0
+
+    /// Czytanie wszystkich rekordów `Review` i rozpakowywanie miar trwa na
+    /// dużej bibliotece blisko dwie sekundy. Na głównym wątku zamrażało to
+    /// okno przy starcie i po każdej synchronizacji, więc liczymy na
+    /// osobnym kontekście w tle, a tu tylko podmieniamy gotowe słowniki.
+    func load(context: ModelContext) async {
+        generation += 1
+        let mine = generation
+        let container = context.container
+        let slots = self.slots
+        let loaded = await Task.detached(priority: .userInitiated) {
+            Self.compute(in: ModelContext(container), slots: slots)
+        }.value
+        guard mine == generation else { return }
+
+        terms = loaded.terms
+        rows = loaded.rows
+        stats = loaded.stats
+        available = Measure.all.filter { measure in
+            guard let stat = loaded.stats[measure.code] else { return false }
+            switch measure.kind {
+            case .flag: return stat.count > 0
+            case .continuous: return stat.max > stat.min
+            }
+        }
+        revision += 1
+    }
+
+    nonisolated private static func compute(in context: ModelContext, slots: [UInt8: Int]) -> Loaded {
         // Bez predykatu: rekordy niosące wyłącznie spakowane miary nie dają się
         // odsiać zapytaniem, bo długości bloba SwiftData nie przełoży na SQL.
         // Wczytanie całości dzieje się raz na import albo synchronizację.
@@ -146,7 +184,6 @@ final class FeatureIndex: ObservableObject {
         for review in found where !review.searchTerms.isEmpty {
             loadedTerms[String(review.assetID.prefix(36))] = review.searchTerms
         }
-        terms = loadedTerms
 
         for review in found where review.hasFeatures {
             var row = Row(
@@ -192,16 +229,6 @@ final class FeatureIndex: ObservableObject {
             }
             computed[measure.code] = stat
         }
-
-        rows = built
-        stats = computed
-        available = Measure.all.filter { measure in
-            guard let stat = computed[measure.code] else { return false }
-            switch measure.kind {
-            case .flag: return stat.count > 0
-            case .continuous: return stat.max > stat.min
-            }
-        }
-        revision += 1
+        return Loaded(rows: built, stats: computed, terms: loadedTerms)
     }
 }

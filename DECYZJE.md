@@ -1357,6 +1357,35 @@ brak dostępu) żyją wewnątrz, nie zamiast. Uwaga — ekrany `Permission`
 uruchomieniu po nadaniu zgody to ta sama klasa zagrożenia, na razie bez
 zgłoszeń.
 
+## Zamrożone okno: ciężka praca na bazie poza głównym wątkiem
+
+Start stał 6,8 s, synchronizacja 7,3 s bez przerwy (plus kilkanaście sekund
+zacięć). Zgadywanie nie działało, więc najpierw pomiar: `Trace` pisze czasy
+etapów i każde zacięcie głównego wątku powyżej 100 ms do logu systemowego
+(`log show --last 5m --predicate 'subsystem == "pl.3210.lightbrary"'`).
+
+Co wyszło i co zrobione:
+
+- **Start.** Cechy czytane dwa razy (dwa `.task` przy pojawieniu się okna),
+  po ~1,9 s każde, plus pobranie i przejście listy z Photos 1,4 s — wszystko
+  na głównym wątku. Teraz raz, a `FeatureIndex.load` i `PhotoLibrary` liczą
+  w tle i tylko podmieniają wynik. Start: 700 ms.
+- **Synchronizacja.** Scalanie na głównym kontekście z oddechem co 500
+  wierszy: kawałki rosły od 100 do 700 ms, bo kontekst z tysiącami
+  niezapisanych zmian zwalnia każde zapytanie; zapis i budowa plików to
+  kolejne 5 s ciągiem. Teraz sprzątanie, scalanie, zapis i pliki idą na
+  **osobnym `ModelContext` w tle**; główny kontekst widzi wynik po zapisie.
+  Na głównym zostaje tylko przeliczenie serii. Scalanie przypisuje cechy
+  tylko przy różnicy — przepisanie tej samej wartości też brudzi rekord.
+- **Pełny ekran.** Anulowane żądanie PhotoKit i tak woła handler (pusty
+  obraz, bez flagi „zdegradowany"); przy skoku tam i z powrotem blokowało to
+  szybki podgląd z dysku i zostawał spinner. `AssetImage` odrzuca odpowiedzi
+  starych żądań.
+
+Ryzyko do obserwacji: zapis synchronizacji w tle i ocena tego samego zdjęcia
+w tej samej chwili mogą dać konflikt — przepada wtedy ten przebieg
+synchronizacji (następny go powtórzy), nie ocena.
+
 ## isHidden nie nadaje się do cichej emisji — Apple pyta za każdym razem
 
 Pomysł wyglądał dobrze na papierze: skoro `markedForDeletion` i tak jedzie

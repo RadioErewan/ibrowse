@@ -127,9 +127,12 @@ final class LibrarySync: ObservableObject {
     /// zestaw zdjęć, nie za każdym razem.
     private var cloudCache: (count: Int, map: [String: String])?
 
-    private func cloudIDs(for library: PhotoLibrary) -> [String: String] {
+    private func cloudIDs(for library: PhotoLibrary) async -> [String: String] {
         if let cloudCache, cloudCache.count == library.assets.count { return cloudCache.map }
-        let map = CloudIdentity.cloudIDs(for: library.assets.map(\.localIdentifier))
+        // Poza wątkiem głównym: jedno zapytanie do PhotoKit o 25 tysięcy zdjęć
+        // to sekundy, przez które okno stało zamrożone.
+        let ids = library.assets.map(\.localIdentifier)
+        let map = await Task.detached { CloudIdentity.cloudIDs(for: ids) }.value
         cloudCache = (library.assets.count, map)
         return map
     }
@@ -151,7 +154,12 @@ final class LibrarySync: ObservableObject {
         defer { folder.release() }
         isWriting = true
         defer { isWriting = false }
-        try? await exportRatings(context: context, to: folder.url, translating: cloudIDs(for: library))
+        let toCloud = await cloudIDs(for: library)
+        let container = context.container
+        let destination = folder.url
+        try? await Task.detached(priority: .utility) {
+            try Self.exportRatings(context: ModelContext(container), to: destination, translating: toCloud)
+        }.value
     }
 
     /// Kolejność ma znaczenie i jest tu jedyną nieoczywistą rzeczą.
@@ -186,26 +194,19 @@ final class LibrarySync: ObservableObject {
             Task { @MainActor in self?.stage = text }
         }
 
-        stage = "cleaning up orphans…"
-        let orphans = discardOrphans(context: context, library: library)
-
+        var clock = StageClock()
         stage = "looking for files…"
         let known = onlyChanged ? Self.knownDates : nil
         let reads = await Task.detached {
             Self.readOthers(in: source, excluding: mine, since: known, report: report)
         }.value
         let incoming = reads.map(\.payload)
+        clock.mark("read")
         // Automatycznie i nic nowego: bez zapisu i bez nowego raportu.
         if onlyChanged && incoming.isEmpty {
             noteRead()
             return
         }
-
-        var ratings = 0
-        // Zbiór, nie licznik: te same cechy przychodzą z kilku plików naraz.
-        var features = Set<String>()
-        var prints = 0
-        var verdicts = 0
 
         // Identyfikatory w pliku są chmurowe i trzeba je przetłumaczyć na
         // lokalne **tego** urządzenia. Bez tego wpisy wyglądają jak dotyczące
@@ -216,49 +217,50 @@ final class LibrarySync: ObservableObject {
         // słownika jest darmowe, a drugie odpytanie systemu kosztowałoby tyle
         // samo co pierwsze — przy 25 tysiącach zdjęć to nie jest drobiazg.
         stage = "matching photos…"
-        let toCloud = cloudIDs(for: library)
-        var toLocal: [String: String] = [:]
-        toLocal.reserveCapacity(toCloud.count)
-        for (local, cloud) in toCloud { toLocal[cloud] = local }
+        let toCloud = await cloudIDs(for: library)
+        clock.mark("match")
 
+        // Cała praca na bazie idzie na **osobnym kontekście w tle**. Na
+        // głównym wątku, nawet z oddechem co 500 wierszy, scalanie stało
+        // 15 sekund, a zapis z budową plików kolejne pięć bez przerwy —
+        // kontekst z tysiącami niezapisanych zmian zwalnia każde kolejne
+        // zapytanie. Główny kontekst widzi wynik po zapisie, jak każdą
+        // zmianę w składzie.
         stage = "merging ratings and fingerprints…"
-        // Od najstarszego pliku do najnowszego: przy cechach wygrywa ostatni
-        // zastosowany, a to ma być pomiar najświeższy.
-        for payload in incoming.sorted(by: { $0.writtenAt < $1.writtenAt }) {
-            ratings += await mergeRatings(payload.ratings, translating: toLocal, into: context)
-            features.formUnion(await mergeFeatures(payload.features, translating: toLocal, into: context))
-            prints += await mergePrints(payload.prints, translating: toLocal, into: context)
-        }
+        let container = context.container
+        let assets = library.assets
+        let merged = await Task.detached(priority: .userInitiated) {
+            Self.mergeIncoming(incoming, toCloud: toCloud, present: assets,
+                               into: ModelContext(container))
+        }.value
+        clock.mark("merge")
 
-        if prints > 0 {
+        if merged.prints > 0 {
             stage = "recomputing bursts…"
             // Nowe odciski unieważniają cache serii przez `SeriesStamp`,
             // więc to wywołanie faktycznie przelicza grupy, a nie tylko je
             // wczytuje.
             await similarity.loadGroups(context: context)
+            clock.mark("bursts")
         }
 
-        for payload in incoming {
-            verdicts += mergeVerdicts(payload.verdicts, translating: toCloud, into: context)
-        }
-
-        // Tylko przy prawdziwych zmianach — pusty zapis też budziłby zapis pliku.
-        if context.hasChanges { try? context.save() }
-
-        do {
-            stage = "writing my file…"
-            if onlyChanged {
-                // Odcisków i cech nie odsyłamy w trybie automatycznym — przyrost
-                // z cudzego pliku przepisałby nasz 50 MB tylko po to, żeby
-                // drugie urządzenie dostało z powrotem własne dane.
-                try await exportRatings(context: context, to: folder.url, translating: toCloud)
-            } else {
-                try await export(context: context, to: folder.url, translating: toCloud)
-            }
-        } catch {
+        // Werdykty **po** przeliczeniu serii — patrz komentarz nad funkcją.
+        stage = "writing my file…"
+        let destination = folder.url
+        let finished = await Task.detached(priority: .userInitiated) {
+            Self.finish(incoming, toCloud: toCloud, fullExport: !onlyChanged,
+                        to: destination, context: ModelContext(container))
+        }.value
+        clock.mark("write")
+        if let error = finished.error {
             summary = error.localizedDescription
             return
         }
+        let ratings = merged.ratings
+        let features = merged.features
+        let prints = merged.prints
+        let verdicts = finished.verdicts
+        let orphans = merged.orphans
         Self.remember(reads)
 
         // Raport pokazuje **obie strony**, nie tylko przyrost. „Wczytano 0"
@@ -276,16 +278,33 @@ final class LibrarySync: ObservableObject {
                 total.3 += payload.features.count
             }
             let names = incoming.map(\.deviceName).joined(separator: ", ")
-            let localPrints = ((try? context.fetch(FetchDescriptor<Fingerprint>())) ?? []).count
+            let localPrints = finished.localPrints
 
             noteRead()
             summary = """
                 From \(incoming.count) \(incoming.count == 1 ? "file" : "files") (\(names)): \
                 \(offered.0) ratings, \(offered.1) fingerprints, \(offered.2) bursts, \(offered.3) measures.
                 Changed here: \(ratings) ratings, \(prints) fingerprints, \(verdicts) bursts, \
-                \(features.count) photos' measures.
+                \(features) photos' measures.
                 \(localPrints) fingerprints in total\(orphans > 0 ? ", removed \(orphans) orphans" : "").
                 """
+        }
+    }
+
+
+    // MARK: - Pomiar
+
+    /// Czas każdego etapu do logu systemowego (patrz `Trace`). Dzięki niemu
+    /// wiadomo było, że okno zamrażało scalanie na głównym kontekście, a nie
+    /// czytanie plików ani przeładowanie indeksu.
+    struct StageClock {
+        private var last = ContinuousClock.now
+
+        mutating func mark(_ name: String) {
+            let now = ContinuousClock.now
+            let span = (now - last).components
+            Trace.note("sync." + name, seconds: Double(span.seconds) + Double(span.attoseconds) / 1e18)
+            last = now
         }
     }
 
@@ -393,8 +412,8 @@ final class LibrarySync: ObservableObject {
     /// nim zostaje. I nadzwyczajnie: pierwsza wersja synchronizacji wciągnęła
     /// identyfikatory z drugiego urządzenia, które tutaj nie znaczą nic. Bez
     /// sprzątania takie serie trafiają do parowania i pokazują pustkę.
-    private func discardOrphans(context: ModelContext, library: PhotoLibrary) -> Int {
-        let known = Set(library.assets.map(\.localIdentifier))
+    nonisolated private static func discardOrphans(context: ModelContext, present: [PHAsset]) -> Int {
+        let known = Set(present.map(\.localIdentifier))
         guard !known.isEmpty else { return 0 }
         var removed = 0
 
@@ -411,41 +430,102 @@ final class LibrarySync: ObservableObject {
             context.delete(series)
         }
 
-        if removed > 0 { try? context.save() }
         return removed
     }
 
     /// Klucz serii liczony z identyfikatorów chmurowych. `nil`, gdy choć
     /// jedno zdjęcie nie ma odpowiednika — niepełny skład to inna grupa
     /// i lepiej jej nie dopasowywać, niż dopasować błędnie.
-    private static func cloudKey(for members: [String], using toCloud: [String: String]) -> String? {
+    nonisolated private static func cloudKey(for members: [String], using toCloud: [String: String]) -> String? {
         let translated = members.compactMap { toCloud[$0] }
         guard translated.count == members.count else { return nil }
         return SyncFile.key(for: translated)
     }
 
 
-    /// Oddech dla interfejsu w długiej pętli na wątku głównym. Scalanie
-    /// 25 tysięcy wierszy cech za jednym zamachem zamrażało telefon przy
-    /// starcie — i to razem z kręciołkiem, który miał to sygnalizować.
-    private static func breathe() async {
-        await withCheckedContinuation { continuation in
-            DispatchQueue.main.async { continuation.resume() }
-        }
-    }
-
     // MARK: - Scalanie
 
-    private func mergeRatings(
+    struct Merged {
+        var ratings = 0
+        /// Zdjęcia, których cechy się faktycznie zmieniły — te same cechy
+        /// przychodzą z kilku plików naraz.
+        var features = 0
+        var prints = 0
+        var orphans = 0
+    }
+
+    /// Pierwsza połowa synchronizacji, **na kontekście w tle**: sprzątanie,
+    /// oceny, cechy i odciski, jeden zapis na końcu.
+    nonisolated private static func mergeIncoming(
+        _ incoming: [SyncFile.Payload], toCloud: [String: String], present: [PHAsset],
+        into context: ModelContext
+    ) -> Merged {
+        context.autosaveEnabled = false
+        var result = Merged()
+        result.orphans = discardOrphans(context: context, present: present)
+
+        var toLocal: [String: String] = [:]
+        toLocal.reserveCapacity(toCloud.count)
+        for (local, cloud) in toCloud { toLocal[cloud] = local }
+
+        var features = Set<String>()
+        // Od najstarszego pliku do najnowszego: przy cechach wygrywa ostatni
+        // zastosowany, a to ma być pomiar najświeższy.
+        for payload in incoming.sorted(by: { $0.writtenAt < $1.writtenAt }) {
+            result.ratings += mergeRatings(payload.ratings, translating: toLocal, into: context)
+            features.formUnion(mergeFeatures(payload.features, translating: toLocal, into: context))
+            result.prints += mergePrints(payload.prints, translating: toLocal, into: context)
+        }
+        result.features = features.count
+
+        // Tylko przy prawdziwych zmianach — pusty zapis też budziłby zapis pliku.
+        if context.hasChanges { try? context.save() }
+        return result
+    }
+
+    struct Finished {
+        var verdicts = 0
+        var localPrints = 0
+        var error: Error?
+    }
+
+    /// Druga połowa, też w tle: werdykty (po przeliczeniu serii) i własne pliki.
+    nonisolated private static func finish(
+        _ incoming: [SyncFile.Payload], toCloud: [String: String], fullExport: Bool,
+        to folder: URL, context: ModelContext
+    ) -> Finished {
+        context.autosaveEnabled = false
+        var result = Finished()
+        for payload in incoming {
+            result.verdicts += mergeVerdicts(payload.verdicts, translating: toCloud, into: context)
+        }
+        if context.hasChanges { try? context.save() }
+
+        do {
+            if fullExport {
+                try export(context: context, to: folder, translating: toCloud)
+            } else {
+                // Odcisków i cech nie odsyłamy w trybie automatycznym — przyrost
+                // z cudzego pliku przepisałby nasz 50 MB tylko po to, żeby
+                // drugie urządzenie dostało z powrotem własne dane.
+                try exportRatings(context: context, to: folder, translating: toCloud)
+            }
+        } catch {
+            result.error = error
+        }
+        result.localPrints = (try? context.fetchCount(FetchDescriptor<Fingerprint>())) ?? 0
+        return result
+    }
+
+    nonisolated private static func mergeRatings(
         _ remote: [SyncFile.Rating], translating toLocal: [String: String],
         into context: ModelContext
-    ) async -> Int {
+    ) -> Int {
         let local = ((try? context.fetch(FetchDescriptor<Review>())) ?? [])
         var index = Dictionary(local.map { ($0.assetID, $0) }, uniquingKeysWith: { a, _ in a })
         var changed = 0
 
-        for (position, entry) in remote.enumerated() {
-            if position % 500 == 499 { await Self.breathe() }
+        for entry in remote {
             // Wiersze ze starych plików, które istniały tylko po to, żeby nieść
             // cechy (nigdy nieocenione). Cechy wyjął już odczyt; decyzji tu nie ma.
             guard entry.isRated || entry.judgements > 0 else { continue }
@@ -487,17 +567,16 @@ final class LibrarySync: ObservableObject {
     /// Zwraca zdjęcia, w których coś się **faktycznie zmieniło** — przepisanie
     /// tej samej wartości z kolejnego pliku to nie nowość, a raport ma mówić
     /// prawdę.
-    private func mergeFeatures(
+    nonisolated private static func mergeFeatures(
         _ remote: [SyncFile.Features], translating toLocal: [String: String],
         into context: ModelContext
-    ) async -> Set<String> {
+    ) -> Set<String> {
         guard !remote.isEmpty else { return [] }
         let local = ((try? context.fetch(FetchDescriptor<Review>())) ?? [])
         var index = Dictionary(local.map { ($0.assetID, $0) }, uniquingKeysWith: { a, _ in a })
         var changed = Set<String>()
 
-        for (position, entry) in remote.enumerated() where entry.carriesAnything {
-            if position % 500 == 499 { await Self.breathe() }
+        for entry in remote where entry.carriesAnything {
             guard let assetID = toLocal[entry.assetID] else { continue }
             let review = index[assetID] ?? {
                 // Rekord tylko pod cechy nie jest decyzją: `.distantPast`, żeby
@@ -508,39 +587,46 @@ final class LibrarySync: ObservableObject {
                 index[assetID] = fresh
                 return fresh
             }()
+            // Przypisujemy **tylko różnice**. Przepisanie tej samej wartości też
+            // brudzi rekord: zapis niósł wtedy całą bibliotekę, a główny
+            // kontekst wciągał ją potem na głównym wątku.
             let before = (review.sharpness, review.exposure, review.faces, review.eyesClosed,
                           review.smiles, review.isScreenshot)
-            let measuresBefore = review.measures
-            if entry.sharpness > 0 || entry.exposure > 0 || entry.faces > 0 || entry.isScreenshot {
+            let incoming = (entry.sharpness, entry.exposure, entry.faces, entry.eyesClosed,
+                            entry.smiles, entry.isScreenshot)
+            var touched = false
+            if entry.sharpness > 0 || entry.exposure > 0 || entry.faces > 0 || entry.isScreenshot,
+               before != incoming {
                 review.sharpness = entry.sharpness
                 review.exposure = entry.exposure
                 review.faces = entry.faces
                 review.eyesClosed = entry.eyesClosed
                 review.smiles = entry.smiles
                 review.isScreenshot = entry.isScreenshot
+                touched = true
             }
-            if !entry.measures.isEmpty { review.measures = entry.measures }
-            let termsBefore = review.searchTerms
-            if !entry.terms.isEmpty { review.searchTerms = entry.terms }
-            let after = (review.sharpness, review.exposure, review.faces, review.eyesClosed,
-                         review.smiles, review.isScreenshot)
-            if before != after || measuresBefore != review.measures || termsBefore != review.searchTerms {
-                changed.insert(assetID)
+            if !entry.measures.isEmpty, review.measures != entry.measures {
+                review.measures = entry.measures
+                touched = true
             }
+            if !entry.terms.isEmpty, review.searchTerms != entry.terms {
+                review.searchTerms = entry.terms
+                touched = true
+            }
+            if touched { changed.insert(assetID) }
         }
         return changed
     }
 
-    private func mergePrints(
+    nonisolated private static func mergePrints(
         _ remote: [SyncFile.Print], translating toLocal: [String: String],
         into context: ModelContext
-    ) async -> Int {
+    ) -> Int {
         let known = Set(((try? context.fetch(FetchDescriptor<Fingerprint>())) ?? [])
             .map(\.assetID))
         var added = 0
 
-        for (position, entry) in remote.enumerated() {
-            if position % 500 == 499 { await Self.breathe() }
+        for entry in remote {
             guard let assetID = toLocal[entry.assetID], !known.contains(assetID) else { continue }
             let fresh = Fingerprint(assetID: assetID, values: [], takenAt: entry.takenAt)
             fresh.vector = entry.vector
@@ -555,7 +641,7 @@ final class LibrarySync: ObservableObject {
     /// Kluczem werdyktu jest skład serii, a skład to identyfikatory zdjęć —
     /// czyli dokładnie ta rzecz, która różni się między urządzeniami. Klucz
     /// liczony z identyfikatorów lokalnych nigdy nie trafiłby w cudzy.
-    private func mergeVerdicts(
+    nonisolated private static func mergeVerdicts(
         _ remote: [SyncFile.Verdict], translating toCloud: [String: String],
         into context: ModelContext
     ) -> Int {
@@ -601,13 +687,13 @@ final class LibrarySync: ObservableObject {
     /// zmieniły** (albo zniknęły z folderu) — patrz `exportFingerprints`
     /// i `exportFeatures`. Telefon nie płaci pełnej ceny 50 MB za każdą sesję
     /// oceniania, tylko kilka kilobajtów decyzji.
-    private func export(
+    nonisolated private static func export(
         context: ModelContext, to folder: URL, translating toCloud: [String: String]
-    ) async throws {
-        try await exportRatings(context: context, to: folder, translating: toCloud)
-        try await exportFingerprints(context: context, to: folder, translating: toCloud)
+    ) throws {
+        try exportRatings(context: context, to: folder, translating: toCloud)
+        try exportFingerprints(context: context, to: folder, translating: toCloud)
         #if os(macOS)
-        try await exportFeatures(context: context, to: folder, translating: toCloud)
+        try exportFeatures(context: context, to: folder, translating: toCloud)
         #endif
     }
 
@@ -617,9 +703,9 @@ final class LibrarySync: ObservableObject {
     /// Plik cech pisze tylko Mac, który **sam** je wczytał z baz, i tylko po
     /// nowym wczytaniu. Mac, który cechy dostał z pliku, nie odsyła ich dalej —
     /// inaczej każde urządzenie powielałoby cudzy pomiar pod własną nazwą.
-    private func exportFeatures(
+    nonisolated private static func exportFeatures(
         context: ModelContext, to folder: URL, translating toCloud: [String: String]
-    ) async throws {
+    ) throws {
         let defaults = UserDefaults.standard
         guard let imported = defaults.object(forKey: FeatureImport.importedAtKey) as? Date else { return }
         if let exported = defaults.object(forKey: Self.featuresExportedAtKey) as? Date,
@@ -642,14 +728,14 @@ final class LibrarySync: ObservableObject {
 
         let destination = folder.appending(path: SyncFolder.featuresFileName)
         let outgoing = payload
-        try await Task.detached { try SyncFile.write(outgoing, to: destination) }.value
+        try SyncFile.write(outgoing, to: destination)
         defaults.set(Date.now, forKey: Self.featuresExportedAtKey)
     }
     #endif
 
-    private func exportRatings(
+    nonisolated private static func exportRatings(
         context: ModelContext, to folder: URL, translating toCloud: [String: String]
-    ) async throws {
+    ) throws {
         var payload = SyncFile.Payload()
         payload.deviceName = SyncFolder.deviceName
 
@@ -687,7 +773,7 @@ final class LibrarySync: ObservableObject {
 
         let destination = folder.appending(path: SyncFolder.ratingsFileName)
         let outgoing = payload
-        try await Task.detached { try SyncFile.write(outgoing, to: destination) }.value
+        try SyncFile.write(outgoing, to: destination)
         defaults.set(digest, forKey: Self.ratingsDigestKey)
     }
 
@@ -695,7 +781,7 @@ final class LibrarySync: ObservableObject {
 
     /// Skrót treści decyzji, niezależny od kolejności wierszy. `Hasher` się nie
     /// nadaje — jego ziarno zmienia się przy każdym uruchomieniu.
-    private static func digest(of payload: SyncFile.Payload) -> String {
+    nonisolated private static func digest(of payload: SyncFile.Payload) -> String {
         let ratings = payload.ratings
             .map { "\($0.assetID)|\($0.weight)|\($0.isRated)|\($0.judgements)|\($0.updatedAt.timeIntervalSince1970)" }
             .sorted()
@@ -723,9 +809,9 @@ final class LibrarySync: ObservableObject {
     /// zawartości, to usunięcie jednego zdjęcia i dodanie innego tego samego
     /// dnia synchronizacji, co jest rzadkie i naprawia się samo przy
     /// następnej zmianie liczby.
-    private func exportFingerprints(
+    nonisolated private static func exportFingerprints(
         context: ModelContext, to folder: URL, translating toCloud: [String: String]
-    ) async throws {
+    ) throws {
         let fingerprints = (try? context.fetch(FetchDescriptor<Fingerprint>())) ?? []
         let defaults = UserDefaults.standard
         guard fingerprints.count != defaults.integer(forKey: Self.lastFingerprintCountKey)
@@ -744,7 +830,7 @@ final class LibrarySync: ObservableObject {
         let outgoing = payload
         // Zapis poza głównym wątkiem — 50 MB przez SQLite to nie jest czas,
         // przez który okno ma stać.
-        try await Task.detached { try SyncFile.write(outgoing, to: destination) }.value
+        try SyncFile.write(outgoing, to: destination)
         defaults.set(fingerprints.count, forKey: Self.lastFingerprintCountKey)
     }
 }
