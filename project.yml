@@ -39,7 +39,10 @@ targets:
     # z marginesem, a na iOS kadr wypełniony do krawędzi. Wspólny katalog
     # dawałby na telefonie ikonę w białej ramce.
     sources:
-      - Sources
+      # Eksporter ma własny `@main` i własny program — patrz cel niżej.
+      - path: Sources
+        excludes:
+          - Exporter/**
       - path: Resources/Mac.xcassets
         optional: true
       - path: Resources/PrivacyInfo.xcprivacy
@@ -89,7 +92,9 @@ targets:
     type: application
     platform: iOS
     sources:
-      - Sources
+      - path: Sources
+        excludes:
+          - Exporter/**
       - path: Resources/iOS.xcassets
         optional: true
       - path: Resources/PrivacyInfo.xcprivacy
@@ -131,3 +136,46 @@ targets:
         "CODE_SIGNING_ALLOWED[sdk=iphonesimulator*]": "NO"
         "CODE_SIGNING_REQUIRED[sdk=iphonesimulator*]": "NO"
         ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+
+  # Eksporter: mała aplikacja w pasku menu, poza sklepem, open source.
+  # Czyta bazy Photos (Pełny dostęp do dysku) i pisze plik `-features` do
+  # folderu wymiany. W tym samym repozytorium co przeglądarki, a nie osobnym,
+  # bo format pliku (`SyncFile`) to kontrakt między nimi — jeden plik źródłowy
+  # zamiast dwóch kopii, które prędzej czy później się rozjadą.
+  lightbrary-exporter:
+    type: application
+    platform: macOS
+    sources:
+      - Sources/Exporter
+      - Sources/Metadata/MetadataStore.swift
+      - Sources/Model/Measure.swift
+      - Sources/Model/HalfFloat.swift
+      - Sources/Sync/SyncFile.swift
+      - Sources/Sync/SyncFolder.swift
+      - Sources/Sync/CloudIdentity.swift
+    info:
+      path: Generated/Info-exporter.plist
+      properties:
+        CFBundleDisplayName: lightbrary exporter
+        CFBundleShortVersionString: $(MARKETING_VERSION)
+        CFBundleVersion: $(CURRENT_PROJECT_VERSION)
+        LSMinimumSystemVersion: "27.0"
+        # Tylko w pasku menu, bez ikony w Docku.
+        LSUIElement: true
+        NSHumanReadableCopyright: ""
+        NSPhotoLibraryUsageDescription: >-
+          lightbrary exporter lists your photos to match them with the measures
+          it reads from the library databases. It never changes your library.
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: pl.3210.lightbrary.exporter
+        ENABLE_HARDENED_RUNTIME: "NO"
+        # Prawdziwy podpis z tego samego powodu co w przeglądarce na Macu:
+        # zgoda na Pełny dostęp do dysku pamięta tożsamość podpisu.
+        CODE_SIGN_STYLE: Manual
+        CODE_SIGN_IDENTITY: "Apple Development"
+        DEVELOPMENT_TEAM: $(LIGHTBRARY_TEAM_ID)
+        PROVISIONING_PROFILE_SPECIFIER: ""
+      configs:
+        Release:
+          CODE_SIGN_ENTITLEMENTS: Resources/lightbrary-mac.entitlements

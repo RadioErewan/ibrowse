@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
 # Budowa i instalacja lightbrary. Bez argumentu: macOS. Z "ios": na telefon.
+# Z "exporter": eksporter w pasku menu.
 #
 # Telefon musi być podpięty kablem i odblokowany. Podpis wygasa po 7 dniach
 # (darmowe konto deweloperskie) — wtedy trzeba uruchomić to ponownie.
@@ -19,6 +20,14 @@ if [ "${1:-mac}" = "ios" ]; then
     xcrun devicectl device install app --device "$DEVICE" \
         build/Build/Products/Debug-iphoneos/lightbrary-ios.app
     echo "Wgrane. Stuknij w ikonę na telefonie."
+elif [ "${1:-mac}" = "exporter" ]; then
+    # Zawsze ta sama ścieżka: zgoda na Pełny dostęp do dysku jest przypięta
+    # do konkretnego pakietu, więc eksporter nie może wędrować po dysku.
+    xcodebuild -project lightbrary.xcodeproj -scheme lightbrary-exporter \
+        -configuration Debug -derivedDataPath build build
+    pkill -f lightbrary-exporter 2>/dev/null || true
+    open "build/Build/Products/Debug/lightbrary-exporter.app"
+    echo "Eksporter działa w pasku menu (ikona strzałki z kwadratami)."
 else
     xcodebuild -project lightbrary.xcodeproj -scheme lightbrary-mac \
         -configuration Debug -derivedDataPath build build

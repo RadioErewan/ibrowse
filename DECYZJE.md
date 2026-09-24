@@ -1540,6 +1540,21 @@ kolumny tabeli `feature`, bez podbijania `minReader`. Sklepowy Mac zachowuje
 panel metadanych i wyszukiwanie, iOS dostaje wyszukiwanie, którego sam nie
 zbuduje.
 
+**Eksporter — pierwsza połowa zrobiona** (`Sources/Exporter`, trzeci target
+w tym samym repozytorium, nie osobnym: `SyncFile` to kontrakt między programami
+i jedna kopia źródła zamiast dwóch). Pasek menu, bez Docka; eksport przy starcie
+(gdy ostatni starszy niż godzina) i 5 minut po ostatniej zmianie w bibliotece;
+plik `-features` pod własną nazwą urządzenia, nieprzepisywany przy tej samej
+treści. Etykiety i słowa — druga połowa. Czytnik baz wydzielony do
+`MetadataStore.swift`, wspólnego z przeglądarką.
+
+**Spostrzeżenie sprzeczne z wcześniejszym ustaleniem** (wyżej: „zgoda na
+bibliotekę dotyczy PhotoKit, nie plików"): eksporter uruchomiony z Findera,
+z samą zgodą na Zdjęcia i **bez** Pełnego dostępu do dysku, przeczytał bazy
+i wyeksportował 25 012 zdjęć (macOS 27, Mac Radka). Jeden test, jedna maszyna —
+do potwierdzenia na drugim Macu, zanim przestaniemy mówić ludziom o Pełnym
+dostępie. Przycisk do ustawień w eksporterze zostaje jako zapas.
+
 Eksporter — **postanowione**: mała aplikacja w pasku menu (Pełny dostęp do dysku
 nadaje się aplikacji, nie Terminalowi), działająca sama: obserwuje bibliotekę
 i eksportuje po uspokojeniu się zmian. W pasku: data ostatniego eksportu
