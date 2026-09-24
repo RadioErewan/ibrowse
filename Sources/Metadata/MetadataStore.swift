@@ -52,6 +52,9 @@ actor MetadataStore {
 
     private var search: OpaquePointer?
     private var library: OpaquePointer?
+    /// Indeks wyszukiwania od macOS 27 — `psi.sqlite` zniknął, jest `leo.sqlite`
+    /// o zupełnie innym układzie. Patrz `leoTerms`.
+    private var leo: OpaquePointer?
     private var cache: [String: AssetMetadata] = [:]
     private var opened = false
 
@@ -67,6 +70,7 @@ actor MetadataStore {
     deinit {
         sqlite3_close(search)
         sqlite3_close(library)
+        sqlite3_close(leo)
     }
 
     func metadata(for localIdentifier: String) -> AssetMetadata? {
@@ -75,7 +79,11 @@ actor MetadataStore {
         if let cached = cache[uuid] { return cached }
 
         var result = AssetMetadata()
-        readSearchIndex(uuid: uuid, into: &result)
+        if search != nil {
+            readSearchIndex(uuid: uuid, into: &result)
+        } else {
+            readLeoIndex(uuid: uuid, into: &result)
+        }
         readExtendedAttributes(uuid: uuid, into: &result)
 
         cache[uuid] = result
@@ -262,9 +270,195 @@ actor MetadataStore {
     /// Zwykłe `LIKE` zamiast indeksu pełnotekstowego, który tu leży: 56 tysięcy
     /// wierszy przelatuje w ćwierć sekundy, a `LIKE '%x%'` znajduje też środek
     /// słowa, czego indeks przedrostkowy nie potrafi.
+    /// Słowa do wyszukiwania dla **całej** biblioteki, jednym zapytaniem —
+    /// dla eksportera, żeby telefon mógł szukać bez tego indeksu.
+    ///
+    /// Klucz: UUID zdjęcia. Wartość: `normalized_string` z indeksu Apple
+    /// (już bez wielkich liter i znaków diakrytycznych, czyli dokładnie to, po
+    /// czym szuka `search`), unikalne, rozdzielone nową linią. Wszystkie
+    /// kategorie — miejsca, osoby, sceny, okazje — poza nazwą pliku i modelem
+    /// aparatu. Słowa z OCR od trzech liter i najwyżej 150 na zdjęcie: zrzut
+    /// ekranu potrafi ich mieć setki, a do znalezienia wystarczają.
+    func searchTerms() -> [String: String] {
+        openIfNeeded()
+        guard let search else { return leo.map(Self.leoTerms) ?? [:] }
+
+        let sql = """
+            SELECT a.uuid_0, a.uuid_1, g.category, g.normalized_string
+            FROM ga JOIN groups g ON g.rowid = ga.groupid
+            JOIN assets a ON a.rowid = ga.assetid
+            """
+        var statement: OpaquePointer?
+        guard sqlite3_prepare_v2(search, sql, -1, &statement, nil) == SQLITE_OK else { return [:] }
+        defer { sqlite3_finalize(statement) }
+
+        var terms: [String: [String]] = [:]
+        var seen: [String: Set<String>] = [:]
+        var words: [String: Int] = [:]
+        while sqlite3_step(statement) == SQLITE_ROW {
+            let category = Int(sqlite3_column_int(statement, 2))
+            guard category != Category.filename, category != Category.cameraModel,
+                  let text = Self.text(statement, 3), !text.isEmpty else { continue }
+            let uuid = Self.compose(sqlite3_column_int64(statement, 0), sqlite3_column_int64(statement, 1))
+            if category == Category.word {
+                guard text.count >= 3, words[uuid, default: 0] < 150 else { continue }
+            }
+            guard seen[uuid, default: []].insert(text).inserted else { continue }
+            if category == Category.word { words[uuid, default: 0] += 1 }
+            terms[uuid, default: []].append(text)
+        }
+        return terms.mapValues { $0.joined(separator: "\n") }
+    }
+
+    /// Słowa z indeksu `leo.sqlite` (macOS 27 i nowsze).
+    ///
+    /// Układ ustalony na żywej bibliotece: `items` to zdjęcia (`type = 1`,
+    /// `identifier` = UUID), a `lexeme_ids` — lista numerów haseł, każdy jako
+    /// 4-bajtowa liczba little-endian. Hasła leżą w `lexicon` razem z kategorią.
+    /// Sprawdzone na jednym zdjęciu: nazwa pliku, data, święto, miejsce i sceny
+    /// zgadzały się ze sobą.
+    ///
+    /// Bierzemy kategorie treści: czas (1xxx), miejsca (2xxx), osoby i zwierzęta
+    /// (3xxx), sceny, gatunki, zabytki, wydarzenia i tekst z OCR (4xxx), aparat,
+    /// albumy i wspomnienia (6xxx–7xxx) oraz typ dokumentu (11000). Pomijamy
+    /// techniczne (5xxx, 8xxx — pliki, identyfikatory, oceny; 9xxx, 10000) i
+    /// **11010 — nazwiska odczytane z dokumentów tożsamości**: dane osobowe,
+    /// niepotrzebne do znalezienia zdjęcia.
+    /// Panel metadanych z indeksu `leo.sqlite` (macOS 27) — to samo, co
+    /// `readSearchIndex` czytał z `psi.sqlite`. Układ bazy: patrz `leoTerms`.
+    ///
+    /// Jedno hasło ma wiele synonimów („Food", „Chow", „Meals"…); do panelu
+    /// bierzemy pierwszy, czyli podstawowy. Osoby i zwierzęta mieszają imiona
+    /// z ogólnikami („Person", „My Puppy") — ogólniki odpadają.
+    private func readLeoIndex(uuid: String, into result: inout AssetMetadata) {
+        guard let leo else { return }
+        var statement: OpaquePointer?
+        guard sqlite3_prepare_v2(leo, "SELECT lexeme_ids FROM items WHERE identifier = ? AND type = 1",
+                                 -1, &statement, nil) == SQLITE_OK else { return }
+        sqlite3_bind_text(statement, 1, uuid, -1, unsafeBitCast(-1, to: sqlite3_destructor_type.self))
+        var ids: [UInt32] = []
+        if sqlite3_step(statement) == SQLITE_ROW, let bytes = sqlite3_column_blob(statement, 0) {
+            let raw = UnsafeRawBufferPointer(start: bytes, count: Int(sqlite3_column_bytes(statement, 0)))
+            for offset in stride(from: 0, to: raw.count - 3, by: 4) {
+                ids.append(UInt32(littleEndian: raw.loadUnaligned(fromByteOffset: offset, as: UInt32.self)))
+            }
+        }
+        sqlite3_finalize(statement)
+        guard !ids.isEmpty else { return }
+
+        // Pierwsza treść każdego hasła, w kolejności wierszy słownika.
+        var first: [UInt32: (category: Int, text: String)] = [:]
+        let list = ids.map(String.init).joined(separator: ",")
+        let sql = "SELECT lexeme_id, category, content FROM lexicon WHERE lexeme_id IN (\(list)) ORDER BY pk"
+        guard sqlite3_prepare_v2(leo, sql, -1, &statement, nil) == SQLITE_OK else { return }
+        while sqlite3_step(statement) == SQLITE_ROW {
+            let id = UInt32(sqlite3_column_int64(statement, 0))
+            guard first[id] == nil, let text = Self.text(statement, 2), !text.isEmpty else { continue }
+            first[id] = (Int(sqlite3_column_int(statement, 1)), text)
+        }
+        sqlite3_finalize(statement)
+
+        let generic: Set<String> = ["person", "persons", "people", "pet", "pets", "animal", "animals"]
+        func isName(_ text: String) -> Bool {
+            let lower = text.lowercased()
+            return !generic.contains(lower) && !lower.hasPrefix("my ")
+        }
+
+        var place: [(rank: Int, value: String)] = []
+        for id in ids {
+            guard let (category, text) = first[id] else { continue }
+            switch category {
+            case 3000 where isName(text): result.people.append(text)
+            case 3010 where isName(text): result.pets.append(text)
+            case 4000, 4010: result.scenes.append(text)
+            case 4120 where text.count >= 3: result.words.append(text)
+            case 1030, 4090, 2240: result.occasion.append(text)
+            case 8050: result.filename = text
+            case 6000 where result.camera == nil: result.camera = text
+            default:
+                if let rank = Self.leoPlaceOrder.firstIndex(of: category) {
+                    place.append((rank, text))
+                }
+            }
+        }
+        result.place = Self.unique(place.sorted { $0.rank < $1.rank }.map(\.value))
+        result.scenes = Self.unique(result.scenes)
+        result.occasion = Self.unique(result.occasion)
+        result.people = Self.unique(result.people)
+        result.pets = Self.unique(result.pets)
+        result.words = Array(Self.unique(result.words).prefix(60))
+    }
+
+    /// Miejsca od najbardziej szczegółowego: lokal, dom, zabytek, obiekt, ulica,
+    /// dzielnica, miejscowość, rzeka, hrabstwo, region, kraj. Kody krajów (2170)
+    /// i kontynenty (2180–2190) pomijamy — nic nie dodają.
+    private static let leoPlaceOrder = [2220, 2010, 4020, 2060, 2030, 2050, 2070, 2120,
+                                        2090, 2100, 2080, 2210, 2110, 2130, 2140, 2160]
+
+    private func leoSearch(_ text: String) -> Set<String> {
+        guard let leo else { return [] }
+        if leoCache.map({ $0.at < .now.addingTimeInterval(-300) }) ?? true {
+            leoCache = (Self.leoTerms(leo), .now)
+        }
+        let needle = text.folding(options: [.diacriticInsensitive, .caseInsensitive], locale: nil)
+            .lowercased()
+        return Set(leoCache?.terms.compactMap { $0.value.contains(needle) ? $0.key : nil } ?? [])
+    }
+
+    private static func leoTerms(_ leo: OpaquePointer) -> [String: String] {
+        let ocr = 4120
+        var lexicon: [UInt32: (text: String, isWord: Bool)] = [:]
+        var statement: OpaquePointer?
+        if sqlite3_prepare_v2(leo, "SELECT lexeme_id, category, content FROM lexicon",
+                              -1, &statement, nil) == SQLITE_OK {
+            while sqlite3_step(statement) == SQLITE_ROW {
+                let category = Int(sqlite3_column_int(statement, 1))
+                let included = (1000..<5000).contains(category) || (6000..<8000).contains(category)
+                    || category == 11000
+                guard included, let raw = text(statement, 2) else { continue }
+                let folded = raw.folding(options: [.diacriticInsensitive, .caseInsensitive],
+                                         locale: nil).lowercased()
+                guard !folded.isEmpty, category != ocr || folded.count >= 3 else { continue }
+                lexicon[UInt32(sqlite3_column_int64(statement, 0))] = (folded, category == ocr)
+            }
+        }
+        sqlite3_finalize(statement)
+        guard !lexicon.isEmpty else { return [:] }
+
+        var result: [String: String] = [:]
+        guard sqlite3_prepare_v2(leo, "SELECT identifier, lexeme_ids FROM items WHERE type = 1",
+                                 -1, &statement, nil) == SQLITE_OK else { return [:] }
+        defer { sqlite3_finalize(statement) }
+        while sqlite3_step(statement) == SQLITE_ROW {
+            guard let uuid = text(statement, 0), let bytes = sqlite3_column_blob(statement, 1) else { continue }
+            let raw = UnsafeRawBufferPointer(start: bytes, count: Int(sqlite3_column_bytes(statement, 1)))
+            var seen = Set<String>()
+            var terms: [String] = []
+            var words = 0
+            for offset in stride(from: 0, to: raw.count - 3, by: 4) {
+                let id = UInt32(littleEndian: raw.loadUnaligned(fromByteOffset: offset, as: UInt32.self))
+                guard let entry = lexicon[id], seen.insert(entry.text).inserted else { continue }
+                if entry.isWord {
+                    guard words < 150 else { continue }
+                    words += 1
+                }
+                terms.append(entry.text)
+            }
+            if !terms.isEmpty { result[uuid.uppercased()] = terms.joined(separator: "\n") }
+        }
+        return result
+    }
+
+    /// Słowa z `leo.sqlite` trzymane w pamięci przez kilka minut — przeliczenie
+    /// trwa ułamek sekundy, ale nie ma powodu robić go przy każdej literze.
+    private var leoCache: (terms: [String: String], at: Date)?
+
     func search(_ text: String) -> Set<String> {
         openIfNeeded()
-        guard let search, text.count >= 2 else { return [] }
+        guard text.count >= 2 else { return [] }
+        // Od macOS 27 starego indeksu nie ma — bez tego szukanie po cichu
+        // odpowiadało „nic nie pasuje" na wszystko.
+        guard let search else { return leoSearch(text) }
 
         let needle = "%" + text.folding(
             options: [.diacriticInsensitive, .caseInsensitive], locale: nil
@@ -323,8 +517,9 @@ actor MetadataStore {
 
         search = Self.open(root.appending(path: "database/search/psi.sqlite"))
         library = Self.open(root.appending(path: "database/Photos.sqlite"))
+        leo = Self.open(root.appending(path: "database/search/leo.sqlite"))
 
-        if search == nil && library == nil {
+        if search == nil && library == nil && leo == nil {
             // Pełnego dostępu do dysku nie da się poprosić okienkiem — Apple
             // wymaga, żeby człowiek dodał program ręcznie. Skoro tak, to
             // przynajmniej otwieramy mu właściwy panel; patrz `MetadataPanel`.

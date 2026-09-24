@@ -73,6 +73,10 @@ final class FeatureIndex: ObservableObject {
     /// podręcznej — bez tego zbiór roboczy nie zauważyłby świeżych cech.
     @Published private(set) var revision = 0
 
+    /// Słowa do wyszukiwania po UUID zdjęcia (36 znaków, jak trafienia
+    /// wyszukiwania w `Filters`). Pochodzą z eksportera.
+    private(set) var terms: [String: String] = [:]
+
     /// Rozkład każdej miary, kluczowany kodem.
     @Published private(set) var stats: [UInt8: Stat] = [:]
 
@@ -138,6 +142,12 @@ final class FeatureIndex: ObservableObject {
 
         var built: [String: Row] = [:]
         built.reserveCapacity(found.count)
+        var loadedTerms: [String: String] = [:]
+        for review in found where !review.searchTerms.isEmpty {
+            loadedTerms[String(review.assetID.prefix(36))] = review.searchTerms
+        }
+        terms = loadedTerms
+
         for review in found where review.hasFeatures {
             var row = Row(
                 sharpness: review.sharpness,

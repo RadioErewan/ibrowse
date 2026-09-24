@@ -80,9 +80,14 @@ struct SyncFile {
         var smiles: Int = 0
         var isScreenshot: Bool = false
         var measures: Data = Data()
+        /// Słowa do wyszukiwania z indeksu Apple, rozdzielone nową linią —
+        /// patrz `MetadataStore.searchTerms`. Kolumna dopisana bez podbijania
+        /// `minReader`: starszy czytnik jej po prostu nie widzi.
+        var terms: String = ""
 
         var carriesAnything: Bool {
             sharpness > 0 || exposure > 0 || faces > 0 || isScreenshot || !measures.isEmpty
+                || !terms.isEmpty
         }
     }
 
@@ -147,7 +152,7 @@ struct SyncFile {
                                 judgements INT, updatedAt REAL);
             CREATE TABLE feature(assetID TEXT PRIMARY KEY, sharpness REAL, exposure REAL,
                                  faces INT, eyesClosed INT, smiles INT, screenshot INT,
-                                 measures BLOB);
+                                 measures BLOB, terms TEXT);
             CREATE TABLE print(assetID TEXT PRIMARY KEY, vector BLOB, takenAt REAL);
             CREATE TABLE verdict(key TEXT PRIMARY KEY, resolvedAt REAL, wasRejected INT,
                                  championID TEXT, challengerIndex INT);
@@ -172,7 +177,7 @@ struct SyncFile {
             sqlite3_bind_double(statement, 5, rating.updatedAt.timeIntervalSince1970)
         }
 
-        repeating(db, "INSERT OR REPLACE INTO feature VALUES(?,?,?,?,?,?,?,?)", payload.features) {
+        repeating(db, "INSERT OR REPLACE INTO feature VALUES(?,?,?,?,?,?,?,?,?)", payload.features) {
             statement, features in
             bind(statement, 1, features.assetID)
             sqlite3_bind_double(statement, 2, features.sharpness)
@@ -187,6 +192,7 @@ struct SyncFile {
                     unsafeBitCast(-1, to: sqlite3_destructor_type.self)
                 )
             }
+            bind(statement, 9, features.terms)
         }
 
         repeating(db, "INSERT OR REPLACE INTO print VALUES(?,?,?)", payload.prints) {
@@ -271,7 +277,7 @@ struct SyncFile {
             if legacy.carriesAnything { payload.features.append(legacy) }
         }
 
-        rows(db, "feature", ["assetID"] + featureColumns) { row in
+        rows(db, "feature", ["assetID"] + featureColumns + ["terms"]) { row in
             let features = Features(row: row, assetID: row.text("assetID") ?? "")
             if features.carriesAnything { payload.features.append(features) }
         }
@@ -425,7 +431,8 @@ fileprivate extension SyncFile.Features {
             eyesClosed: row.int("eyesClosed"),
             smiles: row.int("smiles"),
             isScreenshot: row.int("screenshot") != 0,
-            measures: row.blob("measures")
+            measures: row.blob("measures"),
+            terms: row.text("terms") ?? ""
         )
     }
 }

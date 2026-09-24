@@ -225,9 +225,9 @@ final class LibrarySync: ObservableObject {
         // Od najstarszego pliku do najnowszego: przy cechach wygrywa ostatni
         // zastosowany, a to ma być pomiar najświeższy.
         for payload in incoming.sorted(by: { $0.writtenAt < $1.writtenAt }) {
-            ratings += mergeRatings(payload.ratings, translating: toLocal, into: context)
-            features.formUnion(mergeFeatures(payload.features, translating: toLocal, into: context))
-            prints += mergePrints(payload.prints, translating: toLocal, into: context)
+            ratings += await mergeRatings(payload.ratings, translating: toLocal, into: context)
+            features.formUnion(await mergeFeatures(payload.features, translating: toLocal, into: context))
+            prints += await mergePrints(payload.prints, translating: toLocal, into: context)
         }
 
         if prints > 0 {
@@ -424,17 +424,28 @@ final class LibrarySync: ObservableObject {
         return SyncFile.key(for: translated)
     }
 
+
+    /// Oddech dla interfejsu w długiej pętli na wątku głównym. Scalanie
+    /// 25 tysięcy wierszy cech za jednym zamachem zamrażało telefon przy
+    /// starcie — i to razem z kręciołkiem, który miał to sygnalizować.
+    private static func breathe() async {
+        await withCheckedContinuation { continuation in
+            DispatchQueue.main.async { continuation.resume() }
+        }
+    }
+
     // MARK: - Scalanie
 
     private func mergeRatings(
         _ remote: [SyncFile.Rating], translating toLocal: [String: String],
         into context: ModelContext
-    ) -> Int {
+    ) async -> Int {
         let local = ((try? context.fetch(FetchDescriptor<Review>())) ?? [])
         var index = Dictionary(local.map { ($0.assetID, $0) }, uniquingKeysWith: { a, _ in a })
         var changed = 0
 
-        for entry in remote {
+        for (position, entry) in remote.enumerated() {
+            if position % 500 == 499 { await Self.breathe() }
             // Wiersze ze starych plików, które istniały tylko po to, żeby nieść
             // cechy (nigdy nieocenione). Cechy wyjął już odczyt; decyzji tu nie ma.
             guard entry.isRated || entry.judgements > 0 else { continue }
@@ -479,13 +490,14 @@ final class LibrarySync: ObservableObject {
     private func mergeFeatures(
         _ remote: [SyncFile.Features], translating toLocal: [String: String],
         into context: ModelContext
-    ) -> Set<String> {
+    ) async -> Set<String> {
         guard !remote.isEmpty else { return [] }
         let local = ((try? context.fetch(FetchDescriptor<Review>())) ?? [])
         var index = Dictionary(local.map { ($0.assetID, $0) }, uniquingKeysWith: { a, _ in a })
         var changed = Set<String>()
 
-        for entry in remote where entry.carriesAnything {
+        for (position, entry) in remote.enumerated() where entry.carriesAnything {
+            if position % 500 == 499 { await Self.breathe() }
             guard let assetID = toLocal[entry.assetID] else { continue }
             let review = index[assetID] ?? {
                 // Rekord tylko pod cechy nie jest decyzją: `.distantPast`, żeby
@@ -508,9 +520,13 @@ final class LibrarySync: ObservableObject {
                 review.isScreenshot = entry.isScreenshot
             }
             if !entry.measures.isEmpty { review.measures = entry.measures }
+            let termsBefore = review.searchTerms
+            if !entry.terms.isEmpty { review.searchTerms = entry.terms }
             let after = (review.sharpness, review.exposure, review.faces, review.eyesClosed,
                          review.smiles, review.isScreenshot)
-            if before != after || measuresBefore != review.measures { changed.insert(assetID) }
+            if before != after || measuresBefore != review.measures || termsBefore != review.searchTerms {
+                changed.insert(assetID)
+            }
         }
         return changed
     }
@@ -518,12 +534,13 @@ final class LibrarySync: ObservableObject {
     private func mergePrints(
         _ remote: [SyncFile.Print], translating toLocal: [String: String],
         into context: ModelContext
-    ) -> Int {
+    ) async -> Int {
         let known = Set(((try? context.fetch(FetchDescriptor<Fingerprint>())) ?? [])
             .map(\.assetID))
         var added = 0
 
-        for entry in remote {
+        for (position, entry) in remote.enumerated() {
+            if position % 500 == 499 { await Self.breathe() }
             guard let assetID = toLocal[entry.assetID], !known.contains(assetID) else { continue }
             let fresh = Fingerprint(assetID: assetID, values: [], takenAt: entry.takenAt)
             fresh.vector = entry.vector
@@ -618,7 +635,8 @@ final class LibrarySync: ObservableObject {
                 return SyncFile.Features(
                     assetID: cloud, sharpness: review.sharpness, exposure: review.exposure,
                     faces: review.faces, eyesClosed: review.eyesClosed, smiles: review.smiles,
-                    isScreenshot: review.isScreenshot, measures: review.measures
+                    isScreenshot: review.isScreenshot, measures: review.measures,
+                    terms: review.searchTerms
                 )
             }
 

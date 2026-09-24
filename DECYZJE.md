@@ -1548,6 +1548,25 @@ plik `-features` pod własną nazwą urządzenia, nieprzepisywany przy tej samej
 treści. Etykiety i słowa — druga połowa. Czytnik baz wydzielony do
 `MetadataStore.swift`, wspólnego z przeglądarką.
 
+**macOS 27 wymienił indeks wyszukiwania: `psi.sqlite` zniknął, jest
+`leo.sqlite`.** Wyszło przy eksporcie słów — kolumna była pusta dla wszystkich
+25 012 zdjęć. Skutek uboczny, niezauważony od aktualizacji systemu: na Macu nie
+działało wyszukiwanie (ciche „Nothing matches" na wszystko) ani połowa panelu
+metadanych (osoby, miejsca, sceny, tekst). `Photos.sqlite` bez zmian — cechy,
+miary i EXIF czytały się dalej.
+
+Układ `leo.sqlite`, ustalony na żywej bibliotece: `items` (zdjęcie: `type = 1`,
+`identifier` = UUID, `lexeme_ids` = lista 4-bajtowych numerów haseł little-endian)
+i `lexicon` (numer hasła, kategoria, treść; jedno hasło = wiele synonimów, pierwszy
+wiersz to forma podstawowa). Kategorie: 1xxx czas i święta, 2xxx miejsca (od lokalu
+2220 po kraj 2160), 3000 osoby, 3010 zwierzęta (z ogólnikami „Person", „My Puppy"),
+4000 sceny, 4010 gatunki, 4020 zabytki, 4090/4100 wydarzenia i wycieczki, 4120 OCR,
+6000 aparat, 7xxx albumy i wspomnienia, 8xxx techniczne, 11000 typ dokumentu,
+**11010 nazwiska odczytane z dokumentów tożsamości — nie eksportujemy.** Czytnik:
+`MetadataStore.leoTerms` (słowa dla całej biblioteki, 0,4 s na 25 tys. zdjęć),
+`leoSearch`, `readLeoIndex` (panel). Stary `psi.sqlite` dalej obsługiwany, gdyby
+ktoś został na starszym systemie.
+
 **Spostrzeżenie sprzeczne z wcześniejszym ustaleniem** (wyżej: „zgoda na
 bibliotekę dotyczy PhotoKit, nie plików"): eksporter uruchomiony z Findera,
 z samą zgodą na Zdjęcia i **bez** Pełnego dostępu do dysku, przeczytał bazy

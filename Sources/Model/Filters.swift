@@ -250,6 +250,20 @@ final class Filters: ObservableObject {
     private let store = MetadataStore.shared
     #endif
 
+    /// Słowa przywiezione przez eksporter, po UUID zdjęcia. Tam, gdzie nie ma
+    /// indeksu Apple (telefon, Mac bez dostępu do baz), szukamy w nich.
+    private var terms: [String: String] = [:]
+
+    func adoptTerms(_ terms: [String: String]) {
+        self.terms = terms
+        if !query.isEmpty { scheduleSearch() }
+    }
+
+    private func searchTerms(_ text: String) -> Set<String> {
+        let needle = text.folding(options: [.diacriticInsensitive, .caseInsensitive], locale: nil)
+        return Set(terms.compactMap { $0.value.contains(needle) ? $0.key : nil })
+    }
+
     // MARK: - Źródło
 
     func adopt(_ assets: [PHAsset]) {
@@ -568,8 +582,13 @@ final class Filters: ObservableObject {
             guard !Task.isCancelled, let self else { return }
 
             self.isSearching = true
-            let found = await self.store.search(text)
-            let failure = await self.store.currentFailure()
+            var found = await self.store.search(text)
+            var failure = await self.store.currentFailure()
+            // Bazy niedostępne, ale eksporter przywiózł słowa — szukamy w nich.
+            if failure != nil, !self.terms.isEmpty {
+                found = self.searchTerms(text)
+                failure = nil
+            }
             guard !Task.isCancelled else { return }
 
             self.matches = found
@@ -579,12 +598,22 @@ final class Filters: ObservableObject {
         }
         #else
         // Indeks wyszukiwania Apple leży w pakiecie biblioteki na dysku Maca.
-        // Na telefonie nie ma go skąd wziąć — PhotoKit nie udostępnia ani
-        // etykiet, ani tekstu, a przepisywanie 285 tysięcy przypisań przez
-        // albumy byłoby lekarstwem gorszym od choroby.
-        matches = nil
-        searchNote = "Content search works on the Mac only — the phone has no such index."
-        rebuild()
+        // PhotoKit nie udostępnia ani etykiet, ani tekstu — słowa przywozi
+        // eksporter z Maca przez plik wymiany (`Review.searchTerms`).
+        guard !terms.isEmpty else {
+            matches = nil
+            searchNote = "Content search needs the lightbrary exporter running on a Mac."
+            rebuild()
+            return
+        }
+        searchTask = Task { [weak self] in
+            try? await Task.sleep(for: .milliseconds(300))
+            guard !Task.isCancelled, let self else { return }
+            let found = self.searchTerms(text)
+            self.matches = found
+            self.searchNote = found.isEmpty ? "Nothing matches: \(text)" : nil
+            self.rebuild()
+        }
         #endif
     }
 }

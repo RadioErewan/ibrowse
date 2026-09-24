@@ -452,12 +452,16 @@ struct RootView: View {
         // Cechy czytamy raz, do zwykłego słownika. Po wczytaniu z baz systemu
         // i po synchronizacji odświeżamy je jawnie — same z siebie się nie
         // zmieniają, więc nie ma czego pilnować w tle.
-        .task { features.load(context: context) }
+        .task {
+            features.load(context: context)
+            filters.adoptTerms(features.terms)
+        }
         // Synchronizacja przywozi cechy z drugiego urządzenia, więc po jej
         // zakończeniu słownik jest nieaktualny.
         .task(id: sync.isWorking) {
             guard !sync.isWorking else { return }
             features.load(context: context)
+            filters.adoptTerms(features.terms)
             await sync.refreshFolderState()
         }
         .task(id: library.assets.count) { filters.adopt(library.assets) }
@@ -799,8 +803,14 @@ struct RootView: View {
     @ViewBuilder
     private var actionsButton: some View {
         Button { showingActions = true } label: {
-            Image(systemName: similarity.isWorking || sync.isWorking
-                  ? "ellipsis.circle.fill" : "ellipsis.circle")
+            // Kręciołek zamiast ikony, gdy coś mieli w tle — synchronizacja
+            // automatyczna rusza sama przy starcie i bez tego wyglądała jak
+            // zawieszenie aplikacji.
+            if similarity.isWorking || sync.isWorking {
+                ProgressView()
+            } else {
+                Image(systemName: "ellipsis.circle")
+            }
         }
     }
 
@@ -820,6 +830,7 @@ struct RootView: View {
             Task {
                 await importer.run(context: context, library: library)
                 features.load(context: context)
+                filters.adoptTerms(features.terms)
             }
         }
     }

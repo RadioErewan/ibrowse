@@ -11,11 +11,52 @@ struct ExporterApp: App {
         MenuBarExtra {
             ExporterMenu(exporter: exporter)
         } label: {
-            Image(systemName: exporter.isWorking
-                  ? "arrow.triangle.2.circlepath"
-                  : "square.and.arrow.up.on.square")
+            Image(nsImage: RegistrationMark.image(busy: exporter.isWorking))
         }
         .menuBarExtraStyle(.window)
+    }
+}
+
+/// Znak pasowania — ten sam, który siedzi w rogu ikony lightbrary (i w faviconie
+/// 3210.lu): tarcza z dwiema zaczernionymi ćwiartkami, prawą górną i lewą dolną,
+/// w pierścieniu. Rysowany jako obraz **szablonowy**, więc pasek menu sam
+/// dobiera mu kolor w jasnym i ciemnym wyglądzie. Podczas eksportu zaczernione
+/// ćwiartki zamieniają się miejscami.
+enum RegistrationMark {
+    private static let idle = draw(filled: [(0, 90), (180, 270)])
+    private static let busy = draw(filled: [(90, 180), (270, 360)])
+
+    static func image(busy: Bool) -> NSImage { busy ? Self.busy : idle }
+
+    private static func draw(filled quadrants: [(CGFloat, CGFloat)]) -> NSImage {
+        let image = NSImage(size: NSSize(width: 18, height: 18), flipped: false) { rect in
+            let ring = rect.insetBy(dx: 1.5, dy: 1.5)
+            let center = NSPoint(x: rect.midX, y: rect.midY)
+            // Tarcza mniejsza od okręgu: szczelina to pierścień z ikony aplikacji.
+            let disk = ring.width / 2 - 2.2
+            NSColor.black.set()
+
+            // Kąty jak w AppKit: 0° w prawo, rosną przeciwnie do wskazówek zegara.
+            for (start, end) in quadrants {
+                let wedge = NSBezierPath()
+                wedge.move(to: center)
+                wedge.appendArc(withCenter: center, radius: disk,
+                                startAngle: start, endAngle: end)
+                wedge.close()
+                wedge.fill()
+            }
+            let face = NSBezierPath(ovalIn: NSRect(x: center.x - disk, y: center.y - disk,
+                                                   width: disk * 2, height: disk * 2))
+            face.lineWidth = 0.8
+            face.stroke()
+
+            let outline = NSBezierPath(ovalIn: ring)
+            outline.lineWidth = 1.2
+            outline.stroke()
+            return true
+        }
+        image.isTemplate = true
+        return image
     }
 }
 

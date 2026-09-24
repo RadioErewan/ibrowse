@@ -70,6 +70,11 @@ final class Review {
     /// znaczyłaby migrację składu i podbicie formatu pliku wymiany.
     var measures: Data = Data()
 
+    /// Słowa do wyszukiwania z indeksu Apple, przywiezione przez eksporter —
+    /// dzięki nim szuka się także tam, gdzie tego indeksu nie ma (telefon).
+    /// Nowe pole z wartością domyślną: SwiftData dopisuje je sama, bez migracji.
+    var searchTerms: String = ""
+
     init(assetID: String) {
         self.assetID = assetID
     }
