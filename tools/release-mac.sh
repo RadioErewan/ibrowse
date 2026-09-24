@@ -15,11 +15,9 @@
 # hardened runtime, dlatego jest tu włączany jawnie, choć w kompilacji
 # deweloperskiej pozostaje wyłączony.
 #
-# `-destination "generic/platform=macOS"` jest konieczne, mimo że projekt ma
-# już ARCHS="arm64 x86_64" w konfiguracji Release. Bez jawnego celu xcodebuild
-# przywiązuje się do jednej, konkretnej maszyny — tej, na której kompiluje —
-# i cicho ignoruje ARCHS, bez ostrzeżenia w logu. Wychodzi wtedy binarka tylko
-# pod Apple Silicon, a na Intelu program nawet się nie otworzy.
+# Binarka jest tylko arm64 i tak ma być: macOS 27, wymagany przez program,
+# nie działa na Intelu. `-destination "generic/platform=macOS"` zostaje, żeby
+# kompilacja nie przywiązywała się do maszyny, na której powstaje.
 set -euo pipefail
 
 export DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer

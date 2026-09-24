@@ -27,7 +27,7 @@ elif [ "${1:-mac}" = "exporter" ]; then
         -configuration Debug -derivedDataPath build build
     pkill -f lightbrary-exporter 2>/dev/null || true
     open "build/Build/Products/Debug/lightbrary-exporter.app"
-    echo "Eksporter działa w pasku menu (ikona strzałki z kwadratami)."
+    echo "Eksporter działa w pasku menu (znak pasowania)."
 else
     xcodebuild -project lightbrary.xcodeproj -scheme lightbrary-mac \
         -configuration Debug -derivedDataPath build build
