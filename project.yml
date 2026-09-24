@@ -26,10 +26,10 @@ settings:
     SWIFT_VERSION: "5.0"
     SWIFT_EMIT_LOC_STRINGS: "YES"
     SWIFT_STRICT_CONCURRENCY: minimal
-    MARKETING_VERSION: "0.1.14"
+    MARKETING_VERSION: "0.1.15"
     # Każde wgranie do App Store Connect musi mieć **inny** numer buildu.
     # Podnieś przed wysyłką; wersja marketingowa zmienia się rzadziej.
-    CURRENT_PROJECT_VERSION: "17"
+    CURRENT_PROJECT_VERSION: "18"
 
 targets:
   lightbrary-mac:
