@@ -6,13 +6,13 @@
 set -euo pipefail
 
 export DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer
-# Identyfikator swojego telefonu znajdziesz przez:  xcrun devicectl list devices
-# Ustaw go raz w powłoce:  export LIGHTBRARY_DEVICE=...
-DEVICE="${LIGHTBRARY_DEVICE:?ustaw LIGHTBRARY_DEVICE — patrz xcrun devicectl list devices}"
 
 xcodegen generate
 
 if [ "${1:-mac}" = "ios" ]; then
+    # Identyfikator swojego telefonu znajdziesz przez:  xcrun devicectl list devices
+    # Ustaw go raz w powłoce:  export LIGHTBRARY_DEVICE=...
+    DEVICE="${LIGHTBRARY_DEVICE:?ustaw LIGHTBRARY_DEVICE — patrz xcrun devicectl list devices}"
     xcodebuild -project lightbrary.xcodeproj -scheme lightbrary-ios \
         -configuration Debug -destination "id=$DEVICE" \
         -derivedDataPath build -allowProvisioningUpdates build

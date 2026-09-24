@@ -541,9 +541,10 @@ struct CullView: View {
 
     private func toggleDeletion(advance: Bool = true) {
         guard let asset = current else { return }
-        Review.upsert(assetID: asset.localIdentifier, in: context) {
+        let marked = Review.upsert(assetID: asset.localIdentifier, in: context) {
             $0.markedForDeletion.toggle()
-        }
+        }.markedForDeletion
+        Task { await library.setMarkedForDeletion(marked, for: [asset.localIdentifier]) }
         if advance { step(1) }
     }
 

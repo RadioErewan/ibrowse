@@ -305,4 +305,67 @@ final class PhotoLibrary: ObservableObject {
             }
         }
     }
+
+    // MARK: - Oznaczenie do skasowania
+
+    /// Oznaczenie do skasowania jedzie **albumem**, nie tylko plikiem wymiany.
+    ///
+    /// Skasować po cichu się nie da — system pyta o zgodę przy każdym
+    /// wywołaniu, i słusznie. Ale samo *oznaczenie* to przynależność do
+    /// albumu, którą iCloud synchronizuje sam, bez folderu wymiany, a człowiek
+    /// widzi ją też w systemowych Zdjęciach. Kasowanie zostaje jedną, świadomą
+    /// operacją w `DeletionReview`: jedno okno zgody na całą pulę.
+    ///
+    /// **Niesprawdzone na macOS 27**: dawniej zmiany w albumach były ciche,
+    /// ale `isHidden` nauczyło, że z nagłówków SDK tego nie widać. Przed
+    /// uznaniem za gotowe: oznaczyć dwa zdjęcia pod rząd i patrzeć, czy system
+    /// nie pyta.
+    static let deletionAlbumTitle = "lightbrary – to delete"
+
+    /// Kolejne oznaczenia idą po sobie, nie równolegle. Dwa szybkie `X` zanim
+    /// pierwszy zapis założy album dałyby inaczej dwa albumy o tej samej nazwie.
+    private var pendingMark: Task<Void, Never>?
+
+    func setMarkedForDeletion(_ marked: Bool, for assetIDs: [String]) async {
+        let previous = pendingMark
+        let task = Task {
+            await previous?.value
+            await self.applyMark(marked, for: assetIDs)
+        }
+        pendingMark = task
+        await task.value
+    }
+
+    private func applyMark(_ marked: Bool, for assetIDs: [String]) async {
+        let assets = assetIDs.compactMap(asset(id:)) as NSArray
+        guard assets.count > 0 else { return }
+        // Po nazwie, nie po identyfikatorze: `localIdentifier` albumu jest inny
+        // na każdym urządzeniu. Gdyby mimo wszystko powstały dwa (dwa
+        // urządzenia naraz), zdejmujemy ze wszystkich, a dokładamy do pierwszego.
+        let albums = Self.deletionAlbums()
+        if !marked && albums.isEmpty { return }
+        try? await PHPhotoLibrary.shared().performChanges {
+            if marked {
+                let request = albums.first.flatMap { PHAssetCollectionChangeRequest(for: $0) }
+                    ?? PHAssetCollectionChangeRequest.creationRequestForAssetCollection(
+                        withTitle: Self.deletionAlbumTitle)
+                request.addAssets(assets)
+            } else {
+                for album in albums {
+                    PHAssetCollectionChangeRequest(for: album)?.removeAssets(assets)
+                }
+            }
+        }
+    }
+
+    private static func deletionAlbums() -> [PHAssetCollection] {
+        let options = PHFetchOptions()
+        options.predicate = NSPredicate(format: "title == %@", deletionAlbumTitle)
+        let result = PHAssetCollection.fetchAssetCollections(
+            with: .album, subtype: .albumRegular, options: options
+        )
+        var albums: [PHAssetCollection] = []
+        result.enumerateObjects { album, _, _ in albums.append(album) }
+        return albums
+    }
 }
