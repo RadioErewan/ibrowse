@@ -222,7 +222,7 @@ struct CompareView: View {
                             assetID: asset.localIdentifier, in: context
                         ) { $0.set(Double(value)) }
                         if changed {
-                            Task { await library.setRating(updated.stars, for: asset.localIdentifier) }
+                            library.setRating(updated.stars, for: asset.localIdentifier)
                         }
                     }
             }

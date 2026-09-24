@@ -1419,14 +1419,38 @@ Zasada: **co da się wyrazić natywnie, jedzie natywnie.** Bez wybranego folderu
 wymiany przeglądarka i tak działa między urządzeniami — gwiazdki i oznaczenia
 niesie Apple. Folder to opcja dla dokładnych wag, pojedynków i cech.
 
-### Gwiazdka natywna wygrywa
+### Gwiazdka w Photos wygrywa przy zmianie
 
 Waga (co 0,25) i gwiazdka Photos (całkowita) to ta sama decyzja w dwóch
-rozdzielczościach. **Waga zawsze zaokrągla się do natywnej gwiazdki; przy
-niezgodności wygrywa gwiazdka** i waga dostaje jej wartość. Załatwia to
-zmiany z zewnątrz (gwiazdka ustawiona w systemowych Zdjęciach) i kolejność
-dotarcia (iCloud Photos i folder synchronizują się w różnym tempie). Dziś
-aplikacja `rating` tylko zapisuje, **nigdy nie czyta** — do zrobienia.
+rozdzielczościach. Zrobione w `NativeSync.swift`.
+
+Pierwszy szkic mówił „przy niezgodności wygrywa gwiazdka". **Poprawione przed
+wdrożeniem**, bo zniszczyłoby dane na dwa sposoby: oceny sprzed
+`PHAsset.rating` nie mają gwiazdki w Photos, więc „brak gwiazdki wygrywa"
+wyzerowałby archiwum; a nowsza waga przywieziona plikiem przegrywałaby ze
+starą gwiazdką, której iCloud jeszcze nie zaktualizował.
+
+Obowiązuje: **pamiętamy, co Photos pokazywał ostatnio, i działamy tylko na
+różnicy.** Gwiazdka zmieniła się w Photos → waga idzie za nią (3,75 przy 4★
+zostaje; niezgodna dostaje pełną wartość gwiazdki). Gwiazdka zdjęta w Photos →
+„nieoceniona". Brak zmiany → nic. Pierwszy odczyt po instalacji to tylko punkt
+odniesienia. Odczyt nie rusza `updatedAt` ani liczby ocen (`adoptNativeStars`,
+jak `adoptFeatures`), a rekord założony z odczytu dostaje `.distantPast` —
+inaczej wygrywałby przy scalaniu pliku z dokładniejszą wagą z drugiego
+urządzenia.
+
+**Własne zapisy nie mogą wracać jako „zmiana z zewnątrz".** Pierwsza wersja
+rejestrowała zamiar zapisu w `Task`, chwilę po zmianie oceny w bazie; przy
+szybkim `-` powiadomienie o poprzednim zapisie wpadało w tę lukę i podbijało
+wagę z 3,25 do 4,0 — gwiazdka odbijała przy każdej granicy (z 4,5 do 1,0 trzeba
+było 23 naciśnięć zamiast 14). Teraz `setRating` i `setMarkedForDeletion` są
+synchroniczne: zamiar znany od razu, zapisy do Photos idą ściśle po kolei.
+Sprawdzone na żywo; gwiazdki w systemowych Zdjęciach pojawiają się praktycznie
+natychmiast.
+
+Lista zdjęć nadąża za biblioteką przez `PHPhotoLibraryChangeObserver`:
+przebudowa tylko przy zmianie zestawu, zmiany treści i albumu idą do odczytu
+stanu natywnego. Ręcznie: ⌘R na Macu, pociągnięcie siatki na iOS.
 
 ### Oznaczenie do skasowania: album
 
@@ -1434,12 +1458,13 @@ Kasowanie pyta o zgodę **raz na wywołanie**, nie na zdjęcie — `DeletionRevi
 kasuje całą pulę jednym `performChanges`. Oznaczenie jedzie albumem
 **„lightbrary – to delete"** (`PhotoLibrary.setMarkedForDeletion`): sprawdzone
 na macOS 27 — dwa zdjęcia pod rząd **bez okna zgody**, trafiły do albumu.
-Niesprawdzone: odznaczanie (zdejmowanie z albumu) i zachowanie na iOS.
 
-Dziś zapis idzie w jedną stronę, a `markedForDeletion` nadal jedzie plikiem.
-Do zrobienia: odczyt albumu jako źródła prawdy (tak jak gwiazdki), potem
-`markedForDeletion` wypada z pliku decyzji. Album szukamy **po nazwie** —
-`localIdentifier` albumu jest inny na każdym urządzeniu.
+Odczyt w drugą stronę zrobiony tą samą regułą co gwiazdki: zdjęcie weszło do
+albumu → oznaczone, wyszło → odznaczone (także gdy wyjęte ręcznie
+w systemowych Zdjęciach). Sprawdzone na Macu i telefonie: kosz pojawia się
+na drugim urządzeniu bez pliku wymiany. `markedForDeletion` nadal jedzie też
+plikiem — wypadnie z pliku decyzji przy jego podziale (krok 3). Album szukamy
+**po nazwie** — `localIdentifier` albumu jest inny na każdym urządzeniu.
 
 Obejście okna zgody przy kasowaniu nie wchodzi w grę: to świadome
 zabezpieczenie systemu, a każda droga dookoła (skrypt, `Photos.sqlite`,
@@ -1502,8 +1527,9 @@ Pasek miniatur w `CullView` używa tego samego kafelka.
 
 ### Kolejność kroków
 
-1. Ikona kosza na miniaturach.
-2. Odczyt gwiazdki i albumu z powrotem, reguła „natywne wygrywa".
+1. ~~Ikona kosza na miniaturach.~~ Zrobione.
+2. ~~Odczyt gwiazdki i albumu z powrotem.~~ Zrobione, z regułą „wygrywa przy
+   zmianie" (wyżej).
 3. Format: podział pliku na wygenerowane i decyzje, zgodność w przód.
 4. Wydzielenie eksportera (`MetadataIndex` + zapis pliku wygenerowanego) do
    osobnego repozytorium.

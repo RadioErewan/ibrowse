@@ -525,7 +525,7 @@ struct CullView: View {
             $0.set(value)
         }
         if changed {
-            Task { await library.setRating(updated.stars, for: asset.localIdentifier) }
+            library.setRating(updated.stars, for: asset.localIdentifier)
         }
         if advance { step(1) }
     }
@@ -538,7 +538,7 @@ struct CullView: View {
             $0.nudge(direction)
         }
         if changed {
-            Task { await library.setRating(updated.stars, for: asset.localIdentifier) }
+            library.setRating(updated.stars, for: asset.localIdentifier)
         }
     }
 
@@ -547,7 +547,7 @@ struct CullView: View {
         let marked = Review.upsert(assetID: asset.localIdentifier, in: context) {
             $0.markedForDeletion.toggle()
         }.markedForDeletion
-        Task { await library.setMarkedForDeletion(marked, for: [asset.localIdentifier]) }
+        library.setMarkedForDeletion(marked, for: [asset.localIdentifier])
         if advance { step(1) }
     }
 

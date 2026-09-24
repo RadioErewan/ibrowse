@@ -269,7 +269,7 @@ struct GridView: View {
                 $0.set(Double(String(key)) ?? 0)
             }
             if changed {
-                Task { await library.setRating(updated.stars, for: asset.localIdentifier) }
+                library.setRating(updated.stars, for: asset.localIdentifier)
             }
             move(1, in: shown)
             return .handled
@@ -277,7 +277,7 @@ struct GridView: View {
             let marked = Review.upsert(assetID: asset.localIdentifier, in: context) {
                 $0.markedForDeletion.toggle()
             }.markedForDeletion
-            Task { await library.setMarkedForDeletion(marked, for: [asset.localIdentifier]) }
+            library.setMarkedForDeletion(marked, for: [asset.localIdentifier])
             return .handled
         case "c", "C":
             compare(in: shown)
@@ -559,7 +559,7 @@ struct GridView: View {
         ) {
             Button("Mark \(targets.count)", role: .destructive) {
                 lastMarked = Review.mark(targets, deleted: true, in: context)
-                Task { await library.setMarkedForDeletion(true, for: targets) }
+                library.setMarkedForDeletion(true, for: targets)
             }
             Button("Cancel", role: .cancel) {}
         } message: {

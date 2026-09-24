@@ -414,7 +414,11 @@ struct RootView: View {
             }
         }
         .focusedSceneValue(\.reloadLibrary, { library.reload() })
-        .task { await library.start() }
+        .task {
+            // Przed `start()`, bo pierwsze wczytanie od razu podaje stan natywny.
+            library.onNativeSnapshot = { NativeSync.apply($0, in: context) }
+            await library.start()
+        }
         // Rozejrzenie się po folderze wymiany jest darmowe — czyta same daty
         // plików, nie ich zawartość — a odpowiada na pytanie „czy drugie
         // urządzenie ma nowszą pracę", którego aplikacja dotąd nie umiała zadać.

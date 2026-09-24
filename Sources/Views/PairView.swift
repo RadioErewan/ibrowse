@@ -307,10 +307,10 @@ struct PairView: View {
         // Piszemy natywnie tylko wtedy, gdy naprawdę przeskoczyła, z tego
         // samego powodu co w `Review.upsertRating`.
         if winner.stars != winnerStarsBefore {
-            Task { await library.setRating(winner.stars, for: winnerID) }
+            library.setRating(winner.stars, for: winnerID)
         }
         if loser.stars != loserStarsBefore {
-            Task { await library.setRating(loser.stars, for: loserID) }
+            library.setRating(loser.stars, for: loserID)
         }
 
         current.championID = winnerID

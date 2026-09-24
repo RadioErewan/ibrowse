@@ -94,28 +94,35 @@ final class PhotoLibrary: ObservableObject {
         self.observer = observer
     }
 
-    /// Przeładowanie **tylko przy zmianie zestawu** zdjęć. Własne zapisy
+    /// Przeładowanie listy **tylko przy zmianie zestawu** zdjęć. Własne zapisy
     /// aplikacji — gwiazdka, album do skasowania — też przychodzą tu jako
     /// zmiana, i przy każdym `X` przeładowanie 25 tysięcy zdjęć zabiłoby tempo
-    /// oceniania. Zmiana samej treści zdjęcia to `changedIndexes`: pomijamy.
+    /// oceniania. Zmiana treści (`changedObjects`, np. gwiazdka) i albumu idzie
+    /// tylko do odczytu stanu natywnego, bez przebudowy listy.
     private func libraryDidChange(_ change: PHChange) {
-        guard let current = fetchResult,
-              let details = change.changeDetails(for: current) else { return }
-        fetchResult = details.fetchResultAfterChanges
+        var changed: [PHAsset] = []
+        if let current = fetchResult, let details = change.changeDetails(for: current) {
+            fetchResult = details.fetchResultAfterChanges
 
-        let setChanged = !details.hasIncrementalChanges
-            || (details.insertedIndexes?.count ?? 0) > 0
-            || (details.removedIndexes?.count ?? 0) > 0
-        guard setChanged else { return }
-
-        // Synchronizacja przywozi zmiany seriami — jedno przeładowanie po
-        // ustaniu, nie po każdej.
-        pendingReload?.cancel()
-        pendingReload = Task {
-            try? await Task.sleep(for: .milliseconds(500))
-            guard !Task.isCancelled, let result = fetchResult else { return }
-            rebuild(from: result)
+            let setChanged = !details.hasIncrementalChanges
+                || (details.insertedIndexes?.count ?? 0) > 0
+                || (details.removedIndexes?.count ?? 0) > 0
+            if setChanged {
+                // Synchronizacja przywozi zmiany seriami — jedno przeładowanie
+                // po ustaniu, nie po każdej. Przebudowa sama odczyta stan natywny.
+                pendingReload?.cancel()
+                pendingReload = Task {
+                    try? await Task.sleep(for: .milliseconds(500))
+                    guard !Task.isCancelled, let result = fetchResult else { return }
+                    rebuild(from: result)
+                }
+                return
+            }
+            changed = details.changedObjects
         }
+        // Także bez zmian w zdjęciach: dodanie do albumu nie zmienia samego
+        // zdjęcia, a to właśnie oznaczenie do skasowania.
+        emitNative(from: changed, isFull: false)
     }
 
     /// Ręczne odświeżenie obok obserwatora — na wypadek, gdyby powiadomienie
@@ -154,6 +161,55 @@ final class PhotoLibrary: ObservableObject {
             tally[calendar.component(.year, from: date), default: 0] += 1
         }
         years = tally.map { (year: $0.key, count: $0.value) }.sorted { $0.year < $1.year }
+
+        emitNative(from: collected, isFull: true)
+    }
+
+    // MARK: - Stan natywny: gwiazdki i album do skasowania
+
+    /// To, co Photos wie o decyzjach: gwiazdka i obecność w albumie do
+    /// skasowania. Stosuje go `NativeSync` — biblioteka nie ma dostępu do bazy
+    /// ocen, więc tylko podaje dalej.
+    struct NativeSnapshot {
+        /// Gwiazdki zbadanych zdjęć (0 = brak). Przy `isFull` — całej biblioteki.
+        var ratings: [String: Int]
+        var isFull: Bool
+        var deletionMarks: Set<String>
+    }
+
+    var onNativeSnapshot: ((NativeSnapshot) -> Void)?
+
+    /// Własne zapisy w drodze. Szybkie „4, potem 5" daje dwa powiadomienia,
+    /// i pierwsze — z gwiazdką 4 — przyszłoby, gdy ocena już wynosi 5. Bez tego
+    /// odczyt uznałby je za zmianę z zewnątrz i cofnął ocenę. Dopóki Photos
+    /// nie pokaże tego, co zapisaliśmy, zdjęcie jest pomijane.
+    private var intendedRatings: [String: Int] = [:]
+    private var intendedMarks: [String: Bool] = [:]
+
+    private func emitNative(from assets: [PHAsset], isFull: Bool) {
+        guard let onNativeSnapshot else { return }
+        var ratings: [String: Int] = [:]
+        for asset in assets {
+            let id = asset.localIdentifier
+            let native = asset.rating.rawValue
+            if let intended = intendedRatings[id] {
+                guard intended == native else { continue }
+                intendedRatings[id] = nil
+            }
+            ratings[id] = native
+        }
+
+        var marks = Self.deletionAlbumMembers()
+        for (id, intended) in intendedMarks {
+            if marks.contains(id) == intended {
+                intendedMarks[id] = nil
+            } else if intended {
+                marks.insert(id)
+            } else {
+                marks.remove(id)
+            }
+        }
+        onNativeSnapshot(NativeSnapshot(ratings: ratings, isFull: isFull, deletionMarks: marks))
     }
 
     /// Najlepszy wariant dostępny **bez sieci**, oddany natychmiast.
@@ -328,11 +384,37 @@ final class PhotoLibrary: ObservableObject {
     /// `isRated == true` („wyzerowana ocena", odróżniona od „nietknięta")
     /// zostaje wewnętrznym rozróżnieniem — na zewnątrz i tak nie da się go
     /// wyrazić inaczej niż brakiem gwiazdek.
-    func setRating(_ stars: Int, for assetID: String) async {
+    ///
+    /// **Synchroniczne z założenia.** Zamiar zapisu musi być znany w tej samej
+    /// chwili, w której zmienia się ocena w bazie. Wersja wołana przez `Task`
+    /// rejestrowała go chwilę później, a w tę lukę wpadało powiadomienie
+    /// o poprzednim zapisie: przy szybkim `-` z 3,25 gwiazdka 4 wracała jako
+    /// „zmiana z zewnątrz" i podbijała wagę do 4,0.
+    func setRating(_ stars: Int, for assetID: String) {
         guard let asset = asset(id: assetID) else { return }
         let rating = PHAsset.Rating(rawValue: stars) ?? .unset
-        try? await PHPhotoLibrary.shared().performChanges {
-            PHAssetChangeRequest(for: asset).rating = rating
+        intendedRatings[assetID] = rating.rawValue
+        enqueueWrite { [self] in
+            do {
+                try await PHPhotoLibrary.shared().performChanges {
+                    PHAssetChangeRequest(for: asset).rating = rating
+                }
+            } catch {
+                if intendedRatings[assetID] == rating.rawValue { intendedRatings[assetID] = nil }
+            }
+        }
+    }
+
+    /// Zapisy do Photos idą po kolei. Równoległe mogłyby dotrzeć w odwrotnej
+    /// kolejności — Photos zostałby przy 4, choć ostatnio zapisaliśmy 3 — a przy
+    /// oznaczeniach dwa szybkie `X` założyłyby dwa albumy o tej samej nazwie.
+    private var writeChain: Task<Void, Never>?
+
+    private func enqueueWrite(_ work: @escaping @MainActor () async -> Void) {
+        let previous = writeChain
+        writeChain = Task {
+            await previous?.value
+            await work()
         }
     }
 
@@ -375,24 +457,16 @@ final class PhotoLibrary: ObservableObject {
     /// widzi ją też w systemowych Zdjęciach. Kasowanie zostaje jedną, świadomą
     /// operacją w `DeletionReview`: jedno okno zgody na całą pulę.
     ///
-    /// **Niesprawdzone na macOS 27**: dawniej zmiany w albumach były ciche,
-    /// ale `isHidden` nauczyło, że z nagłówków SDK tego nie widać. Przed
-    /// uznaniem za gotowe: oznaczyć dwa zdjęcia pod rząd i patrzeć, czy system
-    /// nie pyta.
+    /// Sprawdzone na macOS 27: dwa oznaczenia pod rząd bez okna zgody. Po
+    /// `isHidden` wiadomo, że z nagłówków SDK tego nie widać — trzeba było
+    /// sprawdzić na żywo.
     static let deletionAlbumTitle = "lightbrary – to delete"
 
-    /// Kolejne oznaczenia idą po sobie, nie równolegle. Dwa szybkie `X` zanim
-    /// pierwszy zapis założy album dałyby inaczej dwa albumy o tej samej nazwie.
-    private var pendingMark: Task<Void, Never>?
-
-    func setMarkedForDeletion(_ marked: Bool, for assetIDs: [String]) async {
-        let previous = pendingMark
-        let task = Task {
-            await previous?.value
-            await self.applyMark(marked, for: assetIDs)
-        }
-        pendingMark = task
-        await task.value
+    /// Synchroniczne z tego samego powodu co `setRating`: zamiar musi być
+    /// znany od razu, a sam zapis idzie w kolejce za poprzednimi.
+    func setMarkedForDeletion(_ marked: Bool, for assetIDs: [String]) {
+        for id in assetIDs { intendedMarks[id] = marked }
+        enqueueWrite { [self] in await applyMark(marked, for: assetIDs) }
     }
 
     private func applyMark(_ marked: Bool, for assetIDs: [String]) async {
@@ -403,18 +477,32 @@ final class PhotoLibrary: ObservableObject {
         // urządzenia naraz), zdejmujemy ze wszystkich, a dokładamy do pierwszego.
         let albums = Self.deletionAlbums()
         if !marked && albums.isEmpty { return }
-        try? await PHPhotoLibrary.shared().performChanges {
-            if marked {
-                let request = albums.first.flatMap { PHAssetCollectionChangeRequest(for: $0) }
-                    ?? PHAssetCollectionChangeRequest.creationRequestForAssetCollection(
-                        withTitle: Self.deletionAlbumTitle)
-                request.addAssets(assets)
-            } else {
-                for album in albums {
-                    PHAssetCollectionChangeRequest(for: album)?.removeAssets(assets)
+        do {
+            try await PHPhotoLibrary.shared().performChanges {
+                if marked {
+                    let request = albums.first.flatMap { PHAssetCollectionChangeRequest(for: $0) }
+                        ?? PHAssetCollectionChangeRequest.creationRequestForAssetCollection(
+                            withTitle: Self.deletionAlbumTitle)
+                    request.addAssets(assets)
+                } else {
+                    for album in albums {
+                        PHAssetCollectionChangeRequest(for: album)?.removeAssets(assets)
+                    }
                 }
             }
+        } catch {
+            for id in assetIDs where intendedMarks[id] == marked { intendedMarks[id] = nil }
         }
+    }
+
+    private static func deletionAlbumMembers() -> Set<String> {
+        var members = Set<String>()
+        for album in deletionAlbums() {
+            PHAsset.fetchAssets(in: album, options: nil).enumerateObjects { asset, _, _ in
+                members.insert(asset.localIdentifier)
+            }
+        }
+        return members
     }
 
     private static func deletionAlbums() -> [PHAssetCollection] {

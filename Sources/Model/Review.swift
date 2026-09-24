@@ -115,6 +115,24 @@ extension Review {
         if !other.measures.isEmpty { measures = other.measures }
     }
 
+    /// Gwiazdka przeczytana z Photos. Jak `adoptFeatures` — **bez `updatedAt`
+    /// i bez liczby ocen**: to nie jest nowa decyzja, tylko ta sama, przywieziona
+    /// innym kanałem. Świeży znacznik kazałby jej wygrać przy scalaniu pliku
+    /// z dokładniejszą wagą (np. 4,25) postawioną na drugim urządzeniu.
+    ///
+    /// Waga zmienia się tylko przy niezgodności z gwiazdką — 3,75 przy
+    /// gwiazdce 4 zostaje 3,75.
+    func adoptNativeStars(_ stars: Int) {
+        if stars > 0 {
+            guard !isRated || self.stars != stars else { return }
+            weight = Double(stars)
+            isRated = true
+        } else if isRated, self.stars > 0 {
+            // Gwiazdka zdjęta w Photos: dla Apple to „bez oceny", nie „zero".
+            isRated = false
+        }
+    }
+
     func set(_ value: Double) {
         weight = min(max(value, Self.range.lowerBound), Self.range.upperBound)
         isRated = true

@@ -137,7 +137,7 @@ struct PreviewInspector: View {
                 let marked = Review.upsert(assetID: asset.localIdentifier, in: context) {
                     $0.markedForDeletion.toggle()
                 }.markedForDeletion
-                Task { await library.setMarkedForDeletion(marked, for: [asset.localIdentifier]) }
+                library.setMarkedForDeletion(marked, for: [asset.localIdentifier])
             }
 
             // Ocena zerowa to pięć zgaszonych gwiazdek, a wyzerowanie —
@@ -152,7 +152,7 @@ struct PreviewInspector: View {
                         assetID: asset.localIdentifier, in: context
                     ) { $0.set(clears ? 0 : Double(value)) }
                     if changed {
-                        Task { await library.setRating(updated.stars, for: asset.localIdentifier) }
+                        library.setRating(updated.stars, for: asset.localIdentifier)
                     }
                 }
             }
