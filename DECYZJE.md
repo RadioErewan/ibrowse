@@ -213,6 +213,11 @@ bibliotekę. Słowa kluczowe odpadają, bo PhotoKit ich nie zna.
 **Plik wymiany** przenosi całą resztę: dokładną wagę, liczbę ocen, odciski
 i stan turniejów.
 
+*Nieaktualne od września 2026:* albumy `★1…★5` zastąpiło `PHAsset.rating`,
+oznaczenie do skasowania jedzie albumem „lightbrary – to delete", a pliki
+wymiany są trzy (schemat 5). Stan obecny: „Podział: eksporter poza sklepem,
+przeglądarki w sklepie".
+
 Transportem jest **plik w folderze wskazanym przez użytkownika**, zwykle
 w iCloud Drive. CloudKit i własny kontener iCloud wymagają płatnego konta.
 Zwykły folder synchronizuje się sam, nic nie kosztuje i jest widoczny — można
@@ -664,6 +669,12 @@ pusty pomiar nie nadpisuje niczego.
 
 Rekord założony wyłącznie po to, by nieść cechy, ma `isRated == false` i nadal
 liczy się jako nieoceniony — filtry pytają o `isRated`, nie o istnienie wpisu.
+
+*Zastąpione w schemacie 5:* cechy nadal mieszkają lokalnie w `Review`, ale
+w transporcie mają własny plik `-features` i własne scalanie. Reguła „kto ma,
+ten daje" przestała być wyjątkiem w scalaniu ocen — jest po prostu zasadą
+scalania cech. Mac, który wczytał cechy przed tą wersją, nie napisze `-features`,
+dopóki nie wczyta ich ponownie („load measures").
 
 ### Gęsty skład przewraca wzorce pisane dla rzadkiego
 
@@ -1372,6 +1383,8 @@ tu nie chodzi o szybkość, tylko o przerywnik wymagający kliknięcia.
 
 Wycofane z gorącej ścieżki. `Review.markedForDeletion` zostaje jedynym
 kanałem tej informacji — jedzie naszym plikiem wymiany, bez okna zgody.
+*(Później zastąpione albumem „lightbrary – to delete" — dodanie do albumu
+okazało się ciche; z pliku oznaczenia wypadły w schemacie 5.)*
 Sama funkcja `PhotoLibrary.setHidden` zostaje w kodzie: mogłaby się przydać
 jako jedna, świadoma, zbiorcza operacja przy rzadkiej, jawnej okazji (np.
 w `DeletionReview`, gdzie i tak pyta się o zgodę na kasowanie) — tam jedno

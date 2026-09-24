@@ -107,7 +107,8 @@ enum SyncFolder {
     /// zgodność z tym, co już leży w folderze wymiany.
     private static var stem: String { "ibrowse-\(deviceID)" }
 
-    /// **Dwa pliki, nie jeden.** W jednym wspólnym pliku odciski ważyły
+    /// **Osobne pliki, nie jeden** (od schematu 5 trzy — patrz `featuresFileName`).
+    /// W jednym wspólnym pliku odciski ważyły
     /// 92% z 56 MB, a oceny — to, co realnie zmienia się przy każdej sesji
     /// oceniania — zaledwie 5%. Telefon płacił pełną cenę pliku za każdym
     /// razem, żeby dostać ułamek, który go obchodzi.

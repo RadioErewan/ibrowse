@@ -31,15 +31,13 @@ final class Review {
 
     // MARK: - Cechy policzone przez system
     //
-    // Doklejone do oceny, a nie trzymane osobno, **żeby pojechały istniejącą
-    // rurą**. Plik wymiany wozi już oceny po identyfikatorach chmurowych, więc
-    // cecha dopisana tutaj trafia na telefon bez nowej tabeli i bez drugiej
-    // ścieżki scalania. Osobny model kosztowałby jedno i drugie.
+    // Lokalnie mieszkają w tym samym rekordzie co ocena, ale **w transporcie
+    // już nie**: od schematu 5 jadą osobnym plikiem `-features` i scala je
+    // `mergeFeatures`, bez reguły „wygrywa nowszy".
     //
     // Żadna z tych liczb **nie jest decyzją** — wszystkie pochodzą z baz
-    // systemu na macOS. Dlatego przy scalaniu nie biorą udziału w regule
-    // „wygrywa nowszy": patrz `mergeRatings`. Rekord założony wyłącznie po to,
-    // by je nieść, ma `isRated == false` i nadal liczy się jako nieoceniony.
+    // systemu na macOS. Rekord założony wyłącznie po to, by je nieść, ma
+    // `isRated == false` i nadal liczy się jako nieoceniony.
     //
     // Zero znaczy **brak pomiaru**, nie wynik zerowy — system analizuje
     // bibliotekę w tle i część zdjęć zawsze czeka w kolejce.
@@ -98,24 +96,7 @@ extension Review {
         sharpness > 0 || exposure > 0 || faces > 0 || isScreenshot || !measures.isEmpty
     }
 
-    /// Przepisuje cechy z drugiego urządzenia.
-    ///
-    /// Osobno od oceny i **bez dotykania `updatedAt`**, bo to nie jest zmiana,
-    /// którą ktokolwiek zrobił — to ten sam pomiar systemu, tylko przywieziony.
-    /// Wpisanie go jako świeżej zmiany kazałoby mu wygrać z prawdziwą oceną
-    /// postawioną w międzyczasie na drugim urządzeniu.
-    func adoptFeatures(from other: Review) {
-        guard other.hasFeatures else { return }
-        sharpness = other.sharpness
-        exposure = other.exposure
-        faces = other.faces
-        eyesClosed = other.eyesClosed
-        smiles = other.smiles
-        isScreenshot = other.isScreenshot
-        if !other.measures.isEmpty { measures = other.measures }
-    }
-
-    /// Gwiazdka przeczytana z Photos. Jak `adoptFeatures` — **bez `updatedAt`
+    /// Gwiazdka przeczytana z Photos. Jak cechy w `mergeFeatures` — **bez `updatedAt`
     /// i bez liczby ocen**: to nie jest nowa decyzja, tylko ta sama, przywieziona
     /// innym kanałem. Świeży znacznik kazałby jej wygrać przy scalaniu pliku
     /// z dokładniejszą wagą (np. 4,25) postawioną na drugim urządzeniu.

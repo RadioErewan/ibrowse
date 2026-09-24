@@ -4,11 +4,14 @@ import SwiftUI
 
 /// Scala pracę wykonaną na różnych urządzeniach.
 ///
-/// Albumy Photos przenoszą **gwiazdkę** i są widoczne w systemowych Zdjęciach,
-/// ale gubią wszystko, co czyni to narzędzie użytecznym: dokładną wagę, liczbę
-/// ocen, odciski wizualne i stan turniejów. Plik wymiany przenosi całość.
+/// Photos przenosi sam **gwiazdkę** (`PHAsset.rating`) i **oznaczenie do
+/// skasowania** (album) — patrz `NativeSync`. Pliki wymiany niosą resztę:
+/// dokładną wagę, liczbę ocen, stan turniejów, odciski i cechy.
 ///
 /// Zasady scalania są różne dla każdego rodzaju danych, bo różnie się psują:
+///
+/// - **Cechy** to pomiar systemu, nie decyzja: bez straży czasu, pusty
+///   pomiar nie nadpisuje niczego, wygrywa najnowszy plik.
 ///
 /// - **Odciski** są deterministyczne — ten sam model Vision na tym samym
 ///   zdjęciu daje ten sam wektor. Więc dowolny jest równie dobry i bierzemy
@@ -480,11 +483,11 @@ final class LibrarySync: ObservableObject {
 
     // MARK: - Zapis
 
-    /// **Dwa pliki, dwa tempa.** Oceny i werdykty wypisujemy zawsze — lekkie,
-    /// zmieniają się przy każdej sesji. Odciski wypisujemy **tylko wtedy, gdy
-    /// się zmieniły** — patrz `exportFingerprints`. To jest cały sens
-    /// rozdziału: telefon nie płaci już pełnej ceny 50 MB za każdą sesję
-    /// oceniania, tylko za odciski przenosi się kilka kilobajtów wagi i ocen.
+    /// **Trzy pliki, trzy tempa.** Decyzje wypisujemy zawsze — lekkie,
+    /// zmieniają się przy każdej sesji. Odciski i cechy **tylko wtedy, gdy się
+    /// zmieniły** (albo zniknęły z folderu) — patrz `exportFingerprints`
+    /// i `exportFeatures`. Telefon nie płaci pełnej ceny 50 MB za każdą sesję
+    /// oceniania, tylko kilka kilobajtów decyzji.
     private func export(
         context: ModelContext, to folder: URL, translating toCloud: [String: String]
     ) async throws {

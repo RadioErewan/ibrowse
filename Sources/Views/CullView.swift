@@ -31,7 +31,7 @@ struct CullView: View {
     @Environment(\.modelContext) private var context
     /// Tylko rekordy niosące **decyzję**, nie wszystkie.
     ///
-    /// Odkąd cechy systemu jadą w ocenie, rekordów jest tyle, co zdjęć —
+    /// Odkąd cechy systemu mieszkają w `Review`, rekordów jest tyle, co zdjęć —
     /// 25 tysięcy zamiast pół tysiąca. Ocenianie nie potrzebuje ani jednego
     /// z tych pustych: pyta o gwiazdki i o zaznaczenie do usunięcia. Bez tego
     /// zawężenia każde naciśnięcie klawisza przebudowywało słownik 25 tysięcy

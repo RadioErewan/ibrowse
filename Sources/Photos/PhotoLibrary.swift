@@ -429,8 +429,8 @@ final class PhotoLibrary: ObservableObject {
     /// oznaczenie do usunięcia** — próba (X w GridView/CullView/Preview
     /// Inspector, zbiorcze oznaczenie) przerywała klawiaturowe ocenianie
     /// oknem systemowym po każdym kliknięciu, co zabija cały sens szybkiego
-    /// przechodzenia przez archiwum. `Review.markedForDeletion` zostaje
-    /// jedynym kanałem — jedzie naszym plikiem wymiany, bez okna zgody.
+    /// przechodzenia przez archiwum. Oznaczenie jedzie zamiast tego albumem
+    /// „lightbrary – to delete" — patrz `setMarkedForDeletion`.
     ///
     /// Funkcja zostaje, bo działa i może się przydać w innej roli: jako
     /// **jedna, świadoma, zbiorcza operacja** wywoływana rzadko (na przykład
