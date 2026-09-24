@@ -532,6 +532,8 @@ final class MetadataIndex: ObservableObject {
 /// synchronizacją na telefon, gdzie tych baz nie ma.
 @MainActor
 final class FeatureImport: ObservableObject {
+    static let importedAtKey = "features.importedAt"
+
     @Published private(set) var isWorking = false
     @Published private(set) var summary: String?
 
@@ -583,6 +585,9 @@ final class FeatureImport: ObservableObject {
         }
 
         try? context.save()
+        // Znacznik dla synchronizacji: plik `-features` pisze tylko urządzenie,
+        // które cechy policzyło samo — nie to, które je tylko dostało.
+        UserDefaults.standard.set(Date.now, forKey: FeatureImport.importedAtKey)
         summary = "Loaded measures for \(touched) photos."
     }
 }

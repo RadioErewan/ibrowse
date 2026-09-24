@@ -39,23 +39,40 @@ struct SyncFile {
     /// prostu ich nie niesie, a przy ścisłej równości telefon ze starszą wersją
     /// i Mac z nowszą przestawały się widzieć, dopóki oba nie dostały
     /// aktualizacji.
-    static let schema = 4
-    static let readable = 3...4
+    /// Wersja 5: **decyzje osobno od danych wygenerowanych.** Tabela ocen niesie
+    /// już tylko decyzje; cechy mają własną tabelę i własny plik (`-features`),
+    /// a oznaczenia do skasowania wypadły — jedzie nimi album w Photos. Patrz
+    /// DECYZJE.md, „Pliki wymiany: wygenerowane osobno od decyzji".
+    ///
+    /// Od wersji 5 obowiązuje **zgodność w przód**. Plik niesie `minReader` —
+    /// najstarszą wersję czytnika, która go zrozumie — a kolumny czytamy po
+    /// nazwie: nieznane pomijamy, brakujące dostają wartość domyślną. Dopisanie
+    /// kolumny nie wymaga więc podbicia `minReader`; tylko zerwanie zgodności.
+    /// To jest warunek podziału na osobno wydawane programy: przeglądarka ze
+    /// sklepu nie może oślepnąć, gdy eksporter z GitHuba dołoży pole.
+    static let schema = 5
+    static let minReader = 5
+    /// Najnowsza wersja, którą ten czytnik rozumie.
+    static let readerVersion = 5
+    /// Starszych nie czytamy wcale: do wersji 2 identyfikatory były lokalne.
+    static let oldestReadable = 3
     static let fileExtension = "ibsync"
 
     // MARK: - Przenoszone dane
 
+    /// Sama decyzja. Scalana regułą „wygrywa nowszy" po `updatedAt`.
     struct Rating: Sendable {
         var assetID: String
         var weight: Double
         var isRated: Bool
         var judgements: Int
-        var markedForDeletion: Bool
         var updatedAt: Date
+    }
 
-        /// Cechy policzone przez system. Jadą w ocenie, ale **nie są oceną** —
-        /// przy scalaniu omijają regułę „wygrywa nowszy". Zero znaczy „nie
-        /// policzono", więc puste pole nigdy nie kasuje cudzego pomiaru.
+    /// Cechy policzone przez system — **nie decyzja**, więc bez `updatedAt`.
+    /// Zero znaczy „nie policzono": pusty pomiar nigdy nie kasuje cudzego.
+    struct Features: Sendable {
+        var assetID: String
         var sharpness: Double = 0
         var exposure: Double = 0
         var faces: Int = 0
@@ -63,6 +80,10 @@ struct SyncFile {
         var smiles: Int = 0
         var isScreenshot: Bool = false
         var measures: Data = Data()
+
+        var carriesAnything: Bool {
+            sharpness > 0 || exposure > 0 || faces > 0 || isScreenshot || !measures.isEmpty
+        }
     }
 
     struct Print: Sendable {
@@ -87,6 +108,7 @@ struct SyncFile {
 
     struct Payload: Sendable {
         var ratings: [Rating] = []
+        var features: [Features] = []
         var prints: [Print] = []
         var verdicts: [Verdict] = []
         var writtenAt: Date = .now
@@ -122,10 +144,10 @@ struct SyncFile {
             PRAGMA journal_mode=OFF;
             CREATE TABLE meta(key TEXT PRIMARY KEY, value TEXT);
             CREATE TABLE rating(assetID TEXT PRIMARY KEY, weight REAL, isRated INT,
-                                judgements INT, marked INT, updatedAt REAL,
-                                sharpness REAL, exposure REAL, faces INT,
-                                eyesClosed INT, smiles INT, screenshot INT,
-                                measures BLOB);
+                                judgements INT, updatedAt REAL);
+            CREATE TABLE feature(assetID TEXT PRIMARY KEY, sharpness REAL, exposure REAL,
+                                 faces INT, eyesClosed INT, smiles INT, screenshot INT,
+                                 measures BLOB);
             CREATE TABLE print(assetID TEXT PRIMARY KEY, vector BLOB, takenAt REAL);
             CREATE TABLE verdict(key TEXT PRIMARY KEY, resolvedAt REAL, wasRejected INT,
                                  championID TEXT, challengerIndex INT);
@@ -133,6 +155,7 @@ struct SyncFile {
 
         exec(db, "BEGIN")
         insertMeta(db, "schema", String(schema))
+        insertMeta(db, "minReader", String(minReader))
         insertMeta(db, "writtenAt", String(payload.writtenAt.timeIntervalSince1970))
         insertMeta(db, "device", payload.deviceName)
 
@@ -140,23 +163,27 @@ struct SyncFile {
         // Pierwsza wersja przygotowywała je w pętli i zapis 25 tysięcy
         // odcisków trwał pół minuty — to nie dysk był wąskim gardłem, tylko
         // dwadzieścia pięć tysięcy kompilacji tego samego SQL-a.
-        repeating(db, "INSERT OR REPLACE INTO rating VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?)", payload.ratings) {
+        repeating(db, "INSERT OR REPLACE INTO rating VALUES(?,?,?,?,?)", payload.ratings) {
             statement, rating in
             bind(statement, 1, rating.assetID)
             sqlite3_bind_double(statement, 2, rating.weight)
             sqlite3_bind_int(statement, 3, rating.isRated ? 1 : 0)
             sqlite3_bind_int(statement, 4, Int32(rating.judgements))
-            sqlite3_bind_int(statement, 5, rating.markedForDeletion ? 1 : 0)
-            sqlite3_bind_double(statement, 6, rating.updatedAt.timeIntervalSince1970)
-            sqlite3_bind_double(statement, 7, rating.sharpness)
-            sqlite3_bind_double(statement, 8, rating.exposure)
-            sqlite3_bind_int(statement, 9, Int32(rating.faces))
-            sqlite3_bind_int(statement, 10, Int32(rating.eyesClosed))
-            sqlite3_bind_int(statement, 11, Int32(rating.smiles))
-            sqlite3_bind_int(statement, 12, rating.isScreenshot ? 1 : 0)
-            _ = rating.measures.withUnsafeBytes { raw in
+            sqlite3_bind_double(statement, 5, rating.updatedAt.timeIntervalSince1970)
+        }
+
+        repeating(db, "INSERT OR REPLACE INTO feature VALUES(?,?,?,?,?,?,?,?)", payload.features) {
+            statement, features in
+            bind(statement, 1, features.assetID)
+            sqlite3_bind_double(statement, 2, features.sharpness)
+            sqlite3_bind_double(statement, 3, features.exposure)
+            sqlite3_bind_int(statement, 4, Int32(features.faces))
+            sqlite3_bind_int(statement, 5, Int32(features.eyesClosed))
+            sqlite3_bind_int(statement, 6, Int32(features.smiles))
+            sqlite3_bind_int(statement, 7, features.isScreenshot ? 1 : 0)
+            _ = features.measures.withUnsafeBytes { raw in
                 sqlite3_bind_blob(
-                    statement, 13, raw.baseAddress, Int32(rating.measures.count),
+                    statement, 8, raw.baseAddress, Int32(features.measures.count),
                     unsafeBitCast(-1, to: sqlite3_destructor_type.self)
                 )
             }
@@ -212,9 +239,12 @@ struct SyncFile {
         }
         defer { sqlite3_close(db) }
 
+        // Pliki sprzed wersji 5 nie niosą `minReader`; wtedy wymagają czytnika
+        // co najmniej w swojej wersji, co ten spełnia.
         guard let raw = meta(db, "schema"), let version = Int(raw),
-              readable.contains(version) else { return nil }
-        let hasMeasures = version >= 4
+              version >= oldestReadable else { return nil }
+        let required = meta(db, "minReader").flatMap(Int.init) ?? version
+        guard required <= readerVersion else { return nil }
 
         var payload = Payload()
         payload.deviceName = meta(db, "device") ?? "?"
@@ -222,49 +252,94 @@ struct SyncFile {
             payload.writtenAt = Date(timeIntervalSince1970: seconds)
         }
 
-        query(db, """
-            SELECT assetID, weight, isRated, judgements, marked, updatedAt,
-                   sharpness, exposure, faces, eyesClosed, smiles, screenshot\(hasMeasures ? ", measures" : "")
-            FROM rating
-            """) {
+        let featureColumns = ["sharpness", "exposure", "faces", "eyesClosed", "smiles",
+                              "screenshot", "measures"]
+
+        rows(db, "rating", ["assetID", "weight", "isRated", "judgements", "updatedAt"]
+             + featureColumns) { row in
+            let id = row.text("assetID") ?? ""
             payload.ratings.append(Rating(
-                assetID: text($0, 0) ?? "",
-                weight: sqlite3_column_double($0, 1),
-                isRated: sqlite3_column_int($0, 2) != 0,
-                judgements: Int(sqlite3_column_int($0, 3)),
-                markedForDeletion: sqlite3_column_int($0, 4) != 0,
-                updatedAt: Date(timeIntervalSince1970: sqlite3_column_double($0, 5)),
-                sharpness: sqlite3_column_double($0, 6),
-                exposure: sqlite3_column_double($0, 7),
-                faces: Int(sqlite3_column_int($0, 8)),
-                eyesClosed: Int(sqlite3_column_int($0, 9)),
-                smiles: Int(sqlite3_column_int($0, 10)),
-                isScreenshot: sqlite3_column_int($0, 11) != 0,
-                measures: hasMeasures ? blob($0, 12) : Data()
+                assetID: id,
+                weight: row.double("weight"),
+                isRated: row.int("isRated") != 0,
+                judgements: row.int("judgements"),
+                updatedAt: Date(timeIntervalSince1970: row.double("updatedAt"))
             ))
+            // Do wersji 4 cechy jechały w tabeli ocen. Urządzenie jeszcze
+            // niezaktualizowane dalej je wnosi.
+            let legacy = Features(row: row, assetID: id)
+            if legacy.carriesAnything { payload.features.append(legacy) }
         }
 
-        query(db, "SELECT assetID, vector, takenAt FROM print") { statement in
-            guard let bytes = sqlite3_column_blob(statement, 1) else { return }
-            let count = Int(sqlite3_column_bytes(statement, 1))
+        rows(db, "feature", ["assetID"] + featureColumns) { row in
+            let features = Features(row: row, assetID: row.text("assetID") ?? "")
+            if features.carriesAnything { payload.features.append(features) }
+        }
+
+        rows(db, "print", ["assetID", "vector", "takenAt"]) { row in
+            let vector = row.blob("vector")
+            guard !vector.isEmpty else { return }
             payload.prints.append(Print(
-                assetID: text(statement, 0) ?? "",
-                vector: Data(bytes: bytes, count: count),
-                takenAt: Date(timeIntervalSince1970: sqlite3_column_double(statement, 2))
+                assetID: row.text("assetID") ?? "",
+                vector: vector,
+                takenAt: Date(timeIntervalSince1970: row.double("takenAt"))
             ))
         }
 
-        query(db, "SELECT key, resolvedAt, wasRejected, championID, challengerIndex FROM verdict") {
+        rows(db, "verdict", ["key", "resolvedAt", "wasRejected", "championID", "challengerIndex"]) { row in
             payload.verdicts.append(Verdict(
-                key: text($0, 0) ?? "",
-                resolvedAt: sqlite3_column_type($0, 1) == SQLITE_NULL
-                    ? nil : Date(timeIntervalSince1970: sqlite3_column_double($0, 1)),
-                wasRejected: sqlite3_column_int($0, 2) != 0,
-                championID: text($0, 3),
-                challengerIndex: Int(sqlite3_column_int($0, 4))
+                key: row.text("key") ?? "",
+                resolvedAt: row.isNull("resolvedAt")
+                    ? nil : Date(timeIntervalSince1970: row.double("resolvedAt")),
+                wasRejected: row.int("wasRejected") != 0,
+                championID: row.text("championID"),
+                challengerIndex: row.int("challengerIndex")
             ))
         }
         return payload
+    }
+
+    // MARK: - Odczyt po nazwie kolumny
+
+    /// Wiersz czytany **po nazwie**. Kolumna, której w pliku nie ma, daje
+    /// wartość domyślną; kolumny, o które nie pytamy, po prostu nie istnieją
+    /// dla czytnika. Na tym stoi zgodność w przód.
+    fileprivate struct Row {
+        let statement: OpaquePointer?
+        let index: [String: Int32]
+
+        func double(_ column: String) -> Double {
+            index[column].map { sqlite3_column_double(statement, $0) } ?? 0
+        }
+        func int(_ column: String) -> Int {
+            index[column].map { Int(sqlite3_column_int64(statement, $0)) } ?? 0
+        }
+        func text(_ column: String) -> String? {
+            index[column].flatMap { SyncFile.text(statement, $0) }
+        }
+        func blob(_ column: String) -> Data {
+            index[column].map { SyncFile.blob(statement, $0) } ?? Data()
+        }
+        func isNull(_ column: String) -> Bool {
+            index[column].map { sqlite3_column_type(statement, $0) == SQLITE_NULL } ?? true
+        }
+    }
+
+    /// Pyta tylko o kolumny, które plik faktycznie ma. Nazwy tabel i kolumn to
+    /// stałe z kodu, nigdy dane z pliku.
+    private static func rows(
+        _ db: OpaquePointer?, _ table: String, _ wanted: [String], _ body: (Row) -> Void
+    ) {
+        var present = Set<String>()
+        query(db, "PRAGMA table_info(\(table))") { statement in
+            if let name = text(statement, 1) { present.insert(name) }
+        }
+        let used = wanted.filter(present.contains)
+        guard !used.isEmpty else { return }
+
+        let sql = "SELECT " + used.map { "\"\($0)\"" }.joined(separator: ", ") + " FROM \(table)"
+        let index = Dictionary(uniqueKeysWithValues: used.enumerated().map { ($1, Int32($0)) })
+        query(db, sql) { body(Row(statement: $0, index: index)) }
     }
 
     // MARK: - Drobiazgi SQLite
@@ -337,6 +412,21 @@ struct SyncFile {
         if sqlite3_step(statement) == SQLITE_ROW { found = text(statement, 0) }
         sqlite3_finalize(statement)
         return found
+    }
+}
+
+fileprivate extension SyncFile.Features {
+    init(row: SyncFile.Row, assetID: String) {
+        self.init(
+            assetID: assetID,
+            sharpness: row.double("sharpness"),
+            exposure: row.double("exposure"),
+            faces: row.int("faces"),
+            eyesClosed: row.int("eyesClosed"),
+            smiles: row.int("smiles"),
+            isScreenshot: row.int("screenshot") != 0,
+            measures: row.blob("measures")
+        )
     }
 }
 

@@ -120,6 +120,22 @@ enum SyncFolder {
     /// — patrz `LibrarySync.exportFingerprints`.
     static var ratingsFileName: String { "\(stem)-ratings.\(SyncFile.fileExtension)" }
     static var fingerprintsFileName: String { "\(stem)-fingerprints.\(SyncFile.fileExtension)" }
+
+    /// Trzeci plik: cechy z baz Photos. Pisze go tylko Mac, który sam je
+    /// policzył — dziś aplikacja, docelowo eksporter.
+    static var featuresFileName: String { "\(stem)-features.\(SyncFile.fileExtension)" }
+
+    static var ownFileNames: Set<String> { [ratingsFileName, fingerprintsFileName, featuresFileName] }
+
+    /// Czy plik leży w folderze — także jako nieściągnięty znacznik iCloud
+    /// (`.nazwa.icloud`). Pliki zapisywane tylko przy zmianie treści muszą
+    /// wrócić, gdy ktoś je skasuje; inaczej po wyczyszczeniu folderu odciski
+    /// i cechy nie pojawiłyby się już nigdy.
+    static func contains(_ name: String, in folder: URL) -> Bool {
+        let manager = FileManager.default
+        return manager.fileExists(atPath: folder.appending(path: name).path)
+            || manager.fileExists(atPath: folder.appending(path: ".\(name).icloud").path)
+    }
 }
 
 #if os(iOS)

@@ -58,8 +58,8 @@ final class LibrarySync: ObservableObject {
         guard let folder = SyncFolder.resolve() else { return }
         defer { folder.release() }
 
-        // Dwa własne pliki teraz, nie jeden — patrz komentarz w `SyncFolder`.
-        let mine: Set<String> = [SyncFolder.ratingsFileName, SyncFolder.fingerprintsFileName]
+        // Własne pliki — patrz komentarz w `SyncFolder`.
+        let mine = SyncFolder.ownFileNames
         let source = folder.url
         let seen = lastRead
 
@@ -124,7 +124,7 @@ final class LibrarySync: ObservableObject {
         // mieć 50 MB i przy pierwszym razie musi się dopiero ściągnąć z chmury.
         // Na głównym wątku zamroziłoby to okno na cały ten czas.
         let source = folder.url
-        let mine: Set<String> = [SyncFolder.ratingsFileName, SyncFolder.fingerprintsFileName]
+        let mine = SyncFolder.ownFileNames
         let report: @Sendable (String) -> Void = { [weak self] text in
             Task { @MainActor in self?.stage = text }
         }
@@ -138,6 +138,8 @@ final class LibrarySync: ObservableObject {
         }.value
 
         var ratings = 0
+        // Zbiór, nie licznik: te same cechy przychodzą z kilku plików naraz.
+        var features = Set<String>()
         var prints = 0
         var verdicts = 0
 
@@ -156,8 +158,11 @@ final class LibrarySync: ObservableObject {
         for (local, cloud) in toCloud { toLocal[cloud] = local }
 
         stage = "merging ratings and fingerprints…"
-        for payload in incoming {
+        // Od najstarszego pliku do najnowszego: przy cechach wygrywa ostatni
+        // zastosowany, a to ma być pomiar najświeższy.
+        for payload in incoming.sorted(by: { $0.writtenAt < $1.writtenAt }) {
             ratings += mergeRatings(payload.ratings, translating: toLocal, into: context)
+            features.formUnion(mergeFeatures(payload.features, translating: toLocal, into: context))
             prints += mergePrints(payload.prints, translating: toLocal, into: context)
         }
 
@@ -190,20 +195,23 @@ final class LibrarySync: ObservableObject {
             summary = "Found no files from other devices. Wrote mine."
             noteRead()
         } else {
-            let offered = incoming.reduce(into: (0, 0, 0)) { total, payload in
-                total.0 += payload.ratings.count
+            let offered = incoming.reduce(into: (0, 0, 0, 0)) { total, payload in
+                // Bez wierszy ze starych plików, które niosły tylko cechy.
+                total.0 += payload.ratings.filter { $0.isRated || $0.judgements > 0 }.count
                 total.1 += payload.prints.count
                 total.2 += payload.verdicts.count
+                total.3 += payload.features.count
             }
             let names = incoming.map(\.deviceName).joined(separator: ", ")
             let localPrints = ((try? context.fetch(FetchDescriptor<Fingerprint>())) ?? []).count
 
             noteRead()
             summary = """
-                Z \(incoming.count) pliku (\(names)): \(offered.0) ocen, \
-                \(offered.1) odcisków, \(offered.2) serii.
-                Nowe u mnie: \(ratings) ocen, \(prints) odcisków, \(verdicts) serii.
-                Mam łącznie \(localPrints) odcisków\(orphans > 0 ? ", removed \(orphans) orphans" : "").
+                From \(incoming.count) \(incoming.count == 1 ? "file" : "files") (\(names)): \
+                \(offered.0) ratings, \(offered.1) fingerprints, \(offered.2) bursts, \(offered.3) measures.
+                Changed here: \(ratings) ratings, \(prints) fingerprints, \(verdicts) bursts, \
+                \(features.count) photos' measures.
+                \(localPrints) fingerprints in total\(orphans > 0 ? ", removed \(orphans) orphans" : "").
                 """
         }
     }
@@ -328,32 +336,17 @@ final class LibrarySync: ObservableObject {
         var changed = 0
 
         for entry in remote {
+            // Wiersze ze starych plików, które istniały tylko po to, żeby nieść
+            // cechy (nigdy nieocenione). Cechy wyjął już odczyt; decyzji tu nie ma.
+            guard entry.isRated || entry.judgements > 0 else { continue }
             // Brak tłumaczenia znaczy, że tego zdjęcia tu nie ma — nie jest to
             // błąd, tylko inny stan biblioteki. Pomijamy w ciszy.
             guard let assetID = toLocal[entry.assetID] else { continue }
 
+            // Oznaczenia do skasowania **nie** jadą tą drogą — tylko albumem
+            // w Photos. Plik „wygrywa nowszy" potrafiłby oznaczyć z powrotem
+            // zdjęcie wyjęte z albumu, bo odczyt z Photos nie rusza `updatedAt`.
             if let existing = index[assetID] {
-                // Cechy **przed** strażą czasu i niezależnie od niej.
-                //
-                // To pomiar systemu, nie decyzja, więc nie ma czego rozstrzygać
-                // po czasie. Gdyby jechały razem z oceną, Mac wysyłałby tysiące
-                // pustych ocen ze świeżą datą, a każda taka — będąc nowszą —
-                // skasowałaby ocenę postawioną wcześniej na telefonie. Zamiast
-                // tego obowiązuje „kto ma, ten daje": pusty pomiar nie nadpisuje
-                // niczego, a niepusty uzupełnia brak.
-                if !entry.measures.isEmpty {
-                    existing.measures = entry.measures
-                }
-                if entry.sharpness > 0 || entry.exposure > 0
-                    || entry.faces > 0 || entry.isScreenshot {
-                    existing.sharpness = entry.sharpness
-                    existing.exposure = entry.exposure
-                    existing.faces = entry.faces
-                    existing.eyesClosed = entry.eyesClosed
-                    existing.smiles = entry.smiles
-                    existing.isScreenshot = entry.isScreenshot
-                }
-
                 guard entry.updatedAt > existing.updatedAt else { continue }
                 // Przypisujemy wprost, a nie przez `set()`: tamto podbiłoby
                 // licznik ocen i datę, czyli policzyłoby przepisanie cudzej
@@ -361,26 +354,64 @@ final class LibrarySync: ObservableObject {
                 existing.weight = entry.weight
                 existing.isRated = entry.isRated
                 existing.judgements = max(existing.judgements, entry.judgements)
-                existing.markedForDeletion = entry.markedForDeletion
                 existing.updatedAt = entry.updatedAt
             } else {
                 let fresh = Review(assetID: assetID)
                 fresh.weight = entry.weight
                 fresh.isRated = entry.isRated
                 fresh.judgements = entry.judgements
-                fresh.markedForDeletion = entry.markedForDeletion
                 fresh.updatedAt = entry.updatedAt
-                fresh.sharpness = entry.sharpness
-                fresh.exposure = entry.exposure
-                fresh.faces = entry.faces
-                fresh.eyesClosed = entry.eyesClosed
-                fresh.smiles = entry.smiles
-                fresh.isScreenshot = entry.isScreenshot
-                fresh.measures = entry.measures
                 context.insert(fresh)
                 index[assetID] = fresh
             }
             changed += 1
+        }
+        return changed
+    }
+
+    /// Cechy to pomiar systemu, nie decyzja — **bez straży czasu**. Pusty
+    /// pomiar nie nadpisuje niczego (zero znaczy „nie policzono"), a przy kilku
+    /// plikach wygrywa ostatni zastosowany, czyli najnowszy — patrz kolejność
+    /// w `synchronise`. Od kiedy cechy mają własny plik, nie mieszają się
+    /// z oceną i nie potrzebują dawnego wyjątku od reguły „wygrywa nowszy".
+    /// Zwraca zdjęcia, w których coś się **faktycznie zmieniło** — przepisanie
+    /// tej samej wartości z kolejnego pliku to nie nowość, a raport ma mówić
+    /// prawdę.
+    private func mergeFeatures(
+        _ remote: [SyncFile.Features], translating toLocal: [String: String],
+        into context: ModelContext
+    ) -> Set<String> {
+        guard !remote.isEmpty else { return [] }
+        let local = ((try? context.fetch(FetchDescriptor<Review>())) ?? [])
+        var index = Dictionary(local.map { ($0.assetID, $0) }, uniquingKeysWith: { a, _ in a })
+        var changed = Set<String>()
+
+        for entry in remote where entry.carriesAnything {
+            guard let assetID = toLocal[entry.assetID] else { continue }
+            let review = index[assetID] ?? {
+                // Rekord tylko pod cechy nie jest decyzją: `.distantPast`, żeby
+                // przy scalaniu ocen nie udawał nowszego od prawdziwej oceny.
+                let fresh = Review(assetID: assetID)
+                fresh.updatedAt = .distantPast
+                context.insert(fresh)
+                index[assetID] = fresh
+                return fresh
+            }()
+            let before = (review.sharpness, review.exposure, review.faces, review.eyesClosed,
+                          review.smiles, review.isScreenshot)
+            let measuresBefore = review.measures
+            if entry.sharpness > 0 || entry.exposure > 0 || entry.faces > 0 || entry.isScreenshot {
+                review.sharpness = entry.sharpness
+                review.exposure = entry.exposure
+                review.faces = entry.faces
+                review.eyesClosed = entry.eyesClosed
+                review.smiles = entry.smiles
+                review.isScreenshot = entry.isScreenshot
+            }
+            if !entry.measures.isEmpty { review.measures = entry.measures }
+            let after = (review.sharpness, review.exposure, review.faces, review.eyesClosed,
+                         review.smiles, review.isScreenshot)
+            if before != after || measuresBefore != review.measures { changed.insert(assetID) }
         }
         return changed
     }
@@ -459,7 +490,45 @@ final class LibrarySync: ObservableObject {
     ) async throws {
         try await exportRatings(context: context, to: folder, translating: toCloud)
         try await exportFingerprints(context: context, to: folder, translating: toCloud)
+        #if os(macOS)
+        try await exportFeatures(context: context, to: folder, translating: toCloud)
+        #endif
     }
+
+    #if os(macOS)
+    private static let featuresExportedAtKey = "sync.featuresExportedAt"
+
+    /// Plik cech pisze tylko Mac, który **sam** je wczytał z baz, i tylko po
+    /// nowym wczytaniu. Mac, który cechy dostał z pliku, nie odsyła ich dalej —
+    /// inaczej każde urządzenie powielałoby cudzy pomiar pod własną nazwą.
+    private func exportFeatures(
+        context: ModelContext, to folder: URL, translating toCloud: [String: String]
+    ) async throws {
+        let defaults = UserDefaults.standard
+        guard let imported = defaults.object(forKey: FeatureImport.importedAtKey) as? Date else { return }
+        if let exported = defaults.object(forKey: Self.featuresExportedAtKey) as? Date,
+           exported >= imported,
+           SyncFolder.contains(SyncFolder.featuresFileName, in: folder) { return }
+
+        var payload = SyncFile.Payload()
+        payload.deviceName = SyncFolder.deviceName
+        payload.features = ((try? context.fetch(FetchDescriptor<Review>())) ?? [])
+            .filter(\.hasFeatures)
+            .compactMap { review in
+                guard let cloud = toCloud[review.assetID] else { return nil }
+                return SyncFile.Features(
+                    assetID: cloud, sharpness: review.sharpness, exposure: review.exposure,
+                    faces: review.faces, eyesClosed: review.eyesClosed, smiles: review.smiles,
+                    isScreenshot: review.isScreenshot, measures: review.measures
+                )
+            }
+
+        let destination = folder.appending(path: SyncFolder.featuresFileName)
+        let outgoing = payload
+        try await Task.detached { try SyncFile.write(outgoing, to: destination) }.value
+        defaults.set(Date.now, forKey: Self.featuresExportedAtKey)
+    }
+    #endif
 
     private func exportRatings(
         context: ModelContext, to folder: URL, translating toCloud: [String: String]
@@ -467,22 +536,15 @@ final class LibrarySync: ObservableObject {
         var payload = SyncFile.Payload()
         payload.deviceName = SyncFolder.deviceName
 
-        // Także rekordy bez oceny, o ile niosą cechy — to jest cały sens ich
-        // istnienia. Filtr przepuszczający wyłącznie ocenione zostawiłby
-        // pomiary systemu na Macu, a telefon nie ma jak policzyć ich sam.
+        // Same decyzje. Cechy mają własny plik, oznaczenia jadą albumem.
         let reviews = ((try? context.fetch(FetchDescriptor<Review>())) ?? [])
-            .filter { $0.isRated || $0.markedForDeletion || $0.hasFeatures }
+            .filter { $0.isRated || $0.judgements > 0 }
 
         payload.ratings = reviews.compactMap { review in
             guard let cloud = toCloud[review.assetID] else { return nil }
             return SyncFile.Rating(
                 assetID: cloud, weight: review.weight, isRated: review.isRated,
-                judgements: review.judgements, markedForDeletion: review.markedForDeletion,
-                updatedAt: review.updatedAt,
-                sharpness: review.sharpness, exposure: review.exposure,
-                faces: review.faces, eyesClosed: review.eyesClosed,
-                smiles: review.smiles, isScreenshot: review.isScreenshot,
-                measures: review.measures
+                judgements: review.judgements, updatedAt: review.updatedAt
             )
         }
 
@@ -525,7 +587,8 @@ final class LibrarySync: ObservableObject {
     ) async throws {
         let fingerprints = (try? context.fetch(FetchDescriptor<Fingerprint>())) ?? []
         let defaults = UserDefaults.standard
-        guard fingerprints.count != defaults.integer(forKey: Self.lastFingerprintCountKey) else {
+        guard fingerprints.count != defaults.integer(forKey: Self.lastFingerprintCountKey)
+                || !SyncFolder.contains(SyncFolder.fingerprintsFileName, in: folder) else {
             return
         }
 

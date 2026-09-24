@@ -1473,8 +1473,21 @@ psuje bibliotekę.
 
 ### Pliki wymiany: wygenerowane osobno od decyzji
 
-Dziś jeden plik 59 MB (39 MB odcisków, 9,9 MB cech) przepisywany przy każdej
-zmianie oceny. Podział **wg tego, czy da się odtworzyć**:
+*Sprostowanie: pierwsza wersja tego akapitu mówiła o jednym pliku 59 MB
+przepisywanym przy każdej ocenie. Nieprawda — od 19 września (`db70610`) były
+już dwa pliki na urządzenie: `-ratings` (oceny, werdykty i cechy) i
+`-fingerprints` (przepisywany tylko przy zmianie liczby odcisków).*
+
+**Zrobione (schemat 5):** trzy pliki na urządzenie, każdy z jednym piszącym —
+`-ratings` (same decyzje: waga, oceniono, liczba ocen, `updatedAt`, werdykty),
+`-fingerprints` (bez zmian) i nowy `-features` (cechy; pisze go tylko Mac, który
+sam je wczytał z baz, i tylko po nowym wczytaniu). Oznaczenia do skasowania
+wypadły z pliku całkowicie — jadą tylko albumem. Plik niesie `minReader`,
+kolumny czytane po nazwie; sprawdzone na plikach zbudowanych ręcznie: stary
+schemat 4 czytany (cechy wyjęte z tabeli ocen), plik „z przyszłości" z nieznanymi
+kolumnami i tabelą czytany, `minReader` wyższy od czytnika i schemat 2 odrzucone.
+
+Podział **wg tego, czy da się odtworzyć**:
 
 - **wygenerowane** — utrata obojętna, brak scalania, nowsza wersja zastępuje
   całość, przepisywane rzadko;
@@ -1495,10 +1508,17 @@ Warunki:
   Każdy plik: własny numer schematu, wyższy akceptowany, nieznane kolumny
   ignorowane.
 
-Etykiety i słowa do wyszukiwania w pliku eksportera — **propozycja, do
-potwierdzenia**. Bez tego sklepowy Mac traci panel metadanych i wyszukiwanie
-tekstem, a iOS zyskałby wyszukiwanie, którego sam nie zbuduje. Rozmiar
-niezmierzony; OCR przyciąć do unikalnych słów na zdjęcie.
+Etykiety i słowa do wyszukiwania w pliku eksportera — **postanowione: tak,
+przycięte** (OCR do unikalnych słów na zdjęcie). Dochodzą w kroku 4 jako nowe
+kolumny tabeli `feature`, bez podbijania `minReader`. Sklepowy Mac zachowuje
+panel metadanych i wyszukiwanie, iOS dostaje wyszukiwanie, którego sam nie
+zbuduje.
+
+Eksporter — **postanowione**: mała aplikacja w pasku menu (Pełny dostęp do dysku
+nadaje się aplikacji, nie Terminalowi), działająca sama: obserwuje bibliotekę
+i eksportuje po uspokojeniu się zmian. W pasku: data ostatniego eksportu
+i ręczne uruchomienie. Pełne wydanie w App Store dopiero po rozdzieleniu na trzy
+programy; do tego czasu iOS w TestFlight.
 
 Przeglądarka pokazuje **wiek danych z eksportera** — to migawka.
 
@@ -1530,7 +1550,8 @@ Pasek miniatur w `CullView` używa tego samego kafelka.
 1. ~~Ikona kosza na miniaturach.~~ Zrobione.
 2. ~~Odczyt gwiazdki i albumu z powrotem.~~ Zrobione, z regułą „wygrywa przy
    zmianie" (wyżej).
-3. Format: podział pliku na wygenerowane i decyzje, zgodność w przód.
+3. ~~Format: podział pliku na wygenerowane i decyzje, zgodność w przód.~~
+   Zrobione, schemat 5.
 4. Wydzielenie eksportera (`MetadataIndex` + zapis pliku wygenerowanego) do
    osobnego repozytorium.
 5. Przeglądarka macOS w piaskownicy + migracja kontenera.
