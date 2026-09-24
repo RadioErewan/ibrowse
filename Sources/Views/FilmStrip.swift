@@ -26,6 +26,8 @@ struct FilmStrip: View {
     /// w siatce: widzisz nie tylko **co** będzie następne, ale i **jak bardzo**.
     var badge: (String) -> String? = { _ in nil }
 
+    var marked: Set<String> = []
+
     var onPick: (Int) -> Void
 
     #if os(macOS)
@@ -46,7 +48,8 @@ struct FilmStrip: View {
                             side: side,
                             rating: 0,
                             badge: badge(asset.localIdentifier),
-                            isFocus: position == index
+                            isFocus: position == index,
+                            isMarkedForDeletion: marked.contains(asset.localIdentifier)
                         )
                         // Pojedyncze kliknięcie także na Macu: to element
                         // sterowania, nie zdjęcie do zaznaczania.

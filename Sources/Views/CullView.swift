@@ -121,6 +121,9 @@ struct CullView: View {
                     library: library,
                     monitor: monitor,
                     badge: { filters.badge(for: $0, in: features) },
+                    // Zbiór liczony raz tutaj, nie słownik `byID` pytany
+                    // przez każdy kafelek — `byID` buduje się przy każdym dostępie.
+                    marked: Set(reviews.lazy.filter(\.markedForDeletion).map(\.assetID)),
                     onPick: { index = $0 }
                 )
             }

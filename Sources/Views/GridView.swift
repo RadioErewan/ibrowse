@@ -303,6 +303,7 @@ struct GridView: View {
             badge: filters.badge(for: asset.localIdentifier, in: features),
             isFocus: asset.localIdentifier == focusID,
             isSelected: selection.contains(asset.localIdentifier),
+            isMarkedForDeletion: index[asset.localIdentifier]?.markedForDeletion ?? false,
             fillsColumn: true
         )
         // Na telefonie otwiera pojedyncze stuknięcie, bo tak działa każda
@@ -639,6 +640,11 @@ struct Thumbnail: View {
     /// miejsca, bo to dwie różne rzeczy: tu stoję kontra to wybrałem.
     var isSelected: Bool = false
 
+    /// Oznaczone do skasowania. Kosz w prawym górnym rogu (lewy zajmuje
+    /// podpis, dół gwiazdki) i przygaszony obraz — bez tego `X` w siatce
+    /// działał, ale nic tego nie pokazywało.
+    var isMarkedForDeletion: Bool = false
+
     /// Czy kafelek wypełnia szerokość kolumny siatki zamiast trzymać sztywny bok.
     ///
     /// Kolumny adaptacyjne są szersze niż minimalny bok — dzielą między siebie
@@ -663,7 +669,23 @@ struct Thumbnail: View {
                     Image(platformImage: image)
                         .resizable()
                         .scaledToFill()
+                        .opacity(isMarkedForDeletion ? 0.45 : 1)
                 }
+            }
+            if isMarkedForDeletion {
+                VStack {
+                    HStack {
+                        Spacer()
+                        Image(systemName: "trash.fill")
+                            .font(.system(size: 9, weight: .semibold))
+                            .foregroundStyle(.red)
+                            .padding(.horizontal, 4)
+                            .padding(.vertical, 2)
+                            .background(.black.opacity(0.55), in: Capsule())
+                    }
+                    Spacer()
+                }
+                .padding(3)
             }
             if let badge, showsBadge {
                 VStack {
