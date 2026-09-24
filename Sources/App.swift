@@ -681,20 +681,15 @@ struct RootView: View {
     /// `setNeedsUpdateConstraints` na oknie będącym w środku własnego
     /// `updateConstraintsIfNeeded`.
     ///
-    /// **To hipoteza, nie ustalony fakt.** Pasuje do raportu (awaria zaraz po
-    /// ekranie ładowania, zmienny czas do niej, stos wyłącznie z ramek
-    /// `SplitViewChildController`) i do tego, że na Macu autora tego nie widać:
-    /// przy szybkim wczytaniu ekran ładowania ledwo mignie i podmiana trafia
-    /// w okno, które jeszcze nie stoi, a przy wolnym kręciołek chodzi kilka
-    /// sekund i sam bez przerwy napędza transakcje CoreAnimation. Nie udało się
-    /// tego odtworzyć lokalnie, więc dowodu nie ma — poprzednia poprawka tej
-    /// awarii (odroczenie `Stepper`a w `PairView`) była opartym na podobnym
-    /// rozumowaniu strzałem i nie pomogła.
+    /// Przy szybkim wczytaniu ekran ładowania ledwo mignie i podmiana trafia
+    /// w okno, które jeszcze nie stoi; przy dużej bibliotece kręciołek chodzi
+    /// sekundami i sam napędza transakcje CoreAnimation. Lokalnie tego nie
+    /// odtworzono — potwierdził tester, u którego 0.1.12 i 0.1.13 padały za
+    /// każdym razem, a build z tą zmianą wstaje. Historia w DECYZJE.md,
+    /// „Trzecia droga: podmiana całej zawartości okna".
     ///
-    /// Niezależnie od tego zmiana broni się sama: trzymając podział kolumn
-    /// zamontowany od pierwszej klatki, nie ma czego wstawiać do żywego okna —
-    /// zmienia się tylko zawartość kolumny detalu. Gdyby awaria wróciła,
-    /// `recordUncaughtExceptions()` zapisze wreszcie treść asercji.
+    /// Trzymając podział kolumn zamontowany od pierwszej klatki, nie ma czego
+    /// wstawiać do żywego okna — zmienia się tylko zawartość kolumny detalu.
     @ViewBuilder
     private func screen(_ mode: Mode) -> some View {
         if library.assets.isEmpty {

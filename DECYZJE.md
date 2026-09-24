@@ -1317,6 +1317,35 @@ system z braku miejsca zapisywało się jako wybór użytkownika. Wystarczyło r
 uruchomić program w wąskim oknie, żeby na zawsze zapamiętał „ten człowiek nie
 chce podglądu".
 
+### Trzecia droga: podmiana całej zawartości okna
+
+Wrzesień 2026, tester z dużą biblioteką: 0.1.12 i 0.1.13 padały za każdym
+razem, **zaraz po ekranie „Loading library…"**, z tym samym śladem
+`SplitViewChildController.hostingView(_:didUpdateMinSize:maxSize:)` w trakcie
+`updateConstraintsIfNeeded`. Poprawka w 0.1.13 (odroczenie `Stepper`a
+w `PairView`) była strzałem opartym na prawdopodobnym rozumowaniu i nie dała
+nic — tester nigdy nie docierał do parowania. Wydana publicznie bez dowodu.
+
+Przyczyna: `RootView.body` podmieniał **całą** zawartość okna — najpierw sam
+`ProgressView`, po wczytaniu `NavigationSplitView` z inspektorem. Kontrolery
+kolumn powstawały więc wewnątrz okna, które już żyje i jest w cyklu
+wyświetlania. Przy małej bibliotece ekran ładowania ledwo mignie; przy dużej
+kręciołek animuje się sekundami i sam napędza transakcje CoreAnimation, więc
+podmiana trafia w środek przebiegu. Lokalnie nie dało się tego powtórzyć.
+
+0.1.14: podział kolumn zamontowany od pierwszej klatki, ładowanie to stan
+kolumny detalu (`screen(_:)` w `App.swift`). Build testowy sprawdzony u testera
+**przed** publikacją — działa. Do tego `recordUncaughtExceptions()` zapisuje
+`reason` wyjątku do `~/Library/Logs/lightbrary-exception.log`, bo systemowy
+raport pokazuje sam stos, a przy wyjątkach AppKit-u tylko `reason` mówi, co się
+gryzie.
+
+Zasada: **struktura okna na najwyższym poziomie jest stała.** Stany (ładowanie,
+brak dostępu) żyją wewnątrz, nie zamiast. Uwaga — ekrany `Permission`
+(`.notDetermined`, odmowa) nadal podmieniają całe okno; przy pierwszym
+uruchomieniu po nadaniu zgody to ta sama klasa zagrożenia, na razie bez
+zgłoszeń.
+
 ## isHidden nie nadaje się do cichej emisji — Apple pyta za każdym razem
 
 Pomysł wyglądał dobrze na papierze: skoro `markedForDeletion` i tak jedzie
@@ -1354,6 +1383,143 @@ i chronione tym samym `.readWrite`, nie znaczy, że zachowuje się tak samo po
 cichu. `rating` — cicho. `isHidden` — głośno, za każdym razem. Nie da się
 tego przewidzieć z dokumentacji ani z nagłówków SDK; trzeba to sprawdzić
 na żywo, na jednym kliknięciu i na drugim, zanim się to podłączy wszędzie.
+
+## Podział: eksporter poza sklepem, przeglądarki w sklepie
+
+Wrzesień 2026. Rozwinięcie szkicu z „Dystrybucja: to nie wejdzie do App Store".
+Ten rozdział jest zarazem **planem do wykonania** — pisany tak, żeby dało się go
+przekazać wykonawcy bez tej rozmowy.
+
+### Role
+
+**Eksporter** — osobny program, open source na GitHubie, poza sklepem
+(Developer ID + notaryzacja). Robi tylko to, czego PhotoKit nie da: czyta
+`Photos.sqlite` i `psi.sqlite` (dziś cały `MetadataIndex.swift`) i zapisuje
+plik z danymi wygenerowanymi. **Wyłącznie odczyt biblioteki** — to jego
+argument: człowiek daje Pełny dostęp do dysku kodowi, który może przeczytać.
+Żadnych ocen, albumów, kasowania.
+
+**Przeglądarki** — iOS i macOS w sklepie, jeden rekord w App Store Connect
+(ten sam `pl.3210.lightbrary`, zakup obejmuje obie platformy). **Kompletne bez
+eksportera**: odciski liczy Vision na obrazach z PhotoKitu, więc serie i
+parowanie działają zawsze. Dane z eksportera tylko dokładają.
+
+iOS jest już w TestFlight z testerami zewnętrznymi, czyli przeszedł beta
+review: dostęp do biblioteki, manifest prywatności, zapis `rating`, kasowanie.
+
+### Trzy kanały
+
+| Kanał | Co niesie | Kto pisze |
+| --- | --- | --- |
+| Photos (`PHAsset.rating`, album) | gwiazdki, oznaczenie do skasowania | przeglądarki; iCloud synchronizuje sam |
+| Plik decyzji (per urządzenie) | dokładna waga, liczba ocen, stan serii, „wyzerowana ≠ nietknięta" | przeglądarka danego urządzenia |
+| Pliki wygenerowane | odciski (per urządzenie), cechy + etykiety + słowa (eksporter) | producent; reszta tylko czyta |
+
+Zasada: **co da się wyrazić natywnie, jedzie natywnie.** Bez wybranego folderu
+wymiany przeglądarka i tak działa między urządzeniami — gwiazdki i oznaczenia
+niesie Apple. Folder to opcja dla dokładnych wag, pojedynków i cech.
+
+### Gwiazdka natywna wygrywa
+
+Waga (co 0,25) i gwiazdka Photos (całkowita) to ta sama decyzja w dwóch
+rozdzielczościach. **Waga zawsze zaokrągla się do natywnej gwiazdki; przy
+niezgodności wygrywa gwiazdka** i waga dostaje jej wartość. Załatwia to
+zmiany z zewnątrz (gwiazdka ustawiona w systemowych Zdjęciach) i kolejność
+dotarcia (iCloud Photos i folder synchronizują się w różnym tempie). Dziś
+aplikacja `rating` tylko zapisuje, **nigdy nie czyta** — do zrobienia.
+
+### Oznaczenie do skasowania: album
+
+Kasowanie pyta o zgodę **raz na wywołanie**, nie na zdjęcie — `DeletionReview`
+kasuje całą pulę jednym `performChanges`. Oznaczenie jedzie albumem
+**„lightbrary – to delete"** (`PhotoLibrary.setMarkedForDeletion`): sprawdzone
+na macOS 27 — dwa zdjęcia pod rząd **bez okna zgody**, trafiły do albumu.
+Niesprawdzone: odznaczanie (zdejmowanie z albumu) i zachowanie na iOS.
+
+Dziś zapis idzie w jedną stronę, a `markedForDeletion` nadal jedzie plikiem.
+Do zrobienia: odczyt albumu jako źródła prawdy (tak jak gwiazdki), potem
+`markedForDeletion` wypada z pliku decyzji. Album szukamy **po nazwie** —
+`localIdentifier` albumu jest inny na każdym urządzeniu.
+
+Obejście okna zgody przy kasowaniu nie wchodzi w grę: to świadome
+zabezpieczenie systemu, a każda droga dookoła (skrypt, `Photos.sqlite`,
+klikanie okna) albo nie działa w piaskownicy, albo nie przejdzie review, albo
+psuje bibliotekę.
+
+### Pliki wymiany: wygenerowane osobno od decyzji
+
+Dziś jeden plik 59 MB (39 MB odcisków, 9,9 MB cech) przepisywany przy każdej
+zmianie oceny. Podział **wg tego, czy da się odtworzyć**:
+
+- **wygenerowane** — utrata obojętna, brak scalania, nowsza wersja zastępuje
+  całość, przepisywane rzadko;
+- **decyzje** — nie do odtworzenia, scalanie per rekord jak dziś, małe,
+  przepisywane często; warto trzymać z historią wersji.
+
+Zysk ponad rozmiar: znika reguła „kto ma, ten daje" (cechy w `Review` omijające
+straż czasu, żeby pusty pomiar nie skasował oceny). W osobnych plikach ten błąd
+jest niemożliwy z konstrukcji.
+
+Warunki:
+- **Klucze stabilne.** Decyzje wskazują zdjęcia identyfikatorem chmurowym, a serie
+  składem grupy — nigdy wierszem pliku wygenerowanego. Inaczej przeliczenie
+  odcisków unieważnia pracę człowieka.
+- **Zgodność w przód.** `SyncFile.readable = 3...4` dziś odrzuca plik z nowszym
+  schematem w całości. Po podziale piszą go programy wydawane osobno — stara
+  przeglądarka ze sklepu nie może oślepnąć, gdy eksporter podbije schemat.
+  Każdy plik: własny numer schematu, wyższy akceptowany, nieznane kolumny
+  ignorowane.
+
+Etykiety i słowa do wyszukiwania w pliku eksportera — **propozycja, do
+potwierdzenia**. Bez tego sklepowy Mac traci panel metadanych i wyszukiwanie
+tekstem, a iOS zyskałby wyszukiwanie, którego sam nie zbuduje. Rozmiar
+niezmierzony; OCR przyciąć do unikalnych słów na zdjęcie.
+
+Przeglądarka pokazuje **wiek danych z eksportera** — to migawka.
+
+### Piaskownica i sklep na Macu
+
+- Uprawnienia: `app-sandbox`, folder wybrany przez użytkownika (zapis), zakładki
+  (`bookmarks.app-scope`). Na review: jedno zdanie uzasadnienia na każde.
+- **Migracja kontenera** przy pierwszym uruchomieniu w piaskownicy: magazyn
+  SwiftData, `UserDefaults`, zakładka do folderu. Bez planu testerzy zaczynają
+  od zera (patrz „Zakładka do folderu przestaje obowiązywać…").
+- Z wersji sklepowej wypada `UpdateCheck` i `wersja.json`.
+- Kolejność: TestFlight na Macu z testerami zewnętrznymi, potem pełne review.
+  Wersja Developer ID tylko na czas przejścia, do pierwszego zatwierdzenia.
+- Pierwsze wydanie w sklepie **bez wzmianki o eksporterze** — aplikacja nie
+  może wyglądać na niekompletną bez zewnętrznego programu. Link w kolejnej
+  wersji.
+- Nigdzie słowa „beta" — sklep tego nie przyjmuje; od tego jest TestFlight.
+
+### Interfejs: oznaczone widać na miniaturze
+
+`Thumbnail` (`GridView.swift`) dostaje `isMarkedForDeletion`. Czerwone
+`trash.fill` w **prawym górnym rogu** (lewy górny: podpis filtru, dół: gwiazdki),
+w tej samej kapsułce co gwiazdki, plus lekkie przygaszenie zdjęcia — żeby
+oznaczone było widać przy szybkim przewijaniu. `tile(_:)` ma już `Review`.
+Pasek miniatur w `CullView` używa tego samego kafelka.
+
+### Kolejność kroków
+
+1. Ikona kosza na miniaturach.
+2. Odczyt gwiazdki i albumu z powrotem, reguła „natywne wygrywa".
+3. Format: podział pliku na wygenerowane i decyzje, zgodność w przód.
+4. Wydzielenie eksportera (`MetadataIndex` + zapis pliku wygenerowanego) do
+   osobnego repozytorium.
+5. Przeglądarka macOS w piaskownicy + migracja kontenera.
+6. TestFlight na Macu, potem review.
+
+### Reguły dla wykonawcy
+
+- Nic na stronę, do TestFlightu ani `git push` bez potwierdzenia Radka.
+- Akcje destrukcyjne na bibliotece tylko na zdjęciach testowych.
+- Komentarze odróżniają hipotezę od faktu.
+- Punkty kontrolne z przeglądem, bo błąd kosztuje dane albo zaufanie
+  testerów: **migracja kontenera** (test na kopii danych), **format plików**
+  (kontrakt między programami, trudny do odkręcenia), **wszystko, co dotyka
+  układu okna na Macu** (ta klasa awarii nie odtwarza się lokalnie — patrz
+  „Nie zapisuj w trakcie układania okna").
 
 ## Co czeka
 
