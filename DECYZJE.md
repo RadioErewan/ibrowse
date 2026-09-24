@@ -1548,6 +1548,17 @@ programy; do tego czasu iOS w TestFlight.
 
 Przeglądarka pokazuje **wiek danych z eksportera** — to migawka.
 
+**Synchronizacja automatyczna** (zrobione): daty cudzych plików sprawdzane przy
+powrocie aplikacji na wierzch i co dwie minuty — z metadanych, bez pobierania;
+czytane tylko pliki zmienione od ostatniego odczytu. Własny plik decyzji zapisuje
+się 20 s po ostatniej zmianie w bazie. Odcisków i cech tryb automatyczny nie
+odsyła (przyrost z cudzego pliku przepisałby nasze 50 MB), ręczne „sync now"
+dalej czyta i pisze wszystko. Przeciw pętli: zapis bazy tylko przy zmianach
+i plik decyzji pomijany, gdy jego treść (skrót, niezależny od kolejności) się
+nie zmieniła — inaczej dwa urządzenia przerzucałyby się tym samym plikiem bez
+końca. Znany koszt: zmienione odciski Maca (~50 MB) pobiorą się na telefonie
+same, także przez sieć komórkową.
+
 ### Piaskownica i sklep na Macu
 
 - Uprawnienia: `app-sandbox`, folder wybrany przez użytkownika (zapis), zakładki

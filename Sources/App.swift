@@ -316,6 +316,8 @@ struct RootView: View {
     @State private var choosingFolder = false
     @State private var showingActions = false
     @Environment(\.modelContext) private var context
+    @Environment(\.scenePhase) private var scenePhase
+    @State private var pendingWrite: Task<Void, Never>?
 
     @State private var mode: Mode = .grid
     @State private var showingFilters = false
@@ -423,6 +425,30 @@ struct RootView: View {
         // plików, nie ich zawartość — a odpowiada na pytanie „czy drugie
         // urządzenie ma nowszą pracę", którego aplikacja dotąd nie umiała zadać.
         .task { await sync.refreshFolderState() }
+        // Synchronizacja sama z siebie: przy powrocie na wierzch i co dwie
+        // minuty. Czyta tylko pliki, których data się zmieniła — sprawdzenie
+        // nic nie kosztuje, a ręczne „sync now" dalej czyta wszystko.
+        .onChange(of: scenePhase) { _, phase in
+            guard phase == .active else { return }
+            Task { await sync.autoSync(context: context, similarity: similarity, library: library) }
+        }
+        .task {
+            while !Task.isCancelled {
+                try? await Task.sleep(for: .seconds(120))
+                await sync.autoSync(context: context, similarity: similarity, library: library)
+            }
+        }
+        // Własne decyzje wypisujemy 20 s po ostatnim zapisie do bazy, żeby
+        // drugie urządzenie miało co przeczytać bez ręcznej synchronizacji.
+        // Seria ocen to jeden zapis pliku, nie jeden na klawisz.
+        .onReceive(NotificationCenter.default.publisher(for: ModelContext.didSave)) { _ in
+            pendingWrite?.cancel()
+            pendingWrite = Task {
+                try? await Task.sleep(for: .seconds(20))
+                guard !Task.isCancelled else { return }
+                await sync.writeOwnDecisions(context: context, library: library)
+            }
+        }
         // Cechy czytamy raz, do zwykłego słownika. Po wczytaniu z baz systemu
         // i po synchronizacji odświeżamy je jawnie — same z siebie się nie
         // zmieniają, więc nie ma czego pilnować w tle.

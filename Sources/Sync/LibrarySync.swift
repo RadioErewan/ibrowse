@@ -104,16 +104,70 @@ final class LibrarySync: ObservableObject {
         UserDefaults.standard.set(now, forKey: "sync.lastRead")
     }
 
+    // MARK: - Tryb automatyczny
+
+    /// Cichy zapis własnych decyzji w toku — bez kręciołka w interfejsie,
+    /// ale synchronizacja musi o nim wiedzieć, żeby obie nie pisały naraz.
+    private var isWriting = false
+
+    private static let fileDatesKey = "sync.fileDates"
+
+    nonisolated private static var knownDates: [String: Date] {
+        UserDefaults.standard.dictionary(forKey: fileDatesKey) as? [String: Date] ?? [:]
+    }
+
+    private static func remember(_ reads: [FileRead]) {
+        var dates = knownDates
+        for read in reads { dates[read.name] = read.modified }
+        UserDefaults.standard.set(dates, forKey: fileDatesKey)
+    }
+
+    /// Mapowanie na identyfikatory chmurowe kosztuje zapytanie do systemu na
+    /// 25 tysięcy zdjęć. Przy zapisie co kilkanaście sekund liczymy je raz na
+    /// zestaw zdjęć, nie za każdym razem.
+    private var cloudCache: (count: Int, map: [String: String])?
+
+    private func cloudIDs(for library: PhotoLibrary) -> [String: String] {
+        if let cloudCache, cloudCache.count == library.assets.count { return cloudCache.map }
+        let map = CloudIdentity.cloudIDs(for: library.assets.map(\.localIdentifier))
+        cloudCache = (library.assets.count, map)
+        return map
+    }
+
+    /// Sprawdza daty cudzych plików (darmowe, bez pobierania) i czyta tylko
+    /// zmienione. Wołane przy powrocie aplikacji na wierzch i co dwie minuty.
+    func autoSync(context: ModelContext, similarity: Similarity, library: PhotoLibrary) async {
+        guard !isWorking, !isWriting, !library.assets.isEmpty else { return }
+        await refreshFolderState()
+        guard pending != nil else { return }
+        await synchronise(context: context, similarity: similarity, library: library, onlyChanged: true)
+    }
+
+    /// Zapisuje sam plik decyzji — mały, więc można to robić po każdej serii
+    /// zmian. Bez raportu i bez kręciołka: to się dzieje w tle.
+    func writeOwnDecisions(context: ModelContext, library: PhotoLibrary) async {
+        guard !isWorking, !isWriting, !library.assets.isEmpty,
+              let folder = SyncFolder.resolve() else { return }
+        defer { folder.release() }
+        isWriting = true
+        defer { isWriting = false }
+        try? await exportRatings(context: context, to: folder.url, translating: cloudIDs(for: library))
+    }
+
     /// Kolejność ma znaczenie i jest tu jedyną nieoczywistą rzeczą.
     ///
     /// Odciski muszą wejść **przed** przeliczeniem serii, a werdykty **po** —
     /// bo kluczem werdyktu jest skład serii, a ten powstaje dopiero przy
     /// przeliczeniu. Zastosowane w złej kolejności trafiłyby w grupy, których
     /// jeszcze nie ma, i cicho przepadły.
+    /// `onlyChanged` — tryb automatyczny: czyta tylko pliki zmienione od
+    /// ostatniego odczytu i pisze tylko własne decyzje. Ręczne „sync now"
+    /// czyta i pisze wszystko, jako siatka bezpieczeństwa.
     func synchronise(
-        context: ModelContext, similarity: Similarity, library: PhotoLibrary
+        context: ModelContext, similarity: Similarity, library: PhotoLibrary,
+        onlyChanged: Bool = false
     ) async {
-        guard !isWorking else { return }
+        guard !isWorking, !isWriting else { return }
         guard let folder = SyncFolder.resolve() else {
             summary = "Choose a shared folder first."
             return
@@ -136,9 +190,16 @@ final class LibrarySync: ObservableObject {
         let orphans = discardOrphans(context: context, library: library)
 
         stage = "looking for files…"
-        let incoming = await Task.detached {
-            Self.readOthers(in: source, excluding: mine, report: report)
+        let known = onlyChanged ? Self.knownDates : nil
+        let reads = await Task.detached {
+            Self.readOthers(in: source, excluding: mine, since: known, report: report)
         }.value
+        let incoming = reads.map(\.payload)
+        // Automatycznie i nic nowego: bez zapisu i bez nowego raportu.
+        if onlyChanged && incoming.isEmpty {
+            noteRead()
+            return
+        }
 
         var ratings = 0
         // Zbiór, nie licznik: te same cechy przychodzą z kilku plików naraz.
@@ -155,7 +216,7 @@ final class LibrarySync: ObservableObject {
         // słownika jest darmowe, a drugie odpytanie systemu kosztowałoby tyle
         // samo co pierwsze — przy 25 tysiącach zdjęć to nie jest drobiazg.
         stage = "matching photos…"
-        let toCloud = CloudIdentity.cloudIDs(for: library.assets.map(\.localIdentifier))
+        let toCloud = cloudIDs(for: library)
         var toLocal: [String: String] = [:]
         toLocal.reserveCapacity(toCloud.count)
         for (local, cloud) in toCloud { toLocal[cloud] = local }
@@ -181,15 +242,24 @@ final class LibrarySync: ObservableObject {
             verdicts += mergeVerdicts(payload.verdicts, translating: toCloud, into: context)
         }
 
-        try? context.save()
+        // Tylko przy prawdziwych zmianach — pusty zapis też budziłby zapis pliku.
+        if context.hasChanges { try? context.save() }
 
         do {
             stage = "writing my file…"
-            try await export(context: context, to: folder.url, translating: toCloud)
+            if onlyChanged {
+                // Odcisków i cech nie odsyłamy w trybie automatycznym — przyrost
+                // z cudzego pliku przepisałby nasz 50 MB tylko po to, żeby
+                // drugie urządzenie dostało z powrotem własne dane.
+                try await exportRatings(context: context, to: folder.url, translating: toCloud)
+            } else {
+                try await export(context: context, to: folder.url, translating: toCloud)
+            }
         } catch {
             summary = error.localizedDescription
             return
         }
+        Self.remember(reads)
 
         // Raport pokazuje **obie strony**, nie tylko przyrost. „Wczytano 0"
         // nie odróżnia „nie znalazłem pliku" od „znalazłem, ale wszystko już
@@ -230,12 +300,25 @@ final class LibrarySync: ObservableObject {
     /// Świadomie zamiast `startDownloadingUbiquitousItem`, bo tamto działa
     /// wyłącznie z iCloud. Koordynator rozmawia z **dowolnym** dostawcą, więc
     /// folder wymiany może równie dobrze leżeć na Google Drive czy OneDrive.
+    struct FileRead: Sendable {
+        let payload: SyncFile.Payload
+        let name: String
+        let modified: Date
+    }
+
+    /// `since` — daty plików z ostatniego odczytu. Podane: czytamy **tylko
+    /// pliki, które się od tamtej pory zmieniły**. Niezmienione były już
+    /// scalone, a przy odciskach to 50 MB rozpakowywania za darmo.
     nonisolated private static func readOthers(
-        in folder: URL, excluding mine: Set<String>, report: @Sendable (String) -> Void
-    ) -> [SyncFile.Payload] {
+        in folder: URL, excluding mine: Set<String>, since known: [String: Date]?,
+        report: @Sendable (String) -> Void
+    ) -> [FileRead] {
         let contents = (try? FileManager.default.contentsOfDirectory(
-            at: folder, includingPropertiesForKeys: nil
+            at: folder, includingPropertiesForKeys: [.contentModificationDateKey]
         )) ?? []
+        // Data z wpisu w katalogu — także znacznika nieściągniętego pliku,
+        // więc sprawdzenie niczego nie pobiera.
+        var dates: [String: Date] = [:]
 
         // Plik **jeszcze nieściągnięty wygląda inaczej niż ściągnięty**.
         //
@@ -252,13 +335,24 @@ final class LibrarySync: ObservableObject {
         let others = contents
             .compactMap { url -> URL? in
                 let name = url.lastPathComponent
-                if url.pathExtension == SyncFile.fileExtension { return url }
+                let modified = (try? url.resourceValues(forKeys: [.contentModificationDateKey]))?
+                    .contentModificationDate ?? .distantPast
+                if url.pathExtension == SyncFile.fileExtension {
+                    dates[name] = modified
+                    return url
+                }
                 guard name.hasPrefix("."), name.hasSuffix(placeholder) else { return nil }
                 let real = String(name.dropFirst().dropLast(placeholder.count))
                 guard real.hasSuffix("." + SyncFile.fileExtension) else { return nil }
+                dates[real] = modified
                 return folder.appending(path: real)
             }
             .filter { !mine.contains($0.lastPathComponent) }
+            .filter { url in
+                guard let known else { return true }
+                let name = url.lastPathComponent
+                return (dates[name] ?? .distantPast) > (known[name] ?? .distantPast)
+            }
 
         return others.enumerated()
             .compactMap { position, url in
@@ -287,7 +381,9 @@ final class LibrarySync: ObservableObject {
                 ) { readable in
                     payload = SyncFile.read(readable)
                 }
-                return payload
+                guard let payload else { return nil }
+                let name = url.lastPathComponent
+                return FileRead(payload: payload, name: name, modified: dates[name] ?? .now)
             }
     }
 
@@ -562,9 +658,33 @@ final class LibrarySync: ObservableObject {
                 )
             }
 
+        // Ta sama treść co ostatnio — nie piszemy. Bez tego odczyt cudzego
+        // pliku zapisywał bazę, zapis bazy wypisywał nasz plik, a drugie
+        // urządzenie brało go za nowość: dwa urządzenia przerzucałyby się tym
+        // samym plikiem co kilka minut, bez końca.
+        let digest = Self.digest(of: payload)
+        let defaults = UserDefaults.standard
+        if digest == defaults.string(forKey: Self.ratingsDigestKey),
+           SyncFolder.contains(SyncFolder.ratingsFileName, in: folder) { return }
+
         let destination = folder.appending(path: SyncFolder.ratingsFileName)
         let outgoing = payload
         try await Task.detached { try SyncFile.write(outgoing, to: destination) }.value
+        defaults.set(digest, forKey: Self.ratingsDigestKey)
+    }
+
+    private static let ratingsDigestKey = "sync.ratingsDigest"
+
+    /// Skrót treści decyzji, niezależny od kolejności wierszy. `Hasher` się nie
+    /// nadaje — jego ziarno zmienia się przy każdym uruchomieniu.
+    private static func digest(of payload: SyncFile.Payload) -> String {
+        let ratings = payload.ratings
+            .map { "\($0.assetID)|\($0.weight)|\($0.isRated)|\($0.judgements)|\($0.updatedAt.timeIntervalSince1970)" }
+            .sorted()
+        let verdicts = payload.verdicts
+            .map { "\($0.key)|\($0.resolvedAt?.timeIntervalSince1970 ?? -1)|\($0.wasRejected)|\($0.championID ?? "")|\($0.challengerIndex)" }
+            .sorted()
+        return SyncFile.key(for: ratings + ["--"] + verdicts)
     }
 
     /// Klucz w `UserDefaults`, pod którym pamiętamy, ile odcisków niósł
