@@ -20,6 +20,16 @@
 #
 # Pominięcie punktu trzeciego jest najgroźniejsze i najcichsze: wydanie leży
 # na stronie, a program w komputerach ludzi dalej twierdzi, że jest aktualny.
+#
+#   tools/publish-web.sh            lightbrary (build/wydanie, po release-mac.sh)
+#   tools/publish-web.sh exporter   eksporter (build/wydanie-exporter, po
+#                                   release-exporter.sh); bez `wersja.json`,
+#                                   bo eksporter nie sprawdza aktualizacji
+#
+# Na stronie leżą dwa pliki, więc podmiany działają **tylko wewnątrz bloków**
+# `<!--mac-->…<!--/mac-->` albo `<!--exporter-->…<!--/exporter-->`. Wcześniej
+# szły po całej stronie: każdy rozmiar w MB i każda suma SHA-256 dostawałyby
+# wartości ostatnio wydanego pliku, także te należące do drugiego.
 set -euo pipefail
 
 cd "$(dirname "$0")/.."
@@ -27,12 +37,16 @@ cd "$(dirname "$0")/.."
 KEY=~/Documents/aws/radek3210pl.pem
 HOST=ubuntu@100.70.65.114
 ROOT=/var/www/lightbrary
-APP=lightbrary
 
 VERSION=$(grep 'MARKETING_VERSION' project.yml | head -1 | sed 's/.*"\(.*\)".*/\1/')
-DMG="build/wydanie/$APP-$VERSION.dmg"
+if [ "${1:-mac}" = "exporter" ]; then
+    APP=lightbrary-exporter; BLOCK=exporter; OUT=build/wydanie-exporter; SCRIPT=release-exporter.sh
+else
+    APP=lightbrary; BLOCK=mac; OUT=build/wydanie; SCRIPT=release-mac.sh
+fi
+DMG="$OUT/$APP-$VERSION.dmg"
 
-[ -f "$DMG" ] || { echo "nie ma $DMG — najpierw tools/release-mac.sh"; exit 1; }
+[ -f "$DMG" ] || { echo "nie ma $DMG — najpierw tools/$SCRIPT"; exit 1; }
 
 # Zszycie sprawdzamy tutaj jeszcze raz. Obraz bez niego działa na komputerze,
 # który budował, i odbija się od Gatekeepera na każdym innym — czyli usterka
@@ -40,7 +54,9 @@ DMG="build/wydanie/$APP-$VERSION.dmg"
 xcrun stapler validate "$DMG" >/dev/null || { echo "$DMG nie jest zszyty"; exit 1; }
 
 SUMA=$(shasum -a 256 "$DMG" | cut -d' ' -f1)
-MB=$(echo "scale=1; $(stat -f%z "$DMG") / 1048576" | bc)
+# `printf`, nie `bc`: bc pisze pół megabajta jako ".5", a tego wzorzec
+# „liczba MB" przy następnym wydaniu już nie złapie.
+MB=$(awk "BEGIN { printf \"%.1f\", $(stat -f%z "$DMG") / 1048576 }")
 
 echo "wydanie $VERSION · ${MB} MB · $SUMA"
 
@@ -51,24 +67,35 @@ ssh -i "$KEY" "$HOST" "
     sudo mv /tmp/$APP-$VERSION.dmg $ROOT/pobierz/
     sudo chmod 644 $ROOT/pobierz/$APP-$VERSION.dmg
 
-    # Strona pobierania: podmieniamy numer, odnośnik, rozmiar i sumę naraz.
+    # Strona pobierania: numer, odnośnik, rozmiar i suma naraz, tylko w blokach
+    # tego pliku. Bez ani jednego bloku to błąd, nie cicha pustka.
+    sudo cp $ROOT/download.html $ROOT/download.html.bak
     sudo python3 - <<PY
-import io, re
+import io, re, sys
 p = '$ROOT/download.html'
 s = io.open(p, encoding='utf-8').read()
-s = re.sub(r'version [0-9][0-9.]*<', 'version $VERSION<', s)
-s = re.sub(r'$APP-[0-9][0-9.]*\.dmg', '$APP-$VERSION.dmg', s)
-s = re.sub(r'[0-9]+\.[0-9]+ MB', '${MB} MB', s)
-s = re.sub(r'\b[0-9a-f]{64}\b', '$SUMA', s)
+def fix(m):
+    b = m.group(0)
+    b = re.sub(r'version [0-9][0-9.]*<!--/', 'version $VERSION<!--/', b)
+    b = re.sub(r'$APP-[0-9][0-9.]*\.dmg', '$APP-$VERSION.dmg', b)
+    b = re.sub(r'[0-9]+\.[0-9]+ MB', '${MB} MB', b)
+    b = re.sub(r'\b[0-9a-f]{64}\b', '$SUMA', b)
+    return b
+s, n = re.subn(r'<!--$BLOCK-->.*?<!--/$BLOCK-->', fix, s, flags=re.S)
+if n == 0:
+    sys.exit('download.html nie ma bloku <!--$BLOCK-->')
 io.open(p, 'w', encoding='utf-8').write(s)
 PY
 
+    [ $BLOCK = mac ] || exit 0
     printf '{\n  \"version\": \"$VERSION\",\n  \"page\": \"https://lightbrary.app/download\"\n}\n' \
         | sudo tee $ROOT/wersja.json >/dev/null
     sudo chmod 644 $ROOT/wersja.json
 "
 
 echo "== sprawdzenie na żywo =="
-curl -s https://lightbrary.app/wersja.json
+[ $BLOCK = mac ] && curl -s https://lightbrary.app/wersja.json
+curl -s https://lightbrary.app/download | grep -q "$SUMA" && echo "strona pokazuje nową sumę" \
+    || { echo "STRONA NIE POKAZUJE NOWEJ SUMY"; exit 1; }
 POBRANA=$(curl -s "https://lightbrary.app/pobierz/$APP-$VERSION.dmg" | shasum -a 256 | cut -d' ' -f1)
 [ "$POBRANA" = "$SUMA" ] && echo "suma pobranego zgadza się" || { echo "SUMA SIĘ NIE ZGADZA"; exit 1; }
