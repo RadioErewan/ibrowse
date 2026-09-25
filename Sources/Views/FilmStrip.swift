@@ -20,7 +20,11 @@ struct FilmStrip: View {
     let assets: [PHAsset]
     let index: Int
     @ObservedObject var library: PhotoLibrary
-    @ObservedObject var monitor: PerfMonitor
+    /// Zwykła referencja, **nie obserwacja**: pomiar publikuje zmianę co pół
+    /// sekundy i przy każdym wczytanym obrazku. Obserwowany stąd przebudowywał
+    /// cały widok razem z oknem za każdym razem — przy szybkim ocenianiu okno
+    /// układało się od nowa kilka razy na krok. Obserwuje go tylko `PerfOverlay`.
+    let monitor: PerfMonitor
 
     /// Podpis pod miarą, która jest w grze. W pasku znaczy więcej niż
     /// w siatce: widzisz nie tylko **co** będzie następne, ale i **jak bardzo**.

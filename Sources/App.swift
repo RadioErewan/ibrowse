@@ -303,7 +303,11 @@ struct LibraryCommands: Commands {
 /// aplikacja nie ma o czym mówić, więc to jest jedyny warunek wejścia.
 struct RootView: View {
     @StateObject private var library = PhotoLibrary()
-    @StateObject private var monitor = PerfMonitor()
+    // `@State`, nie `@StateObject`: ten drugi subskrybuje zmiany i widok
+    // główny przebudowywał się — ze `NavigationSplitView` włącznie — przy
+    // każdym tiku pomiaru i każdym wczytanym obrazku. Obiekt ma tylko żyć
+    // tyle, co widok; obserwuje go wyłącznie `PerfOverlay`.
+    @State private var monitor = PerfMonitor()
     @StateObject private var similarity = Similarity()
     @StateObject private var albums = AlbumSync()
     @StateObject private var filters = Filters()

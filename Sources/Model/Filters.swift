@@ -196,6 +196,11 @@ final class Filters: ObservableObject {
     /// zdjęcie niezbadane nie trafia do żadnej miary.
     func carries(_ row: FeatureIndex.Row?, slot: Int, measure: Measure,
                  range: ClosedRange<Double>) -> Bool {
+        Self.carries(row, slot: slot, measure: measure, range: range)
+    }
+
+    nonisolated static func carries(_ row: FeatureIndex.Row?, slot: Int, measure: Measure,
+                                    range: ClosedRange<Double>) -> Bool {
         guard let value = row?.value(at: slot) else { return false }
         switch measure.kind {
         case .flag: return value > 0.5
@@ -230,6 +235,8 @@ final class Filters: ObservableObject {
 
     /// Zdjęcia po zakresie lat i szukaniu — bez warunku oceny.
     @Published private(set) var base: [PHAsset] = []
+    /// Identyfikatory `base`, liczone raz przy przebudowie — patrz `cachedIDs`.
+    private(set) var baseIDs: [String] = []
 
     /// Rośnie przy każdym przeliczeniu bazy. Sama liczba pozycji nie
     /// wystarcza jako podpis: „2018–2018" i „2019–2019" potrafią dać tyle
@@ -245,6 +252,11 @@ final class Filters: ObservableObject {
     private var searchTask: Task<Void, Never>?
     private var cacheKey = ""
     private var cached: [PHAsset] = []
+    /// Identyfikatory `cached`, pozycja w pozycję. `PHAsset.localIdentifier`
+    /// nie jest polem, tylko napisem składanym przy każdym odczycie z UUID —
+    /// dwadzieścia pięć tysięcy takich odczytów na każde odrysowanie to było
+    /// większość pozostałego czasu filtra.
+    private var cachedIDs: [String] = []
 
     #if os(macOS)
     private let store = MetadataStore.shared
@@ -287,6 +299,7 @@ final class Filters: ObservableObject {
             }
             return true
         }
+        baseIDs = base.map(\.localIdentifier)
         baseStamp += 1
         cacheKey = ""
     }
@@ -322,6 +335,7 @@ final class Filters: ObservableObject {
                 }
             }
             cached = Trace.measure("filters.sort") { sorted(result, reviews: reviews, features: features) }
+            cachedIDs = cached.map(\.localIdentifier)
             cacheKey = key
         }
 
@@ -338,8 +352,24 @@ final class Filters: ObservableObject {
         // tablica leży nietknięta w pamięci podręcznej. Filtrowanie gotowej
         // tablicy to jeden przelot ze sprawdzeniem w słowniku — tanio, nawet
         // kilka razy na odrysowanie.
-        guard !grades.isEmpty else { return cached }
-        return cached.filter { accepts(reviews[$0.localIdentifier]) }
+        //
+        // Pętla po całej bibliotece nie może sięgać ani po `grades` (to
+        // `@Published`, każdy odczyt idzie przez Combine), ani po polach
+        // rekordów SwiftData (każdy odczyt w trakcie odrysowania dopisuje
+        // widokowi zależność). Oba po razy dwadzieścia pięć tysięcy trzymały
+        // okno po pół sekundy na każde odrysowanie. Pozycje skali liczymy więc
+        // raz, tylko dla ocenionych, a pętla sprawdza zwykły słownik.
+        let wanted = grades
+        guard !wanted.isEmpty else { return cached }
+        var gradeOf: [String: Grade] = [:]
+        gradeOf.reserveCapacity(reviews.count)
+        for (id, review) in reviews { gradeOf[id] = grade(of: review) }
+        var kept: [PHAsset] = []
+        for (position, id) in cachedIDs.enumerated()
+        where wanted.contains(gradeOf[id] ?? .unrated) {
+            kept.append(cached[position])
+        }
+        return kept
     }
 
     /// Czy zdjęcie spełnia warunek cechy. Brak pomiaru to **nie** wynik zerowy
@@ -347,6 +377,11 @@ final class Filters: ObservableObject {
     private func carries(_ row: FeatureIndex.Row?) -> Bool { carries(row, as: feature) }
 
     func carries(_ row: FeatureIndex.Row?, as feature: Feature) -> Bool {
+        Self.carries(row, as: feature, threshold: threshold)
+    }
+
+    nonisolated static func carries(_ row: FeatureIndex.Row?, as feature: Feature,
+                                    threshold: Double) -> Bool {
         guard feature != .any else { return true }
         guard let row else { return false }
         switch feature {
@@ -439,46 +474,68 @@ final class Filters: ObservableObject {
         var total = 0
     }
 
-    func tally(_ reviews: [String: Review], features: FeatureIndex) -> Tally {
-        var result = Tally()
+    /// Wszystko, czego liczniki potrzebują, jako zwykłe dane — bez rekordów
+    /// SwiftData i bez `PHAsset` — żeby dało się je policzyć poza głównym
+    /// wątkiem. Liczenie idzie po całej bibliotece razy czterdzieści miar
+    /// i przy szybkim ocenianiu stawiało okno po pół sekundy na każdą ocenę.
+    struct TallyInput: @unchecked Sendable {
+        var ids: [String]
+        var rows: [String: FeatureIndex.Row]
+        var gradeOf: [String: Grade]
+        var wanted: Set<Grade>
+        var feature: Feature
+        var threshold: Double
+        var active: (measure: Measure, slot: Int, range: ClosedRange<Double>)?
+        var checks: [(measure: Measure, slot: Int, range: ClosedRange<Double>)]
+    }
 
+    func tallyInput(_ reviews: [String: Review], features: FeatureIndex) -> TallyInput {
         // Progi i pozycje policzone raz, nie przy każdym zdjęciu.
-        let checks: [(Measure, Int, ClosedRange<Double>)] = features.available.compactMap { measure in
-            guard let slot = features.slots[measure.code] else { return nil }
-            return (measure, slot, range(for: measure, in: features))
-        }
+        let checks: [(measure: Measure, slot: Int, range: ClosedRange<Double>)] =
+            features.available.compactMap { measure in
+                guard let slot = features.slots[measure.code] else { return nil }
+                return (measure, slot, range(for: measure, in: features))
+            }
         let active = activeMeasure.flatMap { measure in
-            checks.first { $0.0.code == measure.code }
+            checks.first { $0.measure.code == measure.code }
         }
+        var gradeOf: [String: Grade] = [:]
+        gradeOf.reserveCapacity(reviews.count)
+        for (id, review) in reviews { gradeOf[id] = grade(of: review) }
+        return TallyInput(ids: baseIDs, rows: features.rows, gradeOf: gradeOf, wanted: grades,
+                          feature: feature, threshold: threshold, active: active, checks: checks)
+    }
 
-        for asset in base {
-            let id = asset.localIdentifier
-            let review = reviews[id]
-            let row = features[id]
+    nonisolated static func tally(_ input: TallyInput) -> Tally {
+        var result = Tally()
+        for id in input.ids {
+            let grade = input.gradeOf[id] ?? .unrated
+            let row = input.rows[id]
 
             // Cecha i miara wykluczają się, więc warunek „z listy cech" to
             // jedno albo drugie — nigdy oba naraz.
-            var passesCondition = carries(row, as: feature)
-            if let active {
+            var passesCondition = carries(row, as: input.feature, threshold: input.threshold)
+            if let active = input.active {
                 passesCondition = passesCondition
-                    && carries(row, slot: active.1, measure: active.0, range: active.2)
+                    && carries(row, slot: active.slot, measure: active.measure, range: active.range)
             }
-            let passesStanding = accepts(review)
+            let passesStanding = input.wanted.isEmpty || input.wanted.contains(grade)
 
             if passesCondition {
                 // Licznik pozycji skali liczy się **bez** bieżącego wyboru na
                 // skali, inaczej każda pozycja poza wybraną pokazywałaby zero
                 // i kontrolka przestawałaby cokolwiek mówić.
-                result.grades[grade(of: review), default: 0] += 1
+                result.grades[grade, default: 0] += 1
             }
             if passesStanding {
-                for value in Feature.allCases where carries(row, as: value) {
+                for value in Feature.allCases
+                where carries(row, as: value, threshold: input.threshold) {
                     result.feature[value, default: 0] += 1
                 }
                 if row != nil {
-                    for (measure, slot, limit) in checks
-                    where carries(row, slot: slot, measure: measure, range: limit) {
-                        result.measures[measure.code, default: 0] += 1
+                    for check in input.checks
+                    where carries(row, slot: check.slot, measure: check.measure, range: check.range) {
+                        result.measures[check.measure.code, default: 0] += 1
                     }
                 }
             }

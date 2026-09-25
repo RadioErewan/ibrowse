@@ -30,6 +30,11 @@ enum Trace {
         log.notice("\(label, privacy: .public) \(seconds * 1000, format: .fixed(precision: 0), privacy: .public) ms main=\(Thread.isMainThread, privacy: .public)")
     }
 
+    /// Zwykłe zdarzenie z opisem — np. co zrobił klawisz w ocenianiu.
+    static func event(_ text: String) {
+        log.notice("EVENT \(text, privacy: .public)")
+    }
+
     private static func report(_ label: StaticString, since started: ContinuousClock.Instant) {
         let span = (ContinuousClock.now - started).components
         let ms = Double(span.seconds) * 1000 + Double(span.attoseconds) / 1e15

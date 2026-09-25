@@ -9,7 +9,11 @@ import SwiftUI
 struct CullView: View {
     @ObservedObject var library: PhotoLibrary
     @ObservedObject var filters: Filters
-    @ObservedObject var monitor: PerfMonitor
+    /// Zwykła referencja, **nie obserwacja**: pomiar publikuje zmianę co pół
+    /// sekundy i przy każdym wczytanym obrazku. Obserwowany stąd przebudowywał
+    /// cały widok razem z oknem za każdym razem — przy szybkim ocenianiu okno
+    /// układało się od nowa kilka razy na krok. Obserwuje go tylko `PerfOverlay`.
+    let monitor: PerfMonitor
 
     /// Cechy systemu — te same, po których filtruje i sortuje siatka.
     /// Ocenianie samo ich nie używa do niczego poza podpisami w pasku
@@ -50,6 +54,12 @@ struct CullView: View {
     /// się — przez chwilę było więc widać pierwsze zdjęcie filtra, a gdy zadanie
     /// od indeksu ruszyło pierwsze, nadpisywało wskaźnik zdjęciem numer zero.
     @State private var positioned = false
+
+    /// Zdjęcie, na którym stoisz, po identyfikatorze — nie po pozycji. Ocena
+    /// przy filtrze po gwiazdkach wyjmuje zdjęcie ze zbioru i wszystko za nim
+    /// przesuwa się o jedno: sam indeks trafiał wtedy o jedno za daleko, a przy
+    /// ostatnim zdjęciu wypadał poza zbiór i klawisze przestawały działać.
+    @State private var anchorID: String?
     @State private var showingDeletions = false
 
     /// Podgląd 1:1. Przełącznik, nie przytrzymanie — przytrzymanie gubi się
@@ -81,11 +91,28 @@ struct CullView: View {
 
     // MARK: - Zbiór roboczy
 
+    /// Zbiór i indeks ocen liczone **raz na obieg pętli zdarzeń**.
+    ///
+    /// Jedno odrysowanie sięga po nie kilkanaście razy — każda z pięciu
+    /// gwiazdek w stopce, bieżące zdjęcie, jego ocena, scena, licznik. Każde
+    /// sięgnięcie budowało słownik wszystkich ocen i filtrowało całą bibliotekę
+    /// według gwiazdek. Po wyczyszczeniu ocen kilkuset zdjęć każda zmiana
+    /// wracająca z Photos budziła kolejne odrysowanie, a każde trwało blisko
+    /// dwie sekundy: okno stało przez kilka minut.
+    ///
+    /// W obrębie jednego obiegu dane się nie zmieniają, więc wynik jest ten
+    /// sam; następny obieg liczy od nowa.
+    @State private var memo = TurnMemo()
+
     private var byID: [String: Review] {
-        Dictionary(reviews.map { ($0.assetID, $0) }, uniquingKeysWith: { a, _ in a })
+        memo.value(\.byID) {
+            Dictionary(reviews.map { ($0.assetID, $0) }, uniquingKeysWith: { a, _ in a })
+        }
     }
 
-    private var workingSet: [PHAsset] { filters.apply(byID, features: features) }
+    private var workingSet: [PHAsset] {
+        memo.value(\.workingSet) { filters.apply(byID, features: features) }
+    }
 
     private var current: PHAsset? {
         let set = workingSet
@@ -154,14 +181,20 @@ struct CullView: View {
             // zmianie stanu najechania, a sztywna szerokość 340 punktów tylko
             // ściskała je mocniej. Jedna kontrolka mniej i jeden powód do
             // migotania mniej.
-            ToolbarItemGroup(placement: .principal) {
+            //
+            // Licznik do skasowania stoi po prawej, przy reszcie przycisków,
+            // i z liczbą. Na środku (`.principal`) rozciągał pasek na całą
+            // szerokość, a pasek macOS pokazywał sam kosz, bez liczby.
+            ToolbarItem(placement: .primaryAction) {
                 if markedCount > 0 {
                     Button {
                         showingDeletions = true
                     } label: {
                         Label("\(markedCount) to delete", systemImage: "trash")
+                            .labelStyle(.titleAndIcon)
                     }
                     .tint(.red)
+                    .help("Review the photos marked for deletion")
                 }
             }
             ToolbarItem(placement: .primaryAction) {
@@ -187,6 +220,7 @@ struct CullView: View {
                let position = workingSet.firstIndex(where: { $0.localIdentifier == focusID }) {
                 index = position
             }
+            anchorID = focusID
             positioned = true
             DispatchQueue.main.async { focused = true }
         }
@@ -203,6 +237,22 @@ struct CullView: View {
         .onChange(of: showingDeletions) { _, open in
             if !open { focused = true }
         }
+        // Fokus potrafi zniknąć sam, bez żadnego arkusza: przy szybkim
+        // ocenianiu po jednej z przebudów okna klawisze zaczęły trafiać
+        // w próżnię (strzałki piszczały, cyfry nie docierały), aż do kliknięcia
+        // w pasek miniatur. Pełny ekran nie ma pól tekstowych, więc fokus bez
+        // otwartego arkusza zawsze należy do niego — odzyskujemy go w następnym
+        // obiegu, poza bieżącą przebudową (patrz wzorzec w `GridView`).
+        #if os(macOS)
+        .onChange(of: focused) { _, isFocused in
+            Trace.event("fullscreen focus \(isFocused)")
+            guard !isFocused else { return }
+            DispatchQueue.main.async {
+                guard !showingLoupe, !showingDeletions else { return }
+                focused = true
+            }
+        }
+        #endif
         #if os(macOS)
         // `esc` przez `onKeyPress`, nie przez `onExitCommand`.
         //
@@ -222,10 +272,21 @@ struct CullView: View {
         // Zmiana warunków przestawia zbiór pod nogami, więc indeks musi wrócić
         // na początek — inaczej po zawężeniu lądujesz w przypadkowym miejscu
         // albo poza zakresem.
-        .onChange(of: filters.grades) { _, _ in index = 0 }
-        .onChange(of: filters.base.count) { _, _ in index = 0 }
-        .onChange(of: filters.feature) { _, _ in index = 0 }
-        .onChange(of: filters.order) { _, _ in index = 0 }
+        .onChange(of: filters.grades) { _, _ in index = 0; anchorID = nil }
+        .onChange(of: filters.base.count) { _, _ in index = 0; anchorID = nil }
+        .onChange(of: filters.feature) { _, _ in index = 0; anchorID = nil }
+        .onChange(of: filters.order) { _, _ in index = 0; anchorID = nil }
+        // Zbiór zmienił się pod nogami (ocena wyjęła zdjęcie z filtra, doszło
+        // nowe z iCloud): wracamy na to samo zdjęcie, a gdy go już nie ma,
+        // zostajemy w tym miejscu, przycięci do końca zbioru.
+        .onChange(of: workingSet.count) { _, count in
+            if let anchorID,
+               let position = workingSet.firstIndex(where: { $0.localIdentifier == anchorID }) {
+                index = position
+            } else {
+                index = min(index, max(count - 1, 0))
+            }
+        }
         // Skacze tylko wtedy, gdy wskaźnik przyszedł z zewnątrz. Bez tego
         // warunku widok reagowałby na własne zapisy i pętla by się zapętliła.
         .task(id: focusID) {
@@ -234,6 +295,7 @@ struct CullView: View {
                   let position = workingSet.firstIndex(where: { $0.localIdentifier == focusID })
             else { return }
             index = position
+            anchorID = focusID
         }
         .sheet(isPresented: $showingDeletions) {
             DeletionReview(library: library, reviews: reviews.filter(\.markedForDeletion))
@@ -506,6 +568,16 @@ struct CullView: View {
 
     private func handle(_ characters: String) -> KeyPress.Result {
         guard let key = characters.first else { return .ignored }
+        // Ślad w logu na wypadek „naciskam i nic": raz zdarzyło się, że `1`
+        // przestało przesuwać, a strzałka działała. Stan przed i po klawiszu
+        // mówi, czy ocena doszła, czy zdjęcie było i gdzie stanął wskaźnik.
+        let before = index
+        defer {
+            let set = workingSet
+            Trace.event("key \(key) index \(before)→\(index) of \(set.count) "
+                + "current \(current?.localIdentifier.prefix(8) ?? "nil") "
+                + "stars \(currentReview?.stars ?? -1) anchor \(anchorID?.prefix(8) ?? "nil")")
+        }
         switch key {
         case "0"..."5":
             rate(Double(String(key)) ?? 0)
@@ -571,6 +643,7 @@ struct CullView: View {
         let set = workingSet
         guard !set.isEmpty else { return }
         index = min(max(index + delta, 0), set.count - 1)
+        anchorID = set[index].localIdentifier
     }
 
     /// Trzy zdjęcia w przód i jedno w tył — tyle wystarczy, żeby szybkie
@@ -581,5 +654,29 @@ struct CullView: View {
             set.indices.contains(i) ? set[i] : nil
         }
         library.prefetch(window, targetSize: CGSize(width: 2048, height: 2048))
+    }
+}
+
+/// Pamięć na jeden obieg pętli zdarzeń: pierwszy odczyt liczy, kolejne w tym
+/// samym obiegu dostają wynik, a na końcu obiegu wszystko się czyści.
+@MainActor
+final class TurnMemo {
+    var byID: [String: Review]?
+    var workingSet: [PHAsset]?
+    private var clearing = false
+
+    func value<T>(_ slot: ReferenceWritableKeyPath<TurnMemo, T?>, compute: () -> T) -> T {
+        if let cached = self[keyPath: slot] { return cached }
+        let fresh = compute()
+        self[keyPath: slot] = fresh
+        if !clearing {
+            clearing = true
+            DispatchQueue.main.async { [weak self] in
+                self?.byID = nil
+                self?.workingSet = nil
+                self?.clearing = false
+            }
+        }
+        return fresh
     }
 }

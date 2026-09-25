@@ -64,11 +64,18 @@ struct FilterPanel: View {
 
     }
 
-    private func recount() {
+    /// Dane zbierane na głównym wątku (rekordy SwiftData stąd nie wyjdą),
+    /// samo liczenie po całej bibliotece — w tle.
+    private func recount() async {
         let index = Dictionary(
             reviews.map { ($0.assetID, $0) }, uniquingKeysWith: { a, _ in a }
         )
-        tally = filters.tally(index, features: features)
+        let input = filters.tallyInput(index, features: features)
+        let counted = await Task.detached(priority: .userInitiated) {
+            Filters.tally(input)
+        }.value
+        guard !Task.isCancelled else { return }
+        tally = counted
     }
 
     var body: some View {
@@ -80,7 +87,7 @@ struct FilterPanel: View {
             .task(id: trigger) {
                 try? await Task.sleep(for: .milliseconds(120))
                 guard !Task.isCancelled else { return }
-                recount()
+                await recount()
             }
     }
 

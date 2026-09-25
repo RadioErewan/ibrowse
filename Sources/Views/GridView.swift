@@ -14,7 +14,11 @@ import SwiftUI
 /// na 25 tysiącach, nie ma powodu schodzić do NSCollectionView.
 struct GridView: View {
     @ObservedObject var library: PhotoLibrary
-    @ObservedObject var monitor: PerfMonitor
+    /// Zwykła referencja, **nie obserwacja**: pomiar publikuje zmianę co pół
+    /// sekundy i przy każdym wczytanym obrazku. Obserwowany stąd przebudowywał
+    /// cały widok razem z oknem za każdym razem — przy szybkim ocenianiu okno
+    /// układało się od nowa kilka razy na krok. Obserwuje go tylko `PerfOverlay`.
+    let monitor: PerfMonitor
     @ObservedObject var filters: Filters
 
     /// Cechy policzone przez system — źródło podpisów na kafelkach i warunków
