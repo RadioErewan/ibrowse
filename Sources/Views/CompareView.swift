@@ -37,6 +37,21 @@ struct CompareView: View {
         var scale: Double = 1
         var offset: CGSize = .zero
         var settled: CGSize = .zero
+
+        /// Krok z klawiatury, wokół środka panelu: przesunięcie rośnie razem
+        /// ze skalą, więc oglądany wycinek zostaje na miejscu. Od 1× (całe
+        /// zdjęcie) do 8×; na 1× przesunięcie wraca do zera.
+        mutating func zoom(by factor: Double) {
+            let next = min(max(scale * factor, 1), 8)
+            let ratio = next / scale
+            scale = next
+            if next <= 1 {
+                offset = .zero
+            } else {
+                offset = CGSize(width: offset.width * ratio, height: offset.height * ratio)
+            }
+            settled = offset
+        }
     }
 
     @State private var left = Zoom()
@@ -76,6 +91,23 @@ struct CompareView: View {
         .focusEffectDisabled()
         .focused($focused)
         .onAppear { DispatchQueue.main.async { focused = true } }
+        // Powiększenie z klawiatury — szczypanie na gładziku bywa trudne do
+        // trafienia, a myszą nie było go wcale. Przy wspólnym powiększeniu
+        // prawa strona i tak czyta lewą, przy osobnym klawisz działa na obie.
+        .onKeyPress(characters: CharacterSet(charactersIn: "+=-0")) { press in
+            switch press.characters {
+            case "+", "=":
+                left.zoom(by: 1.5)
+                if !sharedZoom { right.zoom(by: 1.5) }
+            case "-":
+                left.zoom(by: 1 / 1.5)
+                if !sharedZoom { right.zoom(by: 1 / 1.5) }
+            default:
+                left = Zoom()
+                right = Zoom()
+            }
+            return .handled
+        }
         .onKeyPress(keys: [.leftArrow, .rightArrow]) { press in
             let delta = press.key == .leftArrow ? -1 : 1
             step(delta, side: press.modifiers.contains(.shift) ? .a : .b)
@@ -143,10 +175,15 @@ struct CompareView: View {
             .keyboardShortcut("s", modifiers: [])
             .help("S — swap sides")
 
+            Text("+/− zoom · 0 fit")
+                .font(.caption.monospaced())
+                .foregroundStyle(.tertiary)
+
             Toggle("shared zoom", isOn: $sharedZoom)
                 .toggleStyle(.switch)
                 .controlSize(.small)
                 .focusable(false)
+                .help("+ / − zoom · 0 fit · drag to move")
                 .font(.caption)
 
             Button("esc — back to the grid", action: onClose)
