@@ -3,8 +3,10 @@
 # czeka na przetworzenie, ustawia „What to Test", dodaje do grupy External
 # i zgłasza do recenzji bety. Opis zmian po angielsku, z pliku.
 #
-#   tools/testflight.sh opis.txt
+#   tools/testflight.sh opis.txt                  iPhone
+#   PLATFORM=MAC_OS tools/testflight.sh opis.txt  Mac (po release-mac-store.sh)
 set -euo pipefail
+PLATFORM="${PLATFORM:-IOS}"
 cd "$(dirname "$0")/.."
 
 WHATS="${1:?plik z opisem zmian (What to Test)}"
@@ -18,9 +20,9 @@ token() { bash tools/asc-token.sh 3MGB93VA88 5747fe7d-c544-4960-b0f4-380096a6c53
 get() { curl -s -H "Authorization: Bearer $(token)" "$API/$1"; }
 send() { curl -s -X "$1" -H "Authorization: Bearer $(token)" -H "Content-Type: application/json" -d "$3" "$API/$2"; }
 
-echo "== czekam na build $VERSION ($BUILD_NO) =="
+echo "== czekam na build $PLATFORM $VERSION ($BUILD_NO) =="
 for _ in $(seq 1 60); do
-    read -r B STATE < <(get "builds?filter%5Bapp%5D=$APP&filter%5Bversion%5D=$BUILD_NO&filter%5BpreReleaseVersion.version%5D=$VERSION&filter%5BpreReleaseVersion.platform%5D=IOS" \
+    read -r B STATE < <(get "builds?filter%5Bapp%5D=$APP&filter%5Bversion%5D=$BUILD_NO&filter%5BpreReleaseVersion.version%5D=$VERSION&filter%5BpreReleaseVersion.platform%5D=$PLATFORM" \
         | python3 -c "import sys,json; d=json.load(sys.stdin)['data']; print(d[0]['id'], d[0]['attributes']['processingState']) if d else print('- -')")
     echo "  $STATE"
     [ "$STATE" = "VALID" ] && break

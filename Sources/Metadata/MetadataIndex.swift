@@ -27,7 +27,7 @@ final class MetadataIndex: ObservableObject {
         let fromExporter = result != AssetMetadata()
         result.filename = AssetFacts.quick(for: asset).filename
         current = result
-        note = fromExporter ? nil
+        note = fromExporter || Filters.showsOnlyWhenPresent ? nil
             : "Places, people and scenes come from Lightbrary Exporter on the Mac that holds your library."
 
         guard !fromExporter else { return }

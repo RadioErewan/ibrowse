@@ -121,8 +121,11 @@ struct FilterPanel: View {
 
     private var sections: some View {
         VStack(alignment: .leading, spacing: 18) {
-            group("Search contents") { searchField; searchNote }
+            if !Filters.showsOnlyWhenPresent || filters.hasContentTerms {
+                group("Search contents") { searchField; searchNote }
+            }
             group("Rating") { gradeScale }
+            if !Filters.showsOnlyWhenPresent || !features.isEmpty {
             group("System measures") {
                 featureRows
                 thresholdSlider
@@ -131,6 +134,7 @@ struct FilterPanel: View {
                 rarelyUsed
                 newcomers
                 featureNote
+            }
             }
             #if os(iOS)
             // Na Macu kolejność siedzi na belce nad siatką — to nie jest
@@ -578,7 +582,7 @@ struct FilterPanel: View {
     /// Porządek zbioru to nie ozdoba: decyduje, co znaczy „następne zdjęcie"
     /// po geście w ocenianiu. Bez licznika, bo kolejność niczego nie odsiewa.
     private var orderRows: some View {
-        ForEach(Filters.Order.allCases) { value in
+        ForEach(Filters.orders(hasMeasures: !features.isEmpty)) { value in
             // `.label`, nie `.rawValue` — patrz komentarz w `featureRows`.
             row(value.label, count: nil,
                 isOn: filters.order == value) { filters.order = value }

@@ -68,6 +68,10 @@ targets:
         CFBundleVersion: $(CURRENT_PROJECT_VERSION)
         LSMinimumSystemVersion: "27.0"
         NSHumanReadableCopyright: ""
+        # Wymagane przy wysyłce do sklepu: kategoria i deklaracja szyfrowania
+        # (tylko standardowe HTTPS systemu — bez własnej kryptografii).
+        LSApplicationCategoryType: public.app-category.photography
+        ITSAppUsesNonExemptEncryption: false
         # Bez tego klucza system nie pokaże pytania o dostęp do biblioteki.
         NSPhotoLibraryUsageDescription: >-
           lightbrary czyta bibliotekę zdjęć, żeby pozwolić Ci je przeglądać,

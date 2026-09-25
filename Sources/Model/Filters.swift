@@ -263,6 +263,28 @@ final class Filters: ObservableObject {
     /// Photos sama (krok 5 w DECYZJE.md); robi to eksporter.
     private var terms: [String: String] = [:]
 
+    /// Czy są słowa do wyszukiwania po treści (od eksportera).
+    var hasContentTerms: Bool { !terms.isEmpty }
+
+    /// Wersja ze sklepu nie wspomina o eksporterze (DECYZJE.md, „Piaskownica
+    /// i sklep na Macu") — to, co z niego pochodzi, pokazuje dopiero wtedy,
+    /// gdy dane faktycznie są. Wersja ze strony pokazuje zawsze i podpowiada,
+    /// skąd je wziąć.
+    nonisolated static var showsOnlyWhenPresent: Bool {
+        #if APP_STORE
+        true
+        #else
+        false
+        #endif
+    }
+
+    /// Porządki do wyboru: bez miar znikają te, które by ich potrzebowały
+    /// (tylko w wersji ze sklepu — patrz `showsOnlyWhenPresent`).
+    static func orders(hasMeasures: Bool) -> [Order] {
+        guard showsOnlyWhenPresent, !hasMeasures else { return Order.allCases }
+        return Order.allCases.filter { ![.blurry, .dark, .eyes, .measure].contains($0) }
+    }
+
     func adoptTerms(_ terms: [String: String]) {
         self.terms = terms
         if !query.isEmpty { scheduleSearch() }

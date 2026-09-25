@@ -47,7 +47,8 @@ struct LightbraryApp: App {
         }
     }
 
-    #if os(macOS)
+    // Wersja ze sklepu aktualizuje się przez sklep — bez własnego sprawdzania.
+    #if os(macOS) && !APP_STORE
     @StateObject private var updates = UpdateCheck.shared
     #endif
 
@@ -63,7 +64,7 @@ struct LightbraryApp: App {
                 // podejmujesz decyzje. Lightroom, Capture One i Bridge są
                 // ciemne z tego samego powodu.
                 .preferredColorScheme(.dark)
-                #if os(macOS)
+                #if os(macOS) && !APP_STORE
                 .sheet(isPresented: $updates.isPresenting) { UpdateSheet() }
                 #endif
         }
@@ -83,9 +84,11 @@ struct LightbraryApp: App {
         .defaultSize(width: 1280, height: 820)
         .commands {
             // Pod „O programie", czyli tam, gdzie każdy Mac trzyma tę pozycję.
+            #if !APP_STORE
             CommandGroup(after: .appInfo) {
                 Button("Check for Updates…") { updates.check() }
             }
+            #endif
             LibraryCommands()
         }
         // Belka tytułowa zostaje widoczna, bo teraz **coś w niej jest**.

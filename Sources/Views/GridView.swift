@@ -463,7 +463,7 @@ struct GridView: View {
     /// niż rok czy cecha, więc należy jej się miejsce pod ręką.
     private var orderMenu: some View {
         Picker("order", selection: $filters.order) {
-            ForEach(Filters.Order.allCases) { Text($0.rawValue).tag($0) }
+            ForEach(Filters.orders(hasMeasures: !features.isEmpty)) { Text($0.rawValue).tag($0) }
         }
         .pickerStyle(.menu)
         .labelsHidden()
