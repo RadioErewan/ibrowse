@@ -321,7 +321,11 @@ struct RootView: View {
     @State private var showingActions = false
     @Environment(\.modelContext) private var context
     @Environment(\.scenePhase) private var scenePhase
-    @State private var pendingWrite: Task<Void, Never>?
+    /// Odłożony zapis własnych decyzji. W obiekcie, nie w `@State` wprost:
+    /// zadanie zmienia się przy **każdym** zapisie bazy, czyli przy każdej
+    /// ocenie, a każda zmiana `@State` przebudowywała widok główny — całe okno
+    /// ze `NavigationSplitView` i paskiem narzędzi, po 0,6–0,9 s na ocenę.
+    @State private var pendingWrite = PendingTask()
 
     @State private var mode: Mode = .grid
     @State private var showingFilters = false
@@ -331,7 +335,9 @@ struct RootView: View {
     @AppStorage("filters.sidebar") private var sidebarVisible = true
     @AppStorage("preview.inspector") private var inspectorVisible = true
     @AppStorage("grid.thumb") private var thumbSize = 140.0
-    @StateObject private var metadata = MetadataIndex()
+    // `@State`, nie `@StateObject`: widok główny tylko przekazuje metadane
+    // dalej, a obserwując je przebudowywał całe okno przy każdym zdjęciu.
+    @State private var metadata = MetadataIndex()
 
     /// Pełny ekran nie jest trybem, tylko **stanem** przestrzeni roboczej.
     ///
@@ -346,16 +352,14 @@ struct RootView: View {
     @State private var comparePair: (a: String, b: String)?
     #endif
 
-    /// Zaznaczone zdjęcia. Puste znaczy „operacje dotyczą całego filtru" —
-    /// to jest domyślny stan i celowo użyteczny sam w sobie.
-    @State private var selection: Set<String> = []
-
-    /// Jedno miejsce, w którym stoi praca — wspólne dla wszystkich trybów.
+    /// Jedno miejsce, w którym stoi praca, i zaznaczenie — wspólne dla
+    /// wszystkich trybów, więc przełączanie trybów nigdy nie gubi kontekstu:
+    /// siatka przewija się tam, gdzie skończyło się ocenianie, a ocenianie
+    /// zaczyna tam, gdzie kliknąłeś w siatce. Puste zaznaczenie znaczy
+    /// „operacje dotyczą całego filtru".
     ///
-    /// Każdy tryb je zapisuje i każdy je czyta, więc przełączanie trybów
-    /// nigdy nie gubi kontekstu: siatka przewija się tam, gdzie skończyło
-    /// się ocenianie, a ocenianie zaczyna tam, gdzie kliknąłeś w siatce.
-    @State private var focusID: String?
+    /// `@State` z obiektem, **nie obserwowany** tutaj — patrz `Focus`.
+    @State private var focus = Focus()
 
     /// **Narzędzie**, nie widok.
     ///
@@ -446,8 +450,7 @@ struct RootView: View {
         // drugie urządzenie miało co przeczytać bez ręcznej synchronizacji.
         // Seria ocen to jeden zapis pliku, nie jeden na klawisz.
         .onReceive(NotificationCenter.default.publisher(for: ModelContext.didSave)) { _ in
-            pendingWrite?.cancel()
-            pendingWrite = Task {
+            pendingWrite.replace {
                 try? await Task.sleep(for: .seconds(20))
                 guard !Task.isCancelled else { return }
                 await sync.writeOwnDecisions(context: context, library: library)
@@ -560,7 +563,7 @@ struct RootView: View {
                     // razem ze zdjęciem, na którym stała praca.
                     CullView(
                         library: library, filters: filters, monitor: monitor,
-                        features: features, focusID: $focusID,
+                        features: features, focus: focus,
                         onExit: { fullScreen = false }
                     )
                 } else {
@@ -630,24 +633,16 @@ struct RootView: View {
     private var workspace: some View {
         screen(mode)
             .inspector(isPresented: inspectorBinding) {
-                PreviewInspector(
-                    asset: previewAsset,
+                FocusedPreview(
+                    focus: focus,
                     library: library,
                     metadata: metadata,
-                    selectionCount: selection.count,
                     onFullScreen: { fullScreen = true }
                 )
                 .inspectorColumnWidth(min: 300, ideal: 390, max: 520)
             }
     }
 
-    /// Podgląd pokazuje zdjęcie spod wskaźnika miejsca, bo każde kliknięcie
-    /// w kafelek ustawia go razem z zaznaczeniem. Dzięki temu nie trzeba
-    /// osobno pamiętać, które z zaznaczonych jest „tym pierwszym".
-    private var previewAsset: PHAsset? {
-        guard let focusID else { return nil }
-        return library.asset(id: focusID)
-    }
 
     /// **Zapis poza przebiegiem układu, i tylko gdy to decyzja człowieka.**
     ///
@@ -771,10 +766,9 @@ struct RootView: View {
                 monitor: monitor,
                 filters: filters,
                 features: features,
-                selection: $selection,
-                focusID: $focusID,
+                focus: focus,
                 onOpen: { asset in
-                    focusID = asset.localIdentifier
+                    focus.id = asset.localIdentifier
                     #if os(macOS)
                     // Na Macu dwuklik wchodzi w pełny ekran, nie w osobny tryb.
                     fullScreen = true
@@ -792,9 +786,9 @@ struct RootView: View {
         case .cull:
             CullView(
                 library: library, filters: filters, monitor: monitor,
-                features: features, focusID: $focusID
+                features: features, focus: focus
             )
-        case .pair: PairView(library: library, similarity: similarity, focusID: $focusID)
+        case .pair: PairView(library: library, similarity: similarity, focus: focus)
         }
     }
 
@@ -1042,3 +1036,40 @@ private struct Permission: View {
         .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
 }
+
+/// Jedno zadanie naraz: nowe odwołuje poprzednie. Zwykła klasa, żeby zmiana
+/// zadania nie budziła widoku, który ją trzyma.
+@MainActor
+final class PendingTask {
+    private var task: Task<Void, Never>?
+
+    func replace(_ work: @escaping @MainActor () async -> Void) {
+        task?.cancel()
+        task = Task { await work() }
+    }
+}
+
+#if os(macOS)
+/// Podgląd pokazuje zdjęcie spod wskaźnika miejsca, bo każde kliknięcie
+/// w kafelek ustawia go razem z zaznaczeniem. Dzięki temu nie trzeba
+/// osobno pamiętać, które z zaznaczonych jest „tym pierwszym".
+///
+/// Osobny widok, bo to on — a nie widok główny — ma śledzić wskaźnik:
+/// strzałka przebudowuje wtedy podgląd, a nie całe okno.
+private struct FocusedPreview: View {
+    @ObservedObject var focus: Focus
+    let library: PhotoLibrary
+    let metadata: MetadataIndex
+    let onFullScreen: () -> Void
+
+    var body: some View {
+        PreviewInspector(
+            asset: focus.id.flatMap { library.asset(id: $0) },
+            library: library,
+            metadata: metadata,
+            selectionCount: focus.selection.count,
+            onFullScreen: onFullScreen
+        )
+    }
+}
+#endif

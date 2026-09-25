@@ -20,7 +20,11 @@ struct PairView: View {
     /// Ten sam wskaźnik, którego używa ocenianie. Z pojedynku wychodzi
     /// **dotychczasowy lider** — to jego się broni, więc to on jest miejscem,
     /// w którym jesteś, gdy przełączysz się na siatkę.
-    @Binding var focusID: String?
+    @ObservedObject var focus: Focus
+    private var focusID: String? {
+        get { focus.id }
+        nonmutating set { focus.id = newValue }
+    }
     @Environment(\.modelContext) private var context
 
     @Query private var series: [Series]

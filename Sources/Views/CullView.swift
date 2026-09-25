@@ -26,7 +26,11 @@ struct CullView: View {
     /// Działa w obie strony: dwuklik w siatce ustawia go i wchodzi tutaj,
     /// a każdy krok strzałką zapisuje go z powrotem, więc powrót do siatki
     /// trafia w to samo miejsce zamiast na początek biblioteki.
-    @Binding var focusID: String?
+    @ObservedObject var focus: Focus
+    private var focusID: String? {
+        get { focus.id }
+        nonmutating set { focus.id = newValue }
+    }
 
     /// Wyjście z pełnego ekranu. Trzymane jako domknięcie, bo o tym, czym jest
     /// „wyjście", decyduje platforma: na Macu powrót do siatki, na telefonie
@@ -79,7 +83,8 @@ struct CullView: View {
     #endif
 
     #if os(macOS)
-    @StateObject private var metadata = MetadataIndex()
+    // Obserwuje go `MetadataPanel`; tu tylko żyje — patrz `RootView.metadata`.
+    @State private var metadata = MetadataIndex()
     /// Domyślnie otwarty — po to powstał. Zapamiętany, bo przy szybkim
     /// odsiewie panel bywa zbędny i nie chcę go zamykać przy każdym wejściu.
     @AppStorage("cull.showingMetadata") private var showingMetadata = true

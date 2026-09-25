@@ -32,7 +32,6 @@ struct GridView: View {
     /// i zdejmuje pojedyncze, `⇧` zaznacza zakres od wskaźnika miejsca.
     /// Na telefonie zaznaczania nie ma: tam stuknięcie otwiera zdjęcie, bo tak
     /// działa każda galeria i nie ma czym zaznaczać.
-    @Binding var selection: Set<String>
 
     /// Zdjęcie, na którym stoi praca — wspólne dla całej aplikacji. Siatka
     /// przewija się do niego przy wejściu, oznacza ramką i **ustawia przy
@@ -40,7 +39,15 @@ struct GridView: View {
     ///
     /// Bez tego powrót z oceniania lądował na początku archiwum — po godzinie
     /// pracy w 2019 roku dostawało się widok pierwszego zdjęcia z 2007.
-    @Binding var focusID: String?
+    @ObservedObject var focus: Focus
+    private var focusID: String? {
+        get { focus.id }
+        nonmutating set { focus.id = newValue }
+    }
+    private var selection: Set<String> {
+        get { focus.selection }
+        nonmutating set { focus.selection = newValue }
+    }
 
     /// Wejście w pełny ekran: na Macu dwuklik, na telefonie stuknięcie.
     var onOpen: (PHAsset) -> Void = { _ in }

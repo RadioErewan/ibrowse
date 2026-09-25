@@ -62,6 +62,7 @@ struct MetadataPanel: View {
                 if let url = URL(string: panel) { NSWorkspace.shared.open(url) }
             }
             .controlSize(.small)
+            .focusable(false)  // patrz „Text in the photo" niżej
 
             Text("Add lightbrary with the **+** button, then launch the app "
                  + "again — the permission only takes effect at startup.")
@@ -168,6 +169,12 @@ struct MetadataPanel: View {
                 }
                 .buttonStyle(.plain)
                 .foregroundStyle(.secondary)
+                // Bez fokusu klawiatury. Przycisk pojawia się tylko przy
+                // zdjęciach z odczytanym tekstem, a macOS przestawiał na niego
+                // fokus z oceniania: przy następnym zdjęciu znikał razem
+                // z fokusem i cyfry przestawały działać — zawsze na tych
+                // samych zdjęciach. Myszą klika się jak dotąd.
+                .focusable(false)
 
                 if showingWords {
                     Text(data.words.joined(separator: " "))
