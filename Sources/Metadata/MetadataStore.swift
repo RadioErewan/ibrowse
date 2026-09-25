@@ -3,35 +3,6 @@ import Foundation
 import Photos
 import SQLite3
 
-/// Metadane, których PhotoKit nie oddaje.
-///
-/// `PHAsset` zna datę, współrzędne i wymiary — i na tym koniec. Nazwy miejsc,
-/// rozpoznane osoby, etykiety scen, odczytany tekst i cała technika zdjęcia
-/// leżą w bazach biblioteki, do których nie ma publicznego API.
-struct AssetMetadata: Sendable {
-    var filename: String?
-    var people: [String] = []
-    var pets: [String] = []
-    /// Od najbardziej szczegółowego do najogólniejszego.
-    var place: [String] = []
-    var scenes: [String] = []
-    var occasion: [String] = []
-    var words: [String] = []
-
-    var camera: String?
-    var lens: String?
-    var iso: Int?
-    var aperture: Double?
-    var shutter: Double?
-    var focalLength: Double?
-    var flash: Bool?
-
-    var isEmpty: Bool {
-        filename == nil && people.isEmpty && place.isEmpty && scenes.isEmpty
-            && occasion.isEmpty && words.isEmpty && camera == nil
-    }
-}
-
 /// Czyta biblioteki Zdjęć **tylko do odczytu** i tylko na macOS.
 ///
 /// To świadome odstępstwo od zasady „PhotoKit, nie SQLite". Zasada broni
@@ -358,6 +329,15 @@ actor MetadataStore {
         }
         sqlite3_finalize(statement)
 
+        Self.classify(ids, first: first, into: &result)
+    }
+
+    /// Rozkłada hasła zdjęcia na sekcje panelu. Wspólne dla panelu (jedno
+    /// zdjęcie) i eksportu (cała biblioteka) — ta sama reguła w obu miejscach.
+    private static func classify(
+        _ ids: [UInt32], first: [UInt32: (category: Int, text: String)],
+        into result: inout AssetMetadata
+    ) {
         let generic: Set<String> = ["person", "persons", "people", "pet", "pets", "animal", "animals"]
         func isName(_ text: String) -> Bool {
             let lower = text.lowercased()
@@ -376,17 +356,91 @@ actor MetadataStore {
             case 8050: result.filename = text
             case 6000 where result.camera == nil: result.camera = text
             default:
-                if let rank = Self.leoPlaceOrder.firstIndex(of: category) {
+                if let rank = leoPlaceOrder.firstIndex(of: category) {
                     place.append((rank, text))
                 }
             }
         }
-        result.place = Self.unique(place.sorted { $0.rank < $1.rank }.map(\.value))
-        result.scenes = Self.unique(result.scenes)
-        result.occasion = Self.unique(result.occasion)
-        result.people = Self.unique(result.people)
-        result.pets = Self.unique(result.pets)
-        result.words = Array(Self.unique(result.words).prefix(60))
+        result.place = unique(place.sorted { $0.rank < $1.rank }.map(\.value))
+        result.scenes = unique(result.scenes)
+        result.occasion = unique(result.occasion)
+        result.people = unique(result.people)
+        result.pets = unique(result.pets)
+        result.words = Array(unique(result.words).prefix(60))
+    }
+
+    /// Kategorie, z których składa się panel — tylko te słownik musi trzymać
+    /// w pamięci przy odczycie hurtowym.
+    private static let panelCategories: Set<Int> = Set([3000, 3010, 4000, 4010, 4120,
+        1030, 4090, 2240, 6000]).union(leoPlaceOrder)
+
+    /// Panel **całej biblioteki** naraz, dla eksportera: sekcje z `leo.sqlite`
+    /// jednym przejściem i technika z `Photos.sqlite` jednym zapytaniem.
+    /// Po jednym zdjęciu, jak w panelu, byłoby 25 tysięcy zapytań.
+    /// Kluczem jest UUID wielkimi literami, jak w `searchTerms`.
+    func panels() -> [String: AssetMetadata] {
+        openIfNeeded()
+        var result: [String: AssetMetadata] = [:]
+
+        if let leo {
+            var first: [UInt32: (category: Int, text: String)] = [:]
+            var statement: OpaquePointer?
+            if sqlite3_prepare_v2(leo, "SELECT lexeme_id, category, content FROM lexicon ORDER BY pk",
+                                  -1, &statement, nil) == SQLITE_OK {
+                while sqlite3_step(statement) == SQLITE_ROW {
+                    let id = UInt32(sqlite3_column_int64(statement, 0))
+                    guard first[id] == nil else { continue }
+                    let category = Int(sqlite3_column_int(statement, 1))
+                    // Pierwszy wiersz hasła rozstrzyga — także gdy jego kategoria
+                    // nie idzie do panelu; wtedy zapamiętujemy pusty ślad.
+                    guard Self.panelCategories.contains(category),
+                          let text = Self.text(statement, 2), !text.isEmpty else {
+                        first[id] = (-1, "")
+                        continue
+                    }
+                    first[id] = (category, text)
+                }
+            }
+            sqlite3_finalize(statement)
+
+            if sqlite3_prepare_v2(leo, "SELECT identifier, lexeme_ids FROM items WHERE type = 1",
+                                  -1, &statement, nil) == SQLITE_OK {
+                while sqlite3_step(statement) == SQLITE_ROW {
+                    guard let uuid = Self.text(statement, 0),
+                          let bytes = sqlite3_column_blob(statement, 1) else { continue }
+                    let raw = UnsafeRawBufferPointer(start: bytes, count: Int(sqlite3_column_bytes(statement, 1)))
+                    var ids: [UInt32] = []
+                    ids.reserveCapacity(raw.count / 4)
+                    for offset in stride(from: 0, to: raw.count - 3, by: 4) {
+                        ids.append(UInt32(littleEndian: raw.loadUnaligned(fromByteOffset: offset, as: UInt32.self)))
+                    }
+                    var entry = AssetMetadata()
+                    Self.classify(ids, first: first, into: &entry)
+                    entry.filename = nil
+                    if entry != AssetMetadata() { result[uuid.uppercased()] = entry }
+                }
+            }
+            sqlite3_finalize(statement)
+        }
+
+        if let library {
+            let sql = """
+                SELECT a.ZUUID, e.ZCAMERAMODEL, e.ZLENSMODEL, e.ZISO, e.ZAPERTURE,
+                       e.ZSHUTTERSPEED, e.ZFOCALLENGTH, e.ZFLASHFIRED
+                FROM ZASSET a JOIN ZEXTENDEDATTRIBUTES e ON e.ZASSET = a.Z_PK
+                """
+            var statement: OpaquePointer?
+            if sqlite3_prepare_v2(library, sql, -1, &statement, nil) == SQLITE_OK {
+                while sqlite3_step(statement) == SQLITE_ROW {
+                    guard let uuid = Self.text(statement, 0)?.uppercased() else { continue }
+                    var entry = result[uuid] ?? AssetMetadata()
+                    Self.fillTechnique(statement, from: 1, into: &entry)
+                    if entry != AssetMetadata() { result[uuid] = entry }
+                }
+            }
+            sqlite3_finalize(statement)
+        }
+        return result
     }
 
     /// Miejsca od najbardziej szczegółowego: lokal, dom, zabytek, obiekt, ulica,
@@ -681,23 +735,21 @@ actor MetadataStore {
         sqlite3_bind_text(statement, 1, uuid, -1, unsafeBitCast(-1, to: sqlite3_destructor_type.self))
         guard sqlite3_step(statement) == SQLITE_ROW else { return }
 
-        if let model = Self.text(statement, 0) { result.camera = model }
-        result.lens = Self.text(statement, 1)
-        if sqlite3_column_type(statement, 2) != SQLITE_NULL {
-            result.iso = Int(sqlite3_column_int(statement, 2))
-        }
-        if sqlite3_column_type(statement, 3) != SQLITE_NULL {
-            result.aperture = sqlite3_column_double(statement, 3)
-        }
-        if sqlite3_column_type(statement, 4) != SQLITE_NULL {
-            result.shutter = sqlite3_column_double(statement, 4)
-        }
-        if sqlite3_column_type(statement, 5) != SQLITE_NULL {
-            result.focalLength = sqlite3_column_double(statement, 5)
-        }
-        if sqlite3_column_type(statement, 6) != SQLITE_NULL {
-            result.flash = sqlite3_column_int(statement, 6) != 0
-        }
+        Self.fillTechnique(statement, from: 0, into: &result)
+    }
+
+    /// Kolumny: model aparatu, obiektyw, ISO, przysłona, czas, ogniskowa, błysk —
+    /// od `start`. NULL znaczy „nie wiadomo" i zostawia pole puste.
+    private static func fillTechnique(_ statement: OpaquePointer?, from start: Int32,
+                                      into result: inout AssetMetadata) {
+        func has(_ i: Int32) -> Bool { sqlite3_column_type(statement, start + i) != SQLITE_NULL }
+        if let model = text(statement, start) { result.camera = model }
+        if let lens = text(statement, start + 1) { result.lens = lens }
+        if has(2) { result.iso = Int(sqlite3_column_int(statement, start + 2)) }
+        if has(3) { result.aperture = sqlite3_column_double(statement, start + 3) }
+        if has(4) { result.shutter = sqlite3_column_double(statement, start + 4) }
+        if has(5) { result.focalLength = sqlite3_column_double(statement, start + 5) }
+        if has(6) { result.flash = sqlite3_column_int(statement, start + 6) != 0 }
     }
 }
 #endif

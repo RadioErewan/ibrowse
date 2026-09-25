@@ -1,5 +1,6 @@
 #if os(iOS)
 import Photos
+import SwiftData
 import SwiftUI
 
 /// Metadane na telefonie — **arkusz na żądanie, nigdy stały pas**.
@@ -18,6 +19,9 @@ struct MetadataSheet: View {
 
     @State private var facts = AssetFacts()
     @State private var isLoading = true
+    /// Panel od eksportera (schemat 6): sekcje i technika, bez oryginału.
+    @State private var exported: AssetMetadata?
+    @Environment(\.modelContext) private var context
 
     var body: some View {
         NavigationStack {
@@ -44,6 +48,7 @@ struct MetadataSheet: View {
 
                 exposure
                 place
+                sections
             }
             .navigationTitle("Metadata")
             .navigationBarTitleDisplayMode(.inline)
@@ -55,8 +60,36 @@ struct MetadataSheet: View {
         }
         .presentationDetents([.medium, .large])
         .task {
-            facts = await AssetFacts.detailed(for: asset)
+            // Najpierw to, co przywiózł eksporter: technika i miejsce są wtedy
+            // przy każdym zdjęciu, także gdy oryginał leży tylko w iCloud.
+            let id = asset.localIdentifier
+            let descriptor = FetchDescriptor<Review>(predicate: #Predicate { $0.assetID == id })
+            if let panel = (try? context.fetch(descriptor))?.first?.panel,
+               let found = AssetMetadata(json: panel) {
+                exported = found
+                facts = AssetFacts.quick(for: asset)
+                facts.camera = found.camera
+                facts.lens = found.lens
+                facts.iso = found.iso
+                facts.aperture = found.aperture
+                facts.shutter = found.shutter
+                facts.focalLength = found.focalLength
+                if !found.place.isEmpty { facts.place = found.place.joined(separator: ", ") }
+            }
+            if exported?.iso == nil && exported?.aperture == nil {
+                let local = await AssetFacts.detailed(for: asset)
+                facts.filename = local.filename
+                if exported == nil || facts.camera == nil {
+                    facts.camera = local.camera
+                    facts.lens = local.lens
+                    facts.iso = local.iso
+                    facts.aperture = local.aperture
+                    facts.shutter = local.shutter
+                    facts.focalLength = local.focalLength
+                }
+            }
             isLoading = false
+            guard facts.place == nil else { return }
             // Nazwa miejsca dochodzi osobno, bo wymaga sieci i przychodzi
             // później niż reszta — reszta nie ma na nią czekać.
             if let named = await AssetFacts.place(for: asset) {
@@ -91,6 +124,30 @@ struct MetadataSheet: View {
                 Text("The original isn't on this device, so I don't know the camera settings. I don't fetch it, because it would stay here for good.")
                     .font(.callout)
                     .foregroundStyle(.secondary)
+            }
+        }
+    }
+
+    /// Sekcje z eksportera — na telefonie dotąd ich nie było wcale.
+    @ViewBuilder
+    private var sections: some View {
+        if let exported {
+            let people = exported.people + exported.pets
+            if !people.isEmpty {
+                Section("People and pets") { Text(people.joined(separator: ", ")) }
+            }
+            if !exported.occasion.isEmpty {
+                Section("Occasion") { Text(exported.occasion.joined(separator: ", ")) }
+            }
+            if !exported.scenes.isEmpty {
+                Section("What the system sees") { Text(exported.scenes.joined(separator: ", ")) }
+            }
+            if !exported.words.isEmpty {
+                Section("Text in the photo") {
+                    Text(exported.words.joined(separator: " "))
+                        .font(.callout)
+                        .foregroundStyle(.secondary)
+                }
             }
         }
     }

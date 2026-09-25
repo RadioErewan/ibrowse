@@ -29,6 +29,11 @@ final class Review {
     var markedForDeletion: Bool = false
     var updatedAt: Date = Date.now
 
+    /// Panel metadanych od eksportera — JSON `AssetMetadata` (schemat 6):
+    /// sekcje (miejsce, osoby, sceny…) i technika zdjęcia. Pomiar, nie
+    /// decyzja: scala go `mergeFeatures`, bez straży czasu.
+    var panel: String = ""
+
     // MARK: - Cechy policzone przez system
     //
     // Lokalnie mieszkają w tym samym rekordzie co ocena, ale **w transporcie

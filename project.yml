@@ -43,6 +43,8 @@ targets:
       - path: Sources
         excludes:
           - Exporter/**
+          # Bazy Photos czyta wyłącznie eksporter (krok 5 w DECYZJE.md).
+          - Metadata/MetadataStore.swift
       - path: Resources/Mac.xcassets
         optional: true
       - path: Resources/PrivacyInfo.xcprivacy
@@ -95,6 +97,8 @@ targets:
       - path: Sources
         excludes:
           - Exporter/**
+          # Bazy Photos czyta wyłącznie eksporter (krok 5 w DECYZJE.md).
+          - Metadata/MetadataStore.swift
       - path: Resources/iOS.xcassets
         optional: true
       - path: Resources/PrivacyInfo.xcprivacy
@@ -148,6 +152,7 @@ targets:
     sources:
       - Sources/Exporter
       - Sources/Metadata/MetadataStore.swift
+      - Sources/Metadata/AssetMetadata.swift
       - Sources/Model/Measure.swift
       - Sources/Model/HalfFloat.swift
       - Sources/Sync/SyncFile.swift

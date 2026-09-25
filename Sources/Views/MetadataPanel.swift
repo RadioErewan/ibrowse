@@ -10,6 +10,7 @@ import SwiftUI
 struct MetadataPanel: View {
     let asset: PHAsset?
     @ObservedObject var index: MetadataIndex
+    @Environment(\.modelContext) private var context
 
     @State private var showingWords = false
 
@@ -29,48 +30,21 @@ struct MetadataPanel: View {
                     Text("No photo").foregroundStyle(.secondary)
                 }
 
-                if let failure = index.failure {
+                if let note = index.note {
                     Divider()
-                    VStack(alignment: .leading, spacing: 8) {
-                        Text(failure)
-                            .font(.caption)
-                            .foregroundStyle(.orange)
-                            .fixedSize(horizontal: false, vertical: true)
-
-                        if index.needsFullDiskAccess { fullDiskAccess }
-                    }
+                    Text(note)
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
                 }
             }
             .padding(14)
             .frame(maxWidth: .infinity, alignment: .leading)
         }
-        .task(id: asset?.localIdentifier) { await index.load(asset) }
+        .task(id: asset?.localIdentifier) { await index.load(asset, context: context) }
     }
 
     private var data: AssetMetadata { index.current ?? AssetMetadata() }
-
-    /// Pełnego dostępu do dysku nie da się poprosić okienkiem — system wymaga,
-    /// żeby człowiek dodał program z listy sam. Możemy mu jednak otworzyć
-    /// właściwy panel zamiast dyktować drogę przez cztery poziomy ustawień,
-    /// i powiedzieć z góry to, co i tak zaraz zaskoczy: zgoda działa dopiero
-    /// po ponownym uruchomieniu.
-    private var fullDiskAccess: some View {
-        VStack(alignment: .leading, spacing: 6) {
-            Button("Open access settings…") {
-                let panel = "x-apple.systempreferences:com.apple.preference.security"
-                    + "?Privacy_AllFiles"
-                if let url = URL(string: panel) { NSWorkspace.shared.open(url) }
-            }
-            .controlSize(.small)
-            .focusable(false)  // patrz „Text in the photo" niżej
-
-            Text("Add lightbrary with the **+** button, then launch the app "
-                 + "again — the permission only takes effect at startup.")
-                .font(.caption2)
-                .foregroundStyle(.secondary)
-                .fixedSize(horizontal: false, vertical: true)
-        }
-    }
 
     // MARK: - Sekcje
 
@@ -90,6 +64,7 @@ struct MetadataPanel: View {
 
     /// Technika idzie na górę, zaraz pod nazwą, bo przy odsiewie to ona
     /// najczęściej tłumaczy, dlaczego zdjęcie jest nie do uratowania.
+
     @ViewBuilder
     private var exposure: some View {
         let line = AssetFacts.exposureLine(

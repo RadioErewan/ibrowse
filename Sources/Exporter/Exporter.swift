@@ -89,6 +89,8 @@ final class Exporter: ObservableObject {
         let features = await store.features()
         let measures = await store.measures()
         let terms = await store.searchTerms()
+        status = "Reading places, people and camera details…"
+        let panels = await store.panels()
         guard !features.isEmpty || !measures.isEmpty else {
             needsFullDiskAccess = await store.currentNeedsFullDiskAccess()
             status = await store.currentFailure() ?? "The library database has no computed measures yet."
@@ -116,7 +118,8 @@ final class Exporter: ObservableObject {
                 assetID: cloud, sharpness: found.sharpness, exposure: found.exposure,
                 faces: found.faces, eyesClosed: found.eyesClosed, smiles: found.smiles,
                 isScreenshot: found.isScreenshot, measures: measures[uuid] ?? Data(),
-                terms: terms[uuid] ?? ""
+                terms: terms[uuid] ?? "",
+                panel: panels[uuid.uppercased()]?.json ?? ""
             )
             if entry.carriesAnything { payload.features.append(entry) }
         }
@@ -149,7 +152,7 @@ final class Exporter: ObservableObject {
 
     private static func digest(of features: [SyncFile.Features]) -> String {
         let rows = features.map {
-            "\($0.assetID)|\($0.sharpness)|\($0.exposure)|\($0.faces)|\($0.eyesClosed)|\($0.smiles)|\($0.isScreenshot)|\($0.measures.base64EncodedString())|\($0.terms)"
+            "\($0.assetID)|\($0.sharpness)|\($0.exposure)|\($0.faces)|\($0.eyesClosed)|\($0.smiles)|\($0.isScreenshot)|\($0.measures.base64EncodedString())|\($0.terms)|\($0.panel)"
         }
         return SyncFile.key(for: rows)
     }

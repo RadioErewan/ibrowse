@@ -50,10 +50,14 @@ struct SyncFile {
     /// kolumny nie wymaga więc podbicia `minReader`; tylko zerwanie zgodności.
     /// To jest warunek podziału na osobno wydawane programy: przeglądarka ze
     /// sklepu nie może oślepnąć, gdy eksporter z GitHuba dołoży pole.
-    static let schema = 5
+    ///
+    /// Schemat 6 dokłada kolumnę `panel` (JSON `AssetMetadata`: sekcje panelu
+    /// i technika zdjęcia) — `minReader` zostaje 5, wersje 0.1.16–0.1.17 czytają
+    /// plik dalej i nowej kolumny nie widzą.
+    static let schema = 6
     static let minReader = 5
     /// Najnowsza wersja, którą ten czytnik rozumie.
-    static let readerVersion = 5
+    static let readerVersion = 6
     /// Starszych nie czytamy wcale: do wersji 2 identyfikatory były lokalne.
     static let oldestReadable = 3
     static let fileExtension = "ibsync"
@@ -84,10 +88,13 @@ struct SyncFile {
         /// patrz `MetadataStore.searchTerms`. Kolumna dopisana bez podbijania
         /// `minReader`: starszy czytnik jej po prostu nie widzi.
         var terms: String = ""
+        /// Panel metadanych jako JSON `AssetMetadata` (schemat 6). Pusty, gdy
+        /// eksporter nic o zdjęciu nie wie albo plik jest starszy.
+        var panel: String = ""
 
         var carriesAnything: Bool {
             sharpness > 0 || exposure > 0 || faces > 0 || isScreenshot || !measures.isEmpty
-                || !terms.isEmpty
+                || !terms.isEmpty || !panel.isEmpty
         }
     }
 
@@ -152,7 +159,7 @@ struct SyncFile {
                                 judgements INT, updatedAt REAL);
             CREATE TABLE feature(assetID TEXT PRIMARY KEY, sharpness REAL, exposure REAL,
                                  faces INT, eyesClosed INT, smiles INT, screenshot INT,
-                                 measures BLOB, terms TEXT);
+                                 measures BLOB, terms TEXT, panel TEXT);
             CREATE TABLE print(assetID TEXT PRIMARY KEY, vector BLOB, takenAt REAL);
             CREATE TABLE verdict(key TEXT PRIMARY KEY, resolvedAt REAL, wasRejected INT,
                                  championID TEXT, challengerIndex INT);
@@ -177,7 +184,7 @@ struct SyncFile {
             sqlite3_bind_double(statement, 5, rating.updatedAt.timeIntervalSince1970)
         }
 
-        repeating(db, "INSERT OR REPLACE INTO feature VALUES(?,?,?,?,?,?,?,?,?)", payload.features) {
+        repeating(db, "INSERT OR REPLACE INTO feature VALUES(?,?,?,?,?,?,?,?,?,?)", payload.features) {
             statement, features in
             bind(statement, 1, features.assetID)
             sqlite3_bind_double(statement, 2, features.sharpness)
@@ -193,6 +200,7 @@ struct SyncFile {
                 )
             }
             bind(statement, 9, features.terms)
+            bind(statement, 10, features.panel)
         }
 
         repeating(db, "INSERT OR REPLACE INTO print VALUES(?,?,?)", payload.prints) {
@@ -277,7 +285,7 @@ struct SyncFile {
             if legacy.carriesAnything { payload.features.append(legacy) }
         }
 
-        rows(db, "feature", ["assetID"] + featureColumns + ["terms"]) { row in
+        rows(db, "feature", ["assetID"] + featureColumns + ["terms", "panel"]) { row in
             let features = Features(row: row, assetID: row.text("assetID") ?? "")
             if features.carriesAnything { payload.features.append(features) }
         }
@@ -432,7 +440,8 @@ fileprivate extension SyncFile.Features {
             smiles: row.int("smiles"),
             isScreenshot: row.int("screenshot") != 0,
             measures: row.blob("measures"),
-            terms: row.text("terms") ?? ""
+            terms: row.text("terms") ?? "",
+            panel: row.text("panel") ?? ""
         )
     }
 }

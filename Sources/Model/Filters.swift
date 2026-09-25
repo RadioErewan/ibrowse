@@ -270,7 +270,14 @@ final class Filters: ObservableObject {
 
     nonisolated static func search(_ text: String, in terms: [String: String]) -> Set<String> {
         let needle = text.folding(options: [.diacriticInsensitive, .caseInsensitive], locale: nil)
-        return Set(terms.compactMap { $0.value.contains(needle) ? $0.key : nil })
+        // Photos pisze apostrof typograficzny („Mother’s Day"), klawiatura
+        // prosty — szukamy obu wariantów.
+        let variants = Set([needle,
+                            needle.replacingOccurrences(of: "'", with: "\u{2019}"),
+                            needle.replacingOccurrences(of: "\u{2019}", with: "'")])
+        return Set(terms.compactMap { entry in
+            variants.contains { entry.value.contains($0) } ? entry.key : nil
+        })
     }
 
     // MARK: - Źródło

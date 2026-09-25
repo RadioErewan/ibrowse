@@ -613,6 +613,10 @@ final class LibrarySync: ObservableObject {
                 review.searchTerms = entry.terms
                 touched = true
             }
+            if !entry.panel.isEmpty, review.panel != entry.panel {
+                review.panel = entry.panel
+                touched = true
+            }
             if touched { changed.insert(assetID) }
         }
         return changed
