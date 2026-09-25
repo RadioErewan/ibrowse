@@ -1706,6 +1706,13 @@ tylko w eksporterze.
 
 Potem piaskownica i migracja kontenera.
 
+**Stan 25 września 2026 wieczorem:** punkty 1–4 zrobione i sprawdzone na
+Macu i iPhonie. Przeglądarka nie kompiluje `MetadataStore` (wykluczony
+w project.yml) — SQLite zostaje w niej tylko do własnych plików wymiany.
+Plik cech ze schematem 6 ma panel dla 25 007 zdjęć (~26 MB). Przy okazji
+wyszedł błąd eksportera: synonimy zamiast formy podstawowej w słowach
+(„pets" zamiast „Samba") — poprawiony, do wydania razem z resztą.
+
 ### Interfejs: oznaczone widać na miniaturze
 
 `Thumbnail` (`GridView.swift`) dostaje `isMarkedForDeletion`. Czerwone
