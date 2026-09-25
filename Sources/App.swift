@@ -279,6 +279,9 @@ extension FocusedValues {
     /// Biblioteka należy do okna (`RootView`), a menu do aplikacji — polecenie
     /// sięga do niej przez wartość wystawioną przez okno.
     @Entry var reloadLibrary: (() -> Void)?
+    /// Zaznaczenie wszystkich zdjęć w filtrze — wystawia je siatka, gdy jest
+    /// na ekranie.
+    @Entry var selectAllPhotos: (() -> Void)?
 }
 
 #if os(macOS)
@@ -287,8 +290,30 @@ extension FocusedValues {
 /// obiecywałby więcej, niż może dać.
 struct LibraryCommands: Commands {
     @FocusedValue(\.reloadLibrary) private var reload
+    @FocusedValue(\.selectAllPhotos) private var selectAllPhotos
 
     var body: some Commands {
+        // ⌘A w siatce zaznacza zdjęcia, w polu tekstowym — tekst. Standardowe
+        // „Select All" idzie tylko do pierwszego respondera, a siatka SwiftUI
+        // nim nie jest, więc dotąd klawisz nie robił nic. Grupę zastępujemy
+        // całą, więc wytnij, kopiuj i wklej wracają tu jako zwykłe akcje dla
+        // pól tekstowych.
+        CommandGroup(replacing: .pasteboard) {
+            Button("Cut") { NSApp.sendAction(#selector(NSText.cut(_:)), to: nil, from: nil) }
+                .keyboardShortcut("x")
+            Button("Copy") { NSApp.sendAction(#selector(NSText.copy(_:)), to: nil, from: nil) }
+                .keyboardShortcut("c")
+            Button("Paste") { NSApp.sendAction(#selector(NSText.paste(_:)), to: nil, from: nil) }
+                .keyboardShortcut("v")
+            Button("Select All") {
+                if let selectAllPhotos, !(NSApp.keyWindow?.firstResponder is NSText) {
+                    selectAllPhotos()
+                } else {
+                    NSApp.sendAction(#selector(NSText.selectAll(_:)), to: nil, from: nil)
+                }
+            }
+            .keyboardShortcut("a")
+        }
         CommandGroup(before: .toolbar) {
             Button("Reload Library") { reload?() }
                 .keyboardShortcut("r")
@@ -589,6 +614,10 @@ struct RootView: View {
                             Label("back to the grid", systemImage: "chevron.left")
                         }
                         .help("esc")
+                        // Esc wychodzi z pełnego ekranu także wtedy, gdy
+                        // klawiatura nie trafia w sam widok (fokus gdzie
+                        // indziej) — skrót okna działa niezależnie od fokusu.
+                        .keyboardShortcut(.cancelAction)
                     } else {
                         // Ikony zamiast napisów: dwa segmenty z tekstem stały
                         // obok drugiego segmentowanego przełącznika i belka

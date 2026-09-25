@@ -333,7 +333,7 @@ struct FilterPanel: View {
     private var featureNote: some View {
         if features.isEmpty {
             #if os(macOS)
-            note("Measures aren't loaded yet. Use the toolbar button — it needs Full Disk Access.",
+            note("Measures aren't loaded yet. Use the load measures button in the toolbar.",
                  colour: .orange)
             #else
             note("Measures aren't loaded yet. The Mac computes them and they arrive here by sync.",

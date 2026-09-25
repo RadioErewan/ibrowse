@@ -238,6 +238,50 @@ extension Review {
     /// Zwraca liczbę faktycznie zmienionych rekordów — nie liczbę zdjęć w puli.
     /// Te dwie rzeczy różnią się, gdy część była już oznaczona, i właśnie
     /// tę pierwszą warto pokazać.
+    /// Ta sama ocena dla całej puli jednym przebiegiem — patrz `mark`.
+    /// `value == nil` zdejmuje ocenę: zdjęcie wraca do nieocenionych, jak po
+    /// zdjęciu gwiazdki w Photos, ale z nowym znacznikiem czasu, bo to jest
+    /// decyzja i ma pojechać na drugie urządzenie.
+    ///
+    /// Zwraca gwiazdki zdjęć, w których się zmieniły — tylko te trzeba
+    /// zapisać w Photos.
+    @discardableResult
+    static func rate(
+        _ assetIDs: [String], value: Double?, in context: ModelContext
+    ) -> [String: Int] {
+        guard !assetIDs.isEmpty else { return [:] }
+
+        let wanted = Set(assetIDs)
+        var existing = Dictionary(
+            ((try? context.fetch(FetchDescriptor<Review>())) ?? [])
+                .filter { wanted.contains($0.assetID) }
+                .map { ($0.assetID, $0) },
+            uniquingKeysWith: { a, _ in a }
+        )
+
+        var starsChanged: [String: Int] = [:]
+        for id in wanted {
+            if let value {
+                let review = existing[id] ?? {
+                    let fresh = Review(assetID: id)
+                    context.insert(fresh)
+                    existing[id] = fresh
+                    return fresh
+                }()
+                let before = review.stars
+                review.set(value)
+                if review.stars != before { starsChanged[id] = review.stars }
+            } else if let review = existing[id], review.isRated {
+                let before = review.stars
+                review.isRated = false
+                review.updatedAt = .now
+                if before != 0 { starsChanged[id] = 0 }
+            }
+        }
+        if context.hasChanges { try? context.save() }
+        return starsChanged
+    }
+
     @discardableResult
     static func mark(
         _ assetIDs: [String], deleted: Bool, in context: ModelContext

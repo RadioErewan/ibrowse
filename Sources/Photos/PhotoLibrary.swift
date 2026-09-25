@@ -122,7 +122,27 @@ final class PhotoLibrary: ObservableObject {
         }
         // Także bez zmian w zdjęciach: dodanie do albumu nie zmienia samego
         // zdjęcia, a to właśnie oznaczenie do skasowania.
-        emitNative(from: changed, isFull: false)
+        //
+        // **Paczkami.** Każdy nasz zapis wraca jako osobne powiadomienie; przy
+        // szybkim ocenianiu albo zmianie całej grupy szły ich dziesiątki
+        // i każde osobno czytało album, zapisywało bazę i budziło widoki.
+        // Zbieramy je przez chwilę i odczytujemy stan raz — ostatnia wersja
+        // każdego zdjęcia wygrywa.
+        for asset in changed { pendingNative[asset.localIdentifier] = asset }
+        pendingNativeFlush?.cancel()
+        let flush = DispatchWorkItem { [weak self] in self?.flushNative() }
+        pendingNativeFlush = flush
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.3, execute: flush)
+    }
+
+    private var pendingNative: [String: PHAsset] = [:]
+    private var pendingNativeFlush: DispatchWorkItem?
+
+    private func flushNative() {
+        let batch = Array(pendingNative.values)
+        pendingNative.removeAll()
+        pendingNativeFlush = nil
+        emitNative(from: batch, isFull: false)
     }
 
     /// Ręczne odświeżenie obok obserwatora — na wypadek, gdyby powiadomienie
@@ -173,6 +193,9 @@ final class PhotoLibrary: ObservableObject {
         assets = collected.assets
         byID = collected.byID
         years = collected.years
+        // Pełny odczyt poniżej obejmuje wszystko, co czekało w paczce.
+        pendingNativeFlush?.cancel()
+        pendingNative.removeAll()
         Trace.measure("photos.native") { emitNative(from: collected.assets, isFull: true) }
     }
 
@@ -443,6 +466,28 @@ final class PhotoLibrary: ObservableObject {
                 }
             } catch {
                 if intendedRatings[assetID] == rating.rawValue { intendedRatings[assetID] = nil }
+            }
+        }
+    }
+
+    /// Ta sama gwiazdka dla wielu zdjęć **jedną zmianą** w Photos. Po jednej
+    /// na zdjęcie oznaczało tyle samo zapisów i tyle samo powiadomień
+    /// wracających do aplikacji — przy zaznaczeniu kilkuset zdjęć okno
+    /// przeliczało się kilkaset razy.
+    func setRating(_ stars: Int, for assetIDs: [String]) {
+        let rating = PHAsset.Rating(rawValue: stars) ?? .unset
+        let assets = assetIDs.compactMap(asset(id:))
+        guard !assets.isEmpty else { return }
+        for asset in assets { intendedRatings[asset.localIdentifier] = rating.rawValue }
+        enqueueWrite { [self] in
+            do {
+                try await PHPhotoLibrary.shared().performChanges {
+                    for asset in assets { PHAssetChangeRequest(for: asset).rating = rating }
+                }
+            } catch {
+                for asset in assets where intendedRatings[asset.localIdentifier] == rating.rawValue {
+                    intendedRatings[asset.localIdentifier] = nil
+                }
             }
         }
     }

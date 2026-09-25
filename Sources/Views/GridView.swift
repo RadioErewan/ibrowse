@@ -70,6 +70,8 @@ struct GridView: View {
     /// oznaczyłaby ćwierć archiwum i trzeba by to cofać ręcznie.
     @State private var confirming = false
     @State private var lastMarked: Int?
+    /// Ocena całego filtru czeka na potwierdzenie — patrz `requestRating`.
+    @State private var pendingRating: (value: Double?, targets: [String])?
     @State private var showingDeletions = false
     @State private var hoveredDay: Date?
 
@@ -136,7 +138,9 @@ struct GridView: View {
             Divider()
             #endif
 
-            if filters.isActive {
+            // Pasek operacji na grupie także przy samym zaznaczeniu, bez
+            // filtru — inaczej po ⌘A nie byłoby czym ocenić zaznaczonych.
+            if filters.isActive || !selection.isEmpty {
                 groupBar(shown)
                 Divider()
             }
@@ -178,6 +182,11 @@ struct GridView: View {
                     }
                 }
                 .task(id: focusID) { await reveal(focusID, using: proxy) }
+                #if os(macOS)
+                .focusedSceneValue(\.selectAllPhotos) {
+                    selection = Set(shown.map(\.localIdentifier))
+                }
+                #endif
                 #if os(macOS)
                 .background {
                     GeometryReader { geometry in
@@ -273,6 +282,22 @@ struct GridView: View {
     private func handle(_ press: KeyPress, in shown: [PHAsset]) -> KeyPress.Result {
         guard let key = press.characters.first, let asset = current(in: shown) else {
             return .ignored
+        }
+        // Przy kilku zaznaczonych cyfra i X działają na całe zaznaczenie
+        // i nie przesuwają wskaźnika — to decyzja o grupie, nie o kolejnym
+        // zdjęciu.
+        if selection.count > 1 {
+            switch key {
+            case "0"..."5":
+                applyRating(Double(String(key)) ?? 0, to: Array(selection))
+                return .handled
+            case "x", "X":
+                let markedIDs = Set(marked.map(\.assetID))
+                applyMark(!selection.allSatisfy(markedIDs.contains), to: Array(selection))
+                return .handled
+            default:
+                break
+            }
         }
         switch key {
         case "0"..."5":
@@ -545,6 +570,39 @@ struct GridView: View {
                     #endif
             }
 
+            // Ocena całej grupy naraz. Na zaznaczeniu od razu, na całym
+            // filtrze — po potwierdzeniu, bo to potrafią być tysiące zdjęć.
+            Menu {
+                ForEach((0...5).reversed(), id: \.self) { value in
+                    Button(value == 0 ? "0 — looked at, no good"
+                           : String(repeating: "★", count: value)) {
+                        requestRating(Double(value), for: targets)
+                    }
+                }
+                Divider()
+                Button("clear rating") { requestRating(nil, for: targets) }
+            } label: {
+                Label("rate", systemImage: "star")
+            }
+            .fixedSize()
+            .disabled(targets.isEmpty)
+            #if os(iOS)
+            .font(.caption)
+            #endif
+
+            // Zdjęcie oznaczenia z grupy — odwracalne, więc bez pytania.
+            let markedIDs = Set(marked.map(\.assetID))
+            if targets.contains(where: markedIDs.contains) {
+                Button {
+                    applyMark(false, to: targets)
+                } label: {
+                    Label("unmark", systemImage: "arrow.uturn.backward")
+                }
+                #if os(iOS)
+                .font(.caption)
+                #endif
+            }
+
             Button(role: .destructive) {
                 confirming = true
             } label: {
@@ -569,14 +627,59 @@ struct GridView: View {
             isPresented: $confirming, titleVisibility: .visible
         ) {
             Button("Mark \(targets.count)", role: .destructive) {
-                lastMarked = Review.mark(targets, deleted: true, in: context)
-                library.setMarkedForDeletion(true, for: targets)
+                applyMark(true, to: targets)
             }
             Button("Cancel", role: .cancel) {}
         } message: {
             Text("Nothing disappears yet. The photos go to the "
                  + "deletion review, where you can unmark or delete them.")
         }
+        .confirmationDialog(
+            ratingQuestion,
+            isPresented: Binding(
+                get: { pendingRating != nil },
+                set: { if !$0 { pendingRating = nil } }
+            ),
+            titleVisibility: .visible
+        ) {
+            Button(pendingRating?.value == nil ? "Clear" : "Rate") {
+                if let pending = pendingRating { applyRating(pending.value, to: pending.targets) }
+                pendingRating = nil
+            }
+            Button("Cancel", role: .cancel) { pendingRating = nil }
+        }
+    }
+
+    private var ratingQuestion: String {
+        guard let pending = pendingRating else { return "" }
+        let count = pending.targets.count
+        guard let value = pending.value else {
+            return "Clear the rating of all \(count) photos in this filter?"
+        }
+        return "Rate all \(count) photos in this filter \(Int(value))?"
+    }
+
+    private func requestRating(_ value: Double?, for targets: [String]) {
+        if selection.isEmpty {
+            pendingRating = (value, targets)
+        } else {
+            applyRating(value, to: targets)
+        }
+    }
+
+    /// Jeden zapis w bazie i po jednej zmianie w Photos na każdą wartość
+    /// gwiazdki — nie po jednej na zdjęcie.
+    private func applyRating(_ value: Double?, to targets: [String]) {
+        let changed = Review.rate(targets, value: value, in: context)
+        for (stars, ids) in Dictionary(grouping: changed.keys, by: { changed[$0] ?? 0 }) {
+            library.setRating(stars, for: ids)
+        }
+    }
+
+    private func applyMark(_ deleted: Bool, to targets: [String]) {
+        let changed = Review.mark(targets, deleted: deleted, in: context)
+        if deleted { lastMarked = changed }
+        library.setMarkedForDeletion(deleted, for: targets)
     }
 
     /// Pusto znaczy co innego, gdy w grze jest cecha: może nie chodzić
@@ -587,7 +690,7 @@ struct GridView: View {
         }
         #if os(macOS)
         return "Measures live in the Photos library databases and nobody has loaded them yet. "
-            + "Use the toolbar button — it needs Full Disk Access."
+            + "Use the load measures button in the toolbar."
         #else
         return "The system computes measures on the Mac and they arrive here by sync. "
             + "Load them on the Mac, sync both devices, then come back here."

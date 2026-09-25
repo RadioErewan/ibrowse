@@ -227,7 +227,17 @@ struct CullView: View {
             }
             anchorID = focusID
             positioned = true
-            DispatchQueue.main.async { focused = true }
+            DispatchQueue.main.async {
+                #if os(macOS)
+                // Pole wyszukiwania w schowanym panelu filtrów trzymało fokus:
+                // po wpisaniu słowa i wejściu w pełny ekran Esc i cyfry szły
+                // do niewidocznego pola. Najpierw oddajemy fokus oknu.
+                if NSApp.keyWindow?.firstResponder is NSText {
+                    NSApp.keyWindow?.makeFirstResponder(nil)
+                }
+                #endif
+                focused = true
+            }
         }
         // Arkusz zabiera focus i **nie oddaje go sam**. Po zamknięciu lupy
         // milkły więc wszystkie klawisze, nie tylko `esc`: ocena, strzałki
