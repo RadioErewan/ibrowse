@@ -32,10 +32,28 @@ final class Exporter: ObservableObject {
     /// każda gwiazdka to zmiana zdjęcia.
     private static let quietPeriod: Duration = .seconds(300)
 
+    /// Przy pierwszym uruchomieniu przeglądarki w piaskownicy macOS przenosi
+    /// do jej kontenera pliki ustawień **po przedrostku** nazwy — razem
+    /// z naszym `pl.3210.lightbrary.exporter.plist` (zaobserwowane 25 września
+    /// 2026). Eksporter tracił wtedy folder wymiany i identyfikator urządzenia.
+    /// Nie jesteśmy w piaskownicy, więc zabieramy plik z powrotem.
+    private static func recoverSettingsMovedIntoBrowserContainer() {
+        let defaults = UserDefaults.standard
+        guard defaults.object(forKey: "sync.folderBookmark") == nil,
+              defaults.object(forKey: "sync.deviceID") == nil else { return }
+        let stray = FileManager.default.homeDirectoryForCurrentUser
+            .appending(path: "Library/Containers/pl.3210.lightbrary/Data/Library/Preferences")
+            .appending(path: "pl.3210.lightbrary.exporter.plist")
+        guard let moved = NSDictionary(contentsOf: stray) as? [String: Any] else { return }
+        for (key, value) in moved { defaults.set(value, forKey: key) }
+        try? FileManager.default.removeItem(at: stray)
+    }
+
     private var observer: ExporterChangeObserver?
     private var pending: Task<Void, Never>?
 
     init() {
+        Self.recoverSettingsMovedIntoBrowserContainer()
         lastExport = UserDefaults.standard.object(forKey: Self.lastExportKey) as? Date
         lastCount = UserDefaults.standard.integer(forKey: Self.lastCountKey)
         folderName = SyncFolder.displayName

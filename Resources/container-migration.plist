@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <!-- Przy pierwszym uruchomieniu w piaskownicy system przenosi te ścieżki
+         do kontenera aplikacji, zachowując układ katalogów. Bez tego oceny,
+         odciski, serie i zakładka do folderu zostałyby poza zasięgiem
+         i testerzy zaczynaliby od zera. -->
+    <key>Move</key>
+    <array>
+        <string>${ApplicationSupport}/pl.3210.lightbrary</string>
+        <string>${Library}/Preferences/pl.3210.lightbrary.plist</string>
+    </array>
+</dict>
+</plist>

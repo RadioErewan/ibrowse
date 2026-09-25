@@ -2,13 +2,31 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
-    <!-- Hardened runtime odcina dostęp do zasobów osobistych, dopóki program
-         nie poprosi o nie w podpisie. Bez tego klucza system odmawia dostępu
-         do biblioteki zdjęć **natychmiast i bez pytania**, a aplikacja nie
-         pojawia się nawet na liście w Ustawieniach → Prywatność → Zdjęcia.
-         Kompilacja deweloperska działa bez niego, bo tam hardened runtime
-         jest wyłączony — dlatego usterka wychodzi dopiero na obcym Macu. -->
+    <!-- Piaskownica: warunek sklepu, i od kroku 5 także wersji ze strony
+         (DECYZJE.md, „Piaskownica i sklep na Macu"). Przeglądarka nie czyta
+         już baz Photos — robi to eksporter, który w piaskownicy NIE jest
+         i ma własny plik uprawnień. -->
+    <key>com.apple.security.app-sandbox</key>
+    <true/>
+
+    <!-- Biblioteka zdjęć przez PhotoKit. Bez tego klucza system odmawia
+         dostępu natychmiast i bez pytania, a aplikacja nie pojawia się nawet
+         w Ustawieniach → Prywatność → Zdjęcia. -->
     <key>com.apple.security.personal-information.photos-library</key>
+    <true/>
+
+    <!-- Folder wymiany wskazany przez użytkownika: czytamy pliki drugiego
+         urządzenia i eksportera, piszemy własne. -->
+    <key>com.apple.security.files.user-selected.read-write</key>
+    <true/>
+
+    <!-- Zakładka do tego folderu, żeby nie pytać o niego przy każdym starcie. -->
+    <key>com.apple.security.files.bookmarks.app-scope</key>
+    <true/>
+
+    <!-- Sieć jako klient: sprawdzanie aktualizacji (wersja ze strony)
+         i nazwa miejsca z geokodowania współrzędnych zdjęcia. -->
+    <key>com.apple.security.network.client</key>
     <true/>
 </dict>
 </plist>

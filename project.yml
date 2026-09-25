@@ -49,6 +49,9 @@ targets:
         optional: true
       - path: Resources/PrivacyInfo.xcprivacy
       - path: Resources/Localizable.xcstrings
+      # Przeniesienie danych do kontenera przy pierwszym starcie w piaskownicy.
+      - path: Resources/container-migration.plist
+        buildPhase: resources
     info:
       path: Generated/Info-mac.plist
       properties:
@@ -83,12 +86,10 @@ targets:
         DEVELOPMENT_TEAM: $(LIGHTBRARY_TEAM_ID)
         PROVISIONING_PROFILE_SPECIFIER: ""
         ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
-      configs:
-        # Uprawnienia tylko w wydaniu, bo tylko tam włączamy hardened runtime.
-        # Codzienna kompilacja deweloperska podpisuje się bez nich i nic jej
-        # nie brakuje — patrz komentarz w samym pliku uprawnień.
-        Release:
-          CODE_SIGN_ENTITLEMENTS: Resources/lightbrary-mac.entitlements
+        # Uprawnienia w **każdej** konfiguracji, bo niosą piaskownicę. Dane
+        # żyją w kontenerze od pierwszego uruchomienia w piaskownicy;
+        # kompilacja deweloperska bez niej widziałaby pustą bazę.
+        CODE_SIGN_ENTITLEMENTS: Resources/lightbrary-mac.entitlements
 
   lightbrary-ios:
     type: application
@@ -187,4 +188,4 @@ targets:
         PROVISIONING_PROFILE_SPECIFIER: ""
       configs:
         Release:
-          CODE_SIGN_ENTITLEMENTS: Resources/lightbrary-mac.entitlements
+          CODE_SIGN_ENTITLEMENTS: Resources/lightbrary-exporter.entitlements

@@ -1713,6 +1713,31 @@ Plik cech ze schematem 6 ma panel dla 25 007 zdjęć (~26 MB). Przy okazji
 wyszedł błąd eksportera: synonimy zamiast formy podstawowej w słowach
 („pets" zamiast „Samba") — poprawiony, do wydania razem z resztą.
 
+### Piaskownica: przejście sprawdzone (25 września 2026)
+
+Przeglądarka na Macu działa w piaskownicy **w każdej konfiguracji**, także
+deweloperskiej — po przeniesieniu danych kompilacja bez piaskownicy
+widziałaby pustą bazę. Uprawnienia: Zdjęcia, folder wskazany przez
+użytkownika (odczyt i zapis), zakładki, sieć jako klient (aktualizacje,
+geokodowanie). Eksporter ma **osobny** plik uprawnień, bez piaskownicy.
+
+`Resources/container-migration.plist` przenosi przy pierwszym starcie
+`Application Support/pl.3210.lightbrary` i plik ustawień. Na danych Radka:
+baza (489 ocen, 25 009 paneli), serie, zakładka do folderu i synchronizacja
+przeszły bez zmian — zakładka z `withSecurityScope`, tworzona już wcześniej,
+działa także w piaskownicy. Kopia sprzed przejścia:
+`~/Documents/lightbrary-kopia-przed-piaskownica/`.
+
+**Pułapka:** system przeniósł do kontenera przeglądarki także
+`pl.3210.lightbrary.exporter.plist` — pliki ustawień dopasowuje po
+przedrostku, nie po pełnej nazwie z listy. Eksporter (spoza piaskownicy)
+tracił folder wymiany i identyfikator urządzenia. Naprawa: eksporter przy
+starcie bez własnych ustawień zabiera plik z kontenera przeglądarki
+z powrotem (`recoverSettingsMovedIntoBrowserContainer`).
+
+Jedyna blokada piaskownicy w logu: `system-info vfs.disk-space` — pytanie
+PhotoKit o wolne miejsce, niegroźne.
+
 ### Interfejs: oznaczone widać na miniaturze
 
 `Thumbnail` (`GridView.swift`) dostaje `isMarkedForDeletion`. Czerwone
