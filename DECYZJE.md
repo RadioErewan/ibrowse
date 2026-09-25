@@ -1086,6 +1086,46 @@ tam, gdzie Radek go szukał: należy przed biblioteką, nie w niej.
 
 To osobne narzędzie z tej samej rodziny. Zapisane jako pomysł, nie zaczęte.
 
+### Kierunek Radka (26 września 2026): import archiwów do żywej biblioteki
+
+Cel szerszy niż oszczędność miejsca: zdjęcia z sesji, leżące latami na
+dyskach, płytach i w zamkniętych katalogach, mają **trafić do biblioteki
+Zdjęć** — tej jednej, którą każdy użytkownik Maca naprawdę ogląda, ma na
+telefonie i przeszukuje — zamiast gnić w archiwum, którego nikt nie otwiera.
+Konwersja do HEIC jest środkiem, nie celem: dzięki niej import nie kosztuje
+drugiej biblioteki miejsca w iCloud.
+
+To odwraca oś konkurencji. Oni robią „karta → odsiew → Lightroom" dla
+wczorajszej sesji; tu byłoby „stare archiwum → odsiew → Zdjęcia". Ingest
+mamy wtedy także my, tylko z innym celem.
+
+Co z tego wynika, zanim cokolwiek powstanie:
+
+- **Odsiew przed importem, nie po.** Te same narzędzia co w bibliotece —
+  serie, turniej, porównanie — na plikach z dysku. Do Zdjęć idzie wybór, nie
+  wszystko; inaczej zamieniamy zamknięte archiwum na zaśmieconą bibliotekę.
+- **Duplikaty względem biblioteki.** Część archiwum już w niej jest (eksport,
+  kopia z telefonu). Odciski wizualne, które liczymy dla parowania, mogą
+  wskazać, co jest już zaimportowane — bez tego import podwaja zdjęcia.
+- **Źródło tylko do odczytu.** Ta sama zasada co przy bazach Photos:
+  archiwum na dysku czy płycie nigdy nie jest modyfikowane ani kasowane.
+- **Metadane muszą przejść:** data wykonania (skany i stare aparaty mają ją
+  złą albo żadną), GPS, aparat i obiektyw. Oceny z plików XMP albo EXIF
+  (Lightroom, Bridge, Photo Mechanic) można przełożyć na gwiazdki — to
+  praca, której nie trzeba robić drugi raz.
+- **RAW + JPEG.** Para z jednej klatki: decyzja, co importować. RAW do
+  Zdjęć w oryginale, HEIC z RAW-a, czy tylko JPEG z aparatu — do
+  rozstrzygnięcia, bo konwersja RAW-a do HEIC traci to, po co RAW istnieje.
+- **Porządek po imporcie:** album na każdą sesję albo folder źródłowy,
+  żeby dało się wrócić do kontekstu.
+- **Gdzie to żyje:** tworzenie zdjęć przez PhotoKit
+  (`PHAssetCreationRequest`) i czytanie folderów wybranych przez użytkownika
+  działają w piaskownicy — uprawnienia już mamy. Teoretycznie może więc być
+  częścią przeglądarki ze sklepu, a nie kolejnym programem poza nim.
+  Do sprawdzenia: jakość i 10-bitowość HEIC z ImageIO, szybkość konwersji
+  i zapisu przy tysiącach plików, zachowanie przy wysuniętej płycie
+  w połowie pracy.
+
 ## Konkurencja: co robią inni, wrzesień 2026
 
 Pierwszy konkretny punkt odniesienia w tej kategorii — `cullibrate.com`, a przez
