@@ -340,7 +340,6 @@ struct RootView: View {
     /// Cechy systemu wyjęte z bazy raz i trzymane obok — patrz `FeatureIndex`.
     @StateObject private var features = FeatureIndex()
     #if os(macOS)
-    @StateObject private var importer = FeatureImport()
     #endif
     @State private var choosingFolder = false
     @State private var showingActions = false
@@ -641,7 +640,6 @@ struct RootView: View {
                         inspectorControl
                     }
                     fingerprintControl
-                    featureControl
                     syncControl
                 }
             }
@@ -839,27 +837,6 @@ struct RootView: View {
         }
     }
 
-    /// Wczytanie cech jest jawną operacją na całym archiwum — tak samo jak
-    /// liczenie odcisków i dokładnie z tego samego powodu. Mieszkało kiedyś
-    /// w zakładce cech; po jej likwidacji należy tu, obok pozostałych
-    /// poleceń działających na całości.
-    #if os(macOS)
-    @ViewBuilder
-    private var featureControl: some View {
-        busyButton(
-            title: "load measures",
-            icon: "camera.metering.spot",
-            busy: importer.isWorking,
-            help: importer.summary ?? "Reads sharpness, exposure and faces from the Photos library databases"
-        ) {
-            Task {
-                await importer.run(context: context, library: library)
-                await features.load(context: context)
-                filters.adoptTerms(features.terms)
-            }
-        }
-    }
-    #endif
 
     /// Liczenie odcisków jest jawną, jednorazową operacją — nie chcę, żeby
     /// aplikacja po cichu mieliła całe archiwum przy pierwszym starcie.

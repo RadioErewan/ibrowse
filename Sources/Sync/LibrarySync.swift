@@ -682,56 +682,18 @@ final class LibrarySync: ObservableObject {
 
     // MARK: - Zapis
 
-    /// **Trzy pliki, trzy tempa.** Decyzje wypisujemy zawsze — lekkie,
-    /// zmieniają się przy każdej sesji. Odciski i cechy **tylko wtedy, gdy się
-    /// zmieniły** (albo zniknęły z folderu) — patrz `exportFingerprints`
-    /// i `exportFeatures`. Telefon nie płaci pełnej ceny 50 MB za każdą sesję
-    /// oceniania, tylko kilka kilobajtów decyzji.
+    /// **Dwa pliki, dwa tempa.** Decyzje wypisujemy zawsze — lekkie,
+    /// zmieniają się przy każdej sesji. Odciski **tylko wtedy, gdy się
+    /// zmieniły** (albo zniknęły z folderu) — patrz `exportFingerprints`.
+    /// Telefon nie płaci pełnej ceny 50 MB za każdą sesję oceniania, tylko
+    /// kilka kilobajtów decyzji. Trzeci plik, cechy, pisze wyłącznie eksporter.
     nonisolated private static func export(
         context: ModelContext, to folder: URL, translating toCloud: [String: String]
     ) throws {
         try exportRatings(context: context, to: folder, translating: toCloud)
         try exportFingerprints(context: context, to: folder, translating: toCloud)
-        #if os(macOS)
-        try exportFeatures(context: context, to: folder, translating: toCloud)
-        #endif
     }
 
-    #if os(macOS)
-    private static let featuresExportedAtKey = "sync.featuresExportedAt"
-
-    /// Plik cech pisze tylko Mac, który **sam** je wczytał z baz, i tylko po
-    /// nowym wczytaniu. Mac, który cechy dostał z pliku, nie odsyła ich dalej —
-    /// inaczej każde urządzenie powielałoby cudzy pomiar pod własną nazwą.
-    nonisolated private static func exportFeatures(
-        context: ModelContext, to folder: URL, translating toCloud: [String: String]
-    ) throws {
-        let defaults = UserDefaults.standard
-        guard let imported = defaults.object(forKey: FeatureImport.importedAtKey) as? Date else { return }
-        if let exported = defaults.object(forKey: Self.featuresExportedAtKey) as? Date,
-           exported >= imported,
-           SyncFolder.contains(SyncFolder.featuresFileName, in: folder) { return }
-
-        var payload = SyncFile.Payload()
-        payload.deviceName = SyncFolder.deviceName
-        payload.features = ((try? context.fetch(FetchDescriptor<Review>())) ?? [])
-            .filter(\.hasFeatures)
-            .compactMap { review in
-                guard let cloud = toCloud[review.assetID] else { return nil }
-                return SyncFile.Features(
-                    assetID: cloud, sharpness: review.sharpness, exposure: review.exposure,
-                    faces: review.faces, eyesClosed: review.eyesClosed, smiles: review.smiles,
-                    isScreenshot: review.isScreenshot, measures: review.measures,
-                    terms: review.searchTerms
-                )
-            }
-
-        let destination = folder.appending(path: SyncFolder.featuresFileName)
-        let outgoing = payload
-        try SyncFile.write(outgoing, to: destination)
-        defaults.set(Date.now, forKey: Self.featuresExportedAtKey)
-    }
-    #endif
 
     nonisolated private static func exportRatings(
         context: ModelContext, to folder: URL, translating toCloud: [String: String]

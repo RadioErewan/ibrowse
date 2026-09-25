@@ -332,13 +332,11 @@ struct FilterPanel: View {
     @ViewBuilder
     private var featureNote: some View {
         if features.isEmpty {
-            #if os(macOS)
-            note("Measures aren't loaded yet. Use the load measures button in the toolbar.",
+            // Ten sam tekst na obu urządzeniach: od kroku 5 przeglądarka nie
+            // czyta baz Photos sama, miary przywozi wyłącznie eksporter.
+            note("No measures yet. Lightbrary Exporter reads them on the Mac that holds your "
+                 + "library; they arrive here by sync.",
                  colour: .orange)
-            #else
-            note("Measures aren't loaded yet. The Mac computes them and they arrive here by sync.",
-                 colour: .orange)
-            #endif
         } else {
             note(filters.feature.hint, colour: .secondary)
         }

@@ -688,13 +688,8 @@ struct GridView: View {
         guard filters.axis != .none, features.isEmpty else {
             return "No photo matches the filter."
         }
-        #if os(macOS)
-        return "Measures live in the Photos library databases and nobody has loaded them yet. "
-            + "Use the load measures button in the toolbar."
-        #else
-        return "The system computes measures on the Mac and they arrive here by sync. "
-            + "Load them on the Mac, sync both devices, then come back here."
-        #endif
+        return "No measures yet. Lightbrary Exporter reads them on the Mac that holds your "
+            + "library; they arrive here by sync."
     }
 
     /// Przewija do zdjęcia, na którym stoi praca.

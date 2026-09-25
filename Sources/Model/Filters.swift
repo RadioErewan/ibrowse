@@ -258,12 +258,9 @@ final class Filters: ObservableObject {
     /// większość pozostałego czasu filtra.
     private var cachedIDs: [String] = []
 
-    #if os(macOS)
-    private let store = MetadataStore.shared
-    #endif
-
-    /// Słowa przywiezione przez eksporter, po UUID zdjęcia. Tam, gdzie nie ma
-    /// indeksu Apple (telefon, Mac bez dostępu do baz), szukamy w nich.
+    /// Słowa przywiezione przez eksporter, po UUID zdjęcia — jedyne źródło
+    /// wyszukiwania na obu urządzeniach. Przeglądarka nie czyta już indeksu
+    /// Photos sama (krok 5 w DECYZJE.md); robi to eksporter.
     private var terms: [String: String] = [:]
 
     func adoptTerms(_ terms: [String: String]) {
@@ -271,7 +268,7 @@ final class Filters: ObservableObject {
         if !query.isEmpty { scheduleSearch() }
     }
 
-    private func searchTerms(_ text: String) -> Set<String> {
+    nonisolated static func search(_ text: String, in terms: [String: String]) -> Set<String> {
         let needle = text.folding(options: [.diacriticInsensitive, .caseInsensitive], locale: nil)
         return Set(terms.compactMap { $0.value.contains(needle) ? $0.key : nil })
     }
@@ -633,44 +630,29 @@ final class Filters: ObservableObject {
             return
         }
 
-        #if os(macOS)
-        searchTask = Task { [weak self] in
-            try? await Task.sleep(for: .milliseconds(300))
-            guard !Task.isCancelled, let self else { return }
-
-            self.isSearching = true
-            var found = await self.store.search(text)
-            var failure = await self.store.currentFailure()
-            // Bazy niedostępne, ale eksporter przywiózł słowa — szukamy w nich.
-            if failure != nil, !self.terms.isEmpty {
-                found = self.searchTerms(text)
-                failure = nil
-            }
-            guard !Task.isCancelled else { return }
-
-            self.matches = found
-            self.searchNote = failure ?? (found.isEmpty ? "Nothing matches: \(text)" : nil)
-            self.isSearching = false
-            self.rebuild()
-        }
-        #else
-        // Indeks wyszukiwania Apple leży w pakiecie biblioteki na dysku Maca.
-        // PhotoKit nie udostępnia ani etykiet, ani tekstu — słowa przywozi
-        // eksporter z Maca przez plik wymiany (`Review.searchTerms`).
+        // Indeks wyszukiwania Apple leży w pakiecie biblioteki. PhotoKit nie
+        // udostępnia ani etykiet, ani tekstu — słowa przywozi eksporter przez
+        // plik wymiany (`Review.searchTerms`).
         guard !terms.isEmpty else {
             matches = nil
-            searchNote = "Content search needs the lightbrary exporter running on a Mac."
+            searchNote = "Content search needs Lightbrary Exporter running on the Mac that holds your library."
             rebuild()
             return
         }
+        let terms = self.terms
         searchTask = Task { [weak self] in
             try? await Task.sleep(for: .milliseconds(300))
+            guard !Task.isCancelled else { return }
+            self?.isSearching = true
+            // Przejście po słowniku całej biblioteki — poza głównym wątkiem.
+            let found = await Task.detached(priority: .userInitiated) {
+                Self.search(text, in: terms)
+            }.value
             guard !Task.isCancelled, let self else { return }
-            let found = self.searchTerms(text)
             self.matches = found
             self.searchNote = found.isEmpty ? "Nothing matches: \(text)" : nil
+            self.isSearching = false
             self.rebuild()
         }
-        #endif
     }
 }

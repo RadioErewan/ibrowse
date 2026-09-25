@@ -1683,6 +1683,29 @@ same, także przez sieć komórkową.
   wersji.
 - Nigdzie słowa „beta" — sklep tego nie przyjmuje; od tego jest TestFlight.
 
+### Krok 5: wycięcie SQLite z przeglądarki (postanowione 25 września 2026)
+
+Ostatnia wersja czytająca bazy sama: 0.1.17, tag `v0.1.17-last-sqlite`,
+wydana wszystkimi kanałami przed zmianą. Wycinamy **wszędzie**, także
+z wersji Developer ID — jeden kod, jedno zachowanie. `MetadataStore` zostaje
+tylko w eksporterze.
+
+1. Miary i wyszukiwanie wyłącznie z pliku eksportera, jak na iPhonie. Bez
+   eksportera filtry miar i szukanie nie mają danych i mówią, skąd je wziąć.
+2. **Schemat 6 pliku cech** (punkt kontrolny: projekt do przeglądu przed
+   zapisem): eksporter dokłada EXIF z tabeli rozszerzonych atrybutów
+   `Photos.sqlite` (ogniskowa, przysłona, czas, ISO, aparat, obiektyw)
+   i pogrupowane sekcje panelu (miejsce, osoby, okazja, sceny, tekst). Panel
+   jest wtedy pełny przy każdym zdjęciu, także na iPhonie i bez oryginału
+   na dysku. Starsze wersje czytają plik dalej — kolumny po nazwie.
+3. Zapas bez eksportera: EXIF z oryginału przez ImageIO, **tylko gdy leży
+   lokalnie**.
+4. Przycisk „pobierz oryginał" na żądanie (podgląd, lupa; Mac i iPhone),
+   z informacją, że plik zostaje na urządzeniu, dopóki system nie zwolni
+   miejsca (przy optymalizacji pamięci).
+
+Potem piaskownica i migracja kontenera.
+
 ### Interfejs: oznaczone widać na miniaturze
 
 `Thumbnail` (`GridView.swift`) dostaje `isMarkedForDeletion`. Czerwone

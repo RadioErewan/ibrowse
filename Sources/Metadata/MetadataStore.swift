@@ -409,7 +409,11 @@ actor MetadataStore {
         let ocr = 4120
         var lexicon: [UInt32: (text: String, isWord: Bool)] = [:]
         var statement: OpaquePointer?
-        if sqlite3_prepare_v2(leo, "SELECT lexeme_id, category, content FROM lexicon",
+        // Jedno hasło ma wiele wierszy: najpierw forma podstawowa („Samba"),
+        // po niej synonimy („My Dog", „Pet", „Pets"…). Bierzemy **pierwszy**,
+        // w kolejności `pk`, jak w `readLeoIndex` — nadpisywanie każdym kolejnym zostawiało
+        // ostatni synonim i imię psa trafiało do pliku jako „pets".
+        if sqlite3_prepare_v2(leo, "SELECT lexeme_id, category, content FROM lexicon ORDER BY pk",
                               -1, &statement, nil) == SQLITE_OK {
             while sqlite3_step(statement) == SQLITE_ROW {
                 let category = Int(sqlite3_column_int(statement, 1))
@@ -419,7 +423,8 @@ actor MetadataStore {
                 let folded = raw.folding(options: [.diacriticInsensitive, .caseInsensitive],
                                          locale: nil).lowercased()
                 guard !folded.isEmpty, category != ocr || folded.count >= 3 else { continue }
-                lexicon[UInt32(sqlite3_column_int64(statement, 0))] = (folded, category == ocr)
+                let id = UInt32(sqlite3_column_int64(statement, 0))
+                if lexicon[id] == nil { lexicon[id] = (folded, category == ocr) }
             }
         }
         sqlite3_finalize(statement)
