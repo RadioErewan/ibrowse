@@ -28,6 +28,8 @@ struct CompareView: View {
     /// wycinki dwóch różnych kadrów i wygrywa ten, który akurat trafił w oko.
     @AppStorage("compare.sharedZoom") private var sharedZoom = true
 
+    @FocusState private var focused: Bool
+
     /// Powiększenie jednego panelu. Przy wspólnym obie strony czytają i piszą
     /// ten sam zestaw, przy osobnym każda swój — dlatego to jest struktura,
     /// a nie trzy luźne pola.
@@ -64,6 +66,21 @@ struct CompareView: View {
             strip
         }
         .background(Color.black)
+        // Strzałki obsługujemy tu, jednym miejscem, a nie skrótami na
+        // przyciskach. Skróty `←` (strona B) i `⇧←` (strona A) na dwóch
+        // przyciskach macOS mylił — strzałka niesie własne modyfikatory
+        // zdarzenia — i para rozjeżdżała się: `←` cofało A, `→` przesuwało B.
+        // Przełącznik powiększenia i pasek nie przyjmują fokusu, więc
+        // klawiatura zostaje tutaj.
+        .focusable()
+        .focusEffectDisabled()
+        .focused($focused)
+        .onAppear { DispatchQueue.main.async { focused = true } }
+        .onKeyPress(keys: [.leftArrow, .rightArrow]) { press in
+            let delta = press.key == .leftArrow ? -1 : 1
+            step(delta, side: press.modifiers.contains(.shift) ? .a : .b)
+            return .handled
+        }
         // Nowy kadr zawsze wchodzi dopasowany. Bez tego zdjęcie o innych
         // proporcjach wjeżdża przesunięte poza panel i wygląda na puste.
         .task(id: "\(pair?.a ?? "")|\(pair?.b ?? "")") {
@@ -72,18 +89,16 @@ struct CompareView: View {
         }
     }
 
-    /// Nawigacja **prawdziwymi przyciskami**, nie ukrytymi.
+    /// Nawigacja widocznymi przyciskami — do klikania i żeby było widać, że
+    /// strony da się przełączać. Klawisze obsługuje `onKeyPress` całego widoku.
     ///
-    /// Pierwsze podejście trzymało skróty na przyciskach zerowej wielkości
-    /// z zerową przezroczystością, schowanych w tle. macOS takich nie wpuszcza
-    /// do łańcucha odpowiedzi — klawisz nie trafiał w nic, więc system piszczał.
-    /// Drugie podejście, `onKeyPress`, wymagało focusu, a ten zabierał
-    /// przełącznik powiększenia i pasek miniatur.
-    ///
-    /// Widoczne przyciski rozwiązują oba problemy naraz i przy okazji pokazują,
-    /// że te klawisze w ogóle istnieją.
+    /// Historia: skróty na ukrytych przyciskach nie trafiały w łańcuch
+    /// odpowiedzi (system piszczał); `onKeyPress` tracił fokus na rzecz
+    /// przełącznika powiększenia i paska; skróty `←`/`⇧←` na widocznych
+    /// przyciskach macOS mylił między stronami. Teraz przełącznik i przyciski
+    /// nie przyjmują fokusu, więc `onKeyPress` go nie traci.
     @ViewBuilder
-    private func stepper(_ side: Side, label: String, modifiers: EventModifiers) -> some View {
+    private func stepper(_ side: Side, label: String) -> some View {
         HStack(spacing: 2) {
             Text(label)
                 .font(.caption.weight(.semibold))
@@ -93,16 +108,16 @@ struct CompareView: View {
             } label: {
                 Image(systemName: "chevron.left")
             }
-            .keyboardShortcut(.leftArrow, modifiers: modifiers)
             Button {
                 step(1, side: side)
             } label: {
                 Image(systemName: "chevron.right")
             }
-            .keyboardShortcut(.rightArrow, modifiers: modifiers)
         }
         .buttonStyle(.bordered)
         .controlSize(.small)
+        .focusable(false)
+        .help(side == .a ? "⇧← / ⇧→" : "← / →")
     }
 
     private var bar: some View {
@@ -115,8 +130,8 @@ struct CompareView: View {
 
             Spacer()
 
-            stepper(.a, label: "A", modifiers: .shift)
-            stepper(.b, label: "B", modifiers: [])
+            stepper(.a, label: "A")
+            stepper(.b, label: "B")
 
             Button {
                 swap()
@@ -131,6 +146,7 @@ struct CompareView: View {
             Toggle("shared zoom", isOn: $sharedZoom)
                 .toggleStyle(.switch)
                 .controlSize(.small)
+                .focusable(false)
                 .font(.caption)
 
             Button("esc — back to the grid", action: onClose)
