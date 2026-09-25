@@ -6,7 +6,11 @@
 # - `APP_STORE`: bez własnego sprawdzania aktualizacji, a miary, wyszukiwanie
 #   po treści i uwagi o eksporterze pojawiają się dopiero, gdy są dane
 #   (DECYZJE.md, „Piaskownica i sklep na Macu");
-# - podpis dystrybucyjny sklepu (automatyczny, kluczem API) zamiast Developer ID.
+# - podpis sklepowy **lokalnymi** certyfikatami (Apple Distribution, 3rd Party
+#   Mac Developer Installer) i profilem „lightbrary Mac App Store" (założonym
+#   przez API 25 września 2026, ważnym do września 2027). Podpisywanie
+#   w chmurze odpada: klucz API nie ma dostępu do chmurowych certyfikatów
+#   dystrybucyjnych, a do tego potrzebny jest Admin konta.
 set -euo pipefail
 
 export DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer
@@ -32,7 +36,13 @@ cat > "$OPTIONS" <<PLIST
     <key>method</key><string>app-store-connect</string>
     <key>destination</key><string>upload</string>
     <key>teamID</key><string>$TEAM</string>
-    <key>signingStyle</key><string>automatic</string>
+    <key>signingStyle</key><string>manual</string>
+    <key>signingCertificate</key><string>Apple Distribution</string>
+    <key>installerSigningCertificate</key><string>3rd Party Mac Developer Installer</string>
+    <key>provisioningProfiles</key>
+    <dict>
+        <key>pl.3210.lightbrary</key><string>lightbrary Mac App Store</string>
+    </dict>
 </dict>
 </plist>
 PLIST
