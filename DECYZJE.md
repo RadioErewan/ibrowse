@@ -1181,6 +1181,13 @@ dysku i dystrybucję poza sklepem.
 
 - **Survey, czyli porównanie więcej niż dwóch naraz.** Mamy dwa i turniej
   parami; trzy albo cztery kandydatury z wyborem jednej to realna luka.
+  **Rozstrzygnięte 26 września 2026:** nie teraz — po zgłoszeniu do sklepu.
+  Nie jako zamiennik turnieju, tylko jego pierwszy etap, i tylko na Macu:
+  cała seria w siatce ze wspólnym powiększeniem (rozszerzenie porównania
+  A/B), szybkie odrzucanie oczywistych, finaliści do pojedynków. Na telefonie
+  sam turniej. Wybór jednego z N to N−1 wygranych w tym samym rachunku wag.
+  Przed budową warto policzyć rozkład długości serii — przy seriach 2–4
+  zysk jest znikomy.
 - **Mapowanie klawiszy.** Przy naszym podejściu do ergonomii naturalne.
 - **Odpowiedź na pytanie „i co dalej".** U nich to przekazanie do edytora;
   u nas kasowanie i gwiazdki w Zdjęciach. Może wystarczy — ale niech to będzie
