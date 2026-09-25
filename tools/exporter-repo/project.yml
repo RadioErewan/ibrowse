@@ -1,0 +1,48 @@
+# Generated from the lightbrary repository by tools/publish-exporter-repo.sh.
+# Build:  cp Local.xcconfig.example Local.xcconfig  (set your team ID)
+#         xcodegen generate && open lightbrary-exporter.xcodeproj
+name: lightbrary-exporter
+configFiles:
+  Debug: Local.xcconfig
+  Release: Local.xcconfig
+
+options:
+  bundleIdPrefix: pl.3210
+  developmentLanguage: en
+  deploymentTarget:
+    macOS: "27.0"
+  createIntermediateGroups: true
+
+settings:
+  base:
+    SWIFT_VERSION: "5.0"
+    SWIFT_STRICT_CONCURRENCY: minimal
+    MARKETING_VERSION: "__VERSION__"
+    CURRENT_PROJECT_VERSION: "__BUILD__"
+
+targets:
+  lightbrary-exporter:
+    type: application
+    platform: macOS
+    sources:
+      - Sources
+      - Resources/Exporter.xcassets
+    info:
+      path: Generated/Info-exporter.plist
+      properties:
+        CFBundleDisplayName: lightbrary exporter
+        CFBundleShortVersionString: $(MARKETING_VERSION)
+        CFBundleVersion: $(CURRENT_PROJECT_VERSION)
+        LSMinimumSystemVersion: "27.0"
+        LSUIElement: true
+        NSHumanReadableCopyright: ""
+        NSPhotoLibraryUsageDescription: >-
+          lightbrary exporter lists your photos to match them with the measures
+          it reads from the library databases. It never changes your library.
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: pl.3210.lightbrary.exporter
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+        CODE_SIGN_STYLE: Automatic
+        DEVELOPMENT_TEAM: $(LIGHTBRARY_TEAM_ID)
+        CODE_SIGN_ENTITLEMENTS: Resources/lightbrary-exporter.entitlements

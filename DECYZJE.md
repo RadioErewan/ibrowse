@@ -1753,8 +1753,13 @@ Pasek miniatur w `CullView` używa tego samego kafelka.
    zmianie" (wyżej).
 3. ~~Format: podział pliku na wygenerowane i decyzje, zgodność w przód.~~
    Zrobione, schemat 5.
-4. Wydzielenie eksportera (`MetadataIndex` + zapis pliku wygenerowanego) do
-   osobnego repozytorium.
+4. ~~Wydzielenie eksportera do osobnego repozytorium.~~ Zrobione 25 września
+   2026: github.com/RadioErewan/lightbrary-exporter (MIT), publiczne. Źródłem
+   prawdy zostaje to repozytorium — eksporter dzieli z przeglądarkami format
+   pliku — a tamto jest lustrem składanym przez
+   `tools/publish-exporter-repo.sh` (szablony README, licencji i project.yml
+   w `tools/exporter-repo/`). ibrowse zostaje publiczne (decyzja Radka).
+   Wydania eksportera: DMG na stronie + `gh release` w lightbrary-exporter.
 5. Przeglądarka macOS w piaskownicy + migracja kontenera.
 6. TestFlight na Macu, potem review.
 

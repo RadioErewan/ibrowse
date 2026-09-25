@@ -1,0 +1,3 @@
+// Copy to Local.xcconfig and put your own Apple Developer team ID here.
+// Local.xcconfig is ignored by git.
+LIGHTBRARY_TEAM_ID = XXXXXXXXXX
