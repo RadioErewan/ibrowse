@@ -1640,8 +1640,12 @@ dostępie. Przycisk do ustawień w eksporterze zostaje jako zapas.
 eksporter 0.1.15 ze strony, **nieobecny** na liście Pełnego dostępu do dysku,
 przeczytał obie bazy — 6664 zdjęcia, miary przy wszystkich, słowa przy 6657
 (reszta jeszcze niezindeksowana przez Photos). Do odczytu `Photos.sqlite`
-i `leo.sqlite` wystarcza zgoda na Zdjęcia. Samej przeglądarki na tym Macu to
-jeszcze nie dowodzi — miała Pełny dostęp włączony. Piaskownicy sklepu to nie
+i `leo.sqlite` wystarcza zgoda na Zdjęcia. Tego samego dnia potwierdzone
+też dla przeglądarki: po wyłączeniu jej Pełnego dostępu „load measures"
+i synchronizacja przeszły. Strona (instrukcja, pobieranie, wsparcie)
+i komunikaty w aplikacji mówią już o Pełnym dostępie tylko jako o zapasie,
+gdy odczyt się nie uda — np. przy bibliotece na dysku zewnętrznym, czego
+nie sprawdzaliśmy. Piaskownicy sklepu to nie
 zmienia: poza kontenerem i tak nie przeczyta, więc przeglądarka ze sklepu
 dalej potrzebuje eksportera.
 
