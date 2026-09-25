@@ -1636,6 +1636,15 @@ i wyeksportował 25 012 zdjęć (macOS 27, Mac Radka). Jeden test, jedna maszyna
 do potwierdzenia na drugim Macu, zanim przestaniemy mówić ludziom o Pełnym
 dostępie. Przycisk do ustawień w eksporterze zostaje jako zapas.
 
+**Potwierdzone 25 września 2026 na drugim Macu** (inne konto Apple, macOS 27):
+eksporter 0.1.15 ze strony, **nieobecny** na liście Pełnego dostępu do dysku,
+przeczytał obie bazy — 6664 zdjęcia, miary przy wszystkich, słowa przy 6657
+(reszta jeszcze niezindeksowana przez Photos). Do odczytu `Photos.sqlite`
+i `leo.sqlite` wystarcza zgoda na Zdjęcia. Samej przeglądarki na tym Macu to
+jeszcze nie dowodzi — miała Pełny dostęp włączony. Piaskownicy sklepu to nie
+zmienia: poza kontenerem i tak nie przeczyta, więc przeglądarka ze sklepu
+dalej potrzebuje eksportera.
+
 Eksporter — **postanowione**: mała aplikacja w pasku menu (Pełny dostęp do dysku
 nadaje się aplikacji, nie Terminalowi), działająca sama: obserwuje bibliotekę
 i eksportuje po uspokojeniu się zmian. W pasku: data ostatniego eksportu
