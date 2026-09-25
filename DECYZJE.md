@@ -1670,6 +1670,25 @@ Pasek miniatur w `CullView` używa tego samego kafelka.
 
 ## Co czeka
 
+### Strona a recenzja w sklepie
+
+Recenzent wchodzi na lightbrary.app przez adresy z App Store Connect (dziś
+tylko /privacy, przy zgłoszeniu dojdzie /support), a stopka prowadzi dalej —
+do /manual i /download. Instrukcja (`/manual`, od 25 września 2026) zastąpiła
+/sync, które przekierowuje na `/manual#sync`. Źródła stron leżą tylko na
+serwerze; kopie sprzed zmian w `/var/backups/lightbrary-2026-09-25/`.
+
+**Przed zgłoszeniem iOS:**
+- adres wsparcia w App Store Connect: `https://lightbrary.app/support`;
+- zdjąć ze stron „TestFlight" i „This is a beta" (instrukcja, pobieranie).
+
+**Przed zgłoszeniem Maca do sklepu:**
+- przepisać w instrukcji wszystko o Pełnym dostępie do dysku i czytaniu baz
+  biblioteki tak, żeby dotyczyło **tylko eksportera**. Wersja ze sklepu działa
+  w piaskownicy na publicznych API; strona mówiąca, że aplikacja czyta prywatne
+  bazy Photos, to dla recenzenta czerwona flaga (wytyczna 2.5.1). Dotyczy
+  sekcji Setting up, Filters (load measures, search) i If something looks off.
+
 ### Przesunięcie zakresu: z sortownika w przeglądarkę
 
 Odkrycie, ile gotowych danych leży pod biblioteką, zmienia klasę narzędzia.
