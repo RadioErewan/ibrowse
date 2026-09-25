@@ -667,7 +667,8 @@ struct RootView: View {
                     focus: focus,
                     library: library,
                     metadata: metadata,
-                    onFullScreen: { fullScreen = true }
+                    onFullScreen: { fullScreen = true },
+                    onSearch: { filters.query = $0 }
                 )
                 .inspectorColumnWidth(min: 300, ideal: 390, max: 520)
             }
@@ -1070,6 +1071,7 @@ private struct FocusedPreview: View {
     let library: PhotoLibrary
     let metadata: MetadataIndex
     let onFullScreen: () -> Void
+    var onSearch: ((String) -> Void)? = nil
 
     var body: some View {
         PreviewInspector(
@@ -1077,7 +1079,8 @@ private struct FocusedPreview: View {
             library: library,
             metadata: metadata,
             selectionCount: focus.selection.count,
-            onFullScreen: onFullScreen
+            onFullScreen: onFullScreen,
+            onSearch: onSearch
         )
     }
 }

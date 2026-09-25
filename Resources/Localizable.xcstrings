@@ -3039,6 +3039,39 @@
         }
       },
       "extractionState": "manual"
+    },
+    "Show photos with %@": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pokaż zdjęcia z: %@"
+          }
+        }
+      },
+      "extractionState": "manual"
+    },
+    "Download original for camera details": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pobierz oryginał, by zobaczyć technikę"
+          }
+        }
+      },
+      "extractionState": "manual"
+    },
+    "Keeps a copy on this Mac until the system needs the space": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kopia zostaje na tym Macu, dopóki system nie potrzebuje miejsca"
+          }
+        }
+      },
+      "extractionState": "manual"
     }
   },
   "version": "1.0"

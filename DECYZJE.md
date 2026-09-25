@@ -1789,11 +1789,12 @@ serwerze; kopie sprzed zmian w `/var/backups/lightbrary-2026-09-25/`.
 - zdjąć ze stron „TestFlight" i „This is a beta" (instrukcja, pobieranie).
 
 **Przed zgłoszeniem Maca do sklepu:**
-- przepisać w instrukcji wszystko o Pełnym dostępie do dysku i czytaniu baz
-  biblioteki tak, żeby dotyczyło **tylko eksportera**. Wersja ze sklepu działa
+- ~~przepisać w instrukcji wszystko o Pełnym dostępie do dysku i czytaniu baz
+  biblioteki tak, żeby dotyczyło **tylko eksportera**~~ — **zrobione
+  26 września 2026** na /download, /manual i /support (kopie sprzed zmian
+  w `/var/backups/lightbrary-2026-09-26/`). Wersja ze sklepu działa
   w piaskownicy na publicznych API; strona mówiąca, że aplikacja czyta prywatne
-  bazy Photos, to dla recenzenta czerwona flaga (wytyczna 2.5.1). Dotyczy
-  sekcji Setting up, Filters (load measures, search) i If something looks off.
+  bazy Photos, byłaby dla recenzenta czerwoną flagą (wytyczna 2.5.1).
 
 ### Przesunięcie zakresu: z sortownika w przeglądarkę
 

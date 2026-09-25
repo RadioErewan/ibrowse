@@ -25,6 +25,7 @@ struct PreviewInspector: View {
     let selectionCount: Int
 
     var onFullScreen: () -> Void = {}
+    var onSearch: ((String) -> Void)? = nil
 
     @Environment(\.modelContext) private var context
     @Query(filter: #Predicate<Review> { $0.isRated || $0.markedForDeletion })
@@ -45,7 +46,7 @@ struct PreviewInspector: View {
                 Divider()
                 rating(asset)
                 Divider()
-                MetadataPanel(asset: asset, index: metadata)
+                MetadataPanel(asset: asset, index: metadata, onSearch: onSearch)
             } else {
                 ContentUnavailableView(
                     "Nothing selected",

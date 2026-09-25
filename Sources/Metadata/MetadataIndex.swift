@@ -15,11 +15,14 @@ final class MetadataIndex: ObservableObject {
     @Published private(set) var current: AssetMetadata?
     /// Uwaga pod panelem, gdy części danych nie ma skąd wziąć.
     @Published private(set) var note: String?
+    /// Czy bieżące dane przywiózł eksporter. Tylko wtedy ich etykiety da się
+    /// wyszukać — słowa do szukania pochodzą z tego samego pliku.
+    @Published private(set) var fromExporter = false
 
     private var loading: String?
 
     func load(_ asset: PHAsset?, context: ModelContext) async {
-        guard let asset else { current = nil; note = nil; return }
+        guard let asset else { current = nil; note = nil; fromExporter = false; return }
         let identifier = asset.localIdentifier
         loading = identifier
 
@@ -27,6 +30,7 @@ final class MetadataIndex: ObservableObject {
         let fromExporter = result != AssetMetadata()
         result.filename = AssetFacts.quick(for: asset).filename
         current = result
+        self.fromExporter = fromExporter
         note = fromExporter || Filters.showsOnlyWhenPresent ? nil
             : "Places, people and scenes come from Lightbrary Exporter on the Mac that holds your library."
 

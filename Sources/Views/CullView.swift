@@ -181,7 +181,12 @@ struct CullView: View {
         // przegrodę, pamięta szerokość, daje się przeciągać i chowa się tak
         // samo jak w każdej innej aplikacji systemu.
         .inspector(isPresented: $showingMetadata) {
-            MetadataPanel(asset: current, index: metadata)
+            // Szukanie z pełnego ekranu wraca do siatki: wyniki to zbiór,
+            // a nie jedno zdjęcie, i tam je widać.
+            MetadataPanel(asset: current, index: metadata) { label in
+                filters.query = label
+                onExit?()
+            }
                 .inspectorColumnWidth(min: 220, ideal: 280, max: 420)
         }
         .toolbar {

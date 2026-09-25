@@ -10,6 +10,10 @@ import SwiftUI
 struct MetadataPanel: View {
     let asset: PHAsset?
     @ObservedObject var index: MetadataIndex
+    /// Kliknięcie etykiety szuka jej w bibliotece. `nil`, gdy nie ma słów od
+    /// eksportera — wtedy etykiety są zwykłym tekstem, bo szukanie i tak nic
+    /// by nie znalazło.
+    var onSearch: ((String) -> Void)? = nil
     @Environment(\.modelContext) private var context
 
     @State private var showingWords = false
@@ -55,6 +59,7 @@ struct MetadataPanel: View {
     }
 
     private var data: AssetMetadata { index.current ?? AssetMetadata() }
+    private var search: ((String) -> Void)? { index.fromExporter ? onSearch : nil }
 
     // MARK: - Sekcje
 
@@ -108,8 +113,8 @@ struct MetadataPanel: View {
 
     @ViewBuilder
     private var people: some View {
-        Section("People", values: data.people, tint: .blue)
-        Section("Animals", values: data.pets, tint: .brown)
+        Section("People", values: data.people, tint: .blue, onSearch: search)
+        Section("Animals", values: data.pets, tint: .brown, onSearch: search)
     }
 
     /// Miejsce jako jeden ciąg od punktu do kraju — tak, jak człowiek by je
@@ -119,22 +124,37 @@ struct MetadataPanel: View {
         if !data.place.isEmpty {
             Group {
                 heading("Place")
-                Text(data.place.joined(separator: " · "))
-                    .font(.callout)
-                    .textSelection(.enabled)
-                    .fixedSize(horizontal: false, vertical: true)
+                if let onSearch = search {
+                    // Każdy człon osobno: „Kraków" znajdzie całe miasto,
+                    // a nie tylko ten jeden rynek.
+                    FlowLayout(spacing: 0) {
+                        ForEach(Array(data.place.enumerated()), id: \.offset) { position, name in
+                            if position > 0 {
+                                Text(" · ").font(.callout).foregroundStyle(.secondary)
+                            }
+                            SearchLabel(value: name, onSearch: onSearch) {
+                                Text(name).font(.callout)
+                            }
+                        }
+                    }
+                } else {
+                    Text(data.place.joined(separator: " · "))
+                        .font(.callout)
+                        .textSelection(.enabled)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
             }
         }
     }
 
     @ViewBuilder
     private var occasion: some View {
-        Section("Occasion", values: data.occasion, tint: .purple)
+        Section("Occasion", values: data.occasion, tint: .purple, onSearch: search)
     }
 
     @ViewBuilder
     private var scenes: some View {
-        Section("What the system sees", values: data.scenes, tint: .secondary)
+        Section("What the system sees", values: data.scenes, tint: .secondary, onSearch: search)
     }
 
     /// Odczytany tekst jest w indeksie rozbity na pojedyncze słowa bez
@@ -214,11 +234,16 @@ private struct Section: View {
     let title: LocalizedStringKey
     let values: [String]
     let tint: Color
+    let onSearch: ((String) -> Void)?
 
-    init(_ title: LocalizedStringKey, values: [String], tint: Color) {
+    init(
+        _ title: LocalizedStringKey, values: [String], tint: Color,
+        onSearch: ((String) -> Void)? = nil
+    ) {
         self.title = title
         self.values = values
         self.tint = tint
+        self.onSearch = onSearch
     }
 
     var body: some View {
@@ -230,16 +255,45 @@ private struct Section: View {
                     .foregroundStyle(.tertiary)
                 FlowLayout(spacing: 4) {
                     ForEach(values, id: \.self) { value in
-                        Text(value)
-                            .font(.caption)
-                            .padding(.horizontal, 7)
-                            .padding(.vertical, 3)
-                            .background(tint.opacity(0.15), in: Capsule())
-                            .foregroundStyle(tint)
+                        if let onSearch {
+                            SearchLabel(value: value, onSearch: onSearch) { chip(value) }
+                        } else {
+                            chip(value)
+                        }
                     }
                 }
             }
         }
+    }
+}
+
+extension Section {
+    private func chip(_ value: String) -> some View {
+        Text(value)
+            .font(.caption)
+            .padding(.horizontal, 7)
+            .padding(.vertical, 3)
+            .background(tint.opacity(0.15), in: Capsule())
+            .foregroundStyle(tint)
+    }
+}
+
+/// Etykieta, która po kliknięciu szuka samej siebie.
+///
+/// Bez fokusu klawiatury z tego samego powodu co przycisk tekstu w panelu:
+/// fokus na plakietce odbierałby cyfry ocenianiu, a plakietki zmieniają się
+/// z każdym zdjęciem.
+private struct SearchLabel<Label: View>: View {
+    let value: String
+    let onSearch: (String) -> Void
+    @ViewBuilder let label: () -> Label
+
+    var body: some View {
+        Button { onSearch(value) } label: { label() }
+            .buttonStyle(.plain)
+            .focusable(false)
+            .pointerStyle(.link)
+            .help("Show photos with \(value)")
     }
 }
 
