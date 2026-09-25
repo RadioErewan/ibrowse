@@ -526,7 +526,7 @@ struct RootView: View {
             ActionsSheet(
                 library: library, similarity: similarity,
                 albums: albums, sync: sync,
-                pairInProgress: mode == .pair
+                onPairTab: mode == .pair
             )
         }
         #else

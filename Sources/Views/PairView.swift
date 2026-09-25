@@ -56,8 +56,10 @@ struct PairView: View {
     /// decyzja; seria z dziesięciu to materiał, przy którym ręczne przeglądanie
     /// się poddaje — i od niej chcesz zaczynać.
     private var pending: [Series] {
-        series.filter { !$0.isResolved && $0.members.count >= minimumSize }
-            .sorted { $0.members.count > $1.members.count }
+        series.filter {
+            !$0.isResolved && $0.members.count >= minimumSize && $0.isPlayable(in: library)
+        }
+        .sorted { $0.members.count > $1.members.count }
     }
 
     private var current: Series? { pending.first }
@@ -373,5 +375,27 @@ struct RejectionRate: View {
                 .foregroundStyle(ratio > 0.3 ? .orange : .secondary)
                 .help(ratio > 0.3 ? "High share — try lowering the sensitivity" : "")
         }
+    }
+}
+
+
+extension Series {
+    /// Czy da się teraz pokazać parę z tej serii: obecny lider i kolejny
+    /// pretendent są w bibliotece **tego** urządzenia, a licznik pojedynku
+    /// mieści się w składzie.
+    ///
+    /// Bez tego sprawdzenia jedna taka seria — zdjęcie skasowane, albo stan
+    /// turnieju przywieziony z drugiego urządzenia do serii o innym składzie —
+    /// stawała na czele kolejki i parowanie pokazywało „All resolved" przy
+    /// tysiącach nierozstrzygniętych serii. Pominięta seria nie znika: wróci,
+    /// gdy zdjęcia dojadą albo serie przeliczą się na nowo.
+    @MainActor
+    func isPlayable(in library: PhotoLibrary) -> Bool {
+        guard let championID = championID ?? members.first,
+              library.asset(id: championID) != nil,
+              members.indices.contains(challengerIndex),
+              library.asset(id: members[challengerIndex]) != nil
+        else { return false }
+        return true
     }
 }

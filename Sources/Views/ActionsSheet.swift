@@ -24,7 +24,20 @@ struct ActionsSheet: View {
     /// suwak mieszka w nagłówku porównania i jest widoczny tylko podczas
     /// aktywnego pojedynku, więc kto go rusza, świadomie na to patrzy —
     /// tu, w arkuszu dostępnym z każdej zakładki, tej świadomości nie ma.
-    var pairInProgress: Bool
+    ///
+    /// Sama zakładka to za mało: przy „All resolved" na ekranie nie ma żadnej
+    /// pary, a suwak i tak stał zablokowany — akurat wtedy, gdy przegrupowanie
+    /// jest jedyną drogą do kolejnych serii.
+    var onPairTab: Bool
+
+    @Query private var series: [Series]
+    @AppStorage("pair.minimumSize") private var minimumSize = 3
+
+    private var pairInProgress: Bool {
+        onPairTab && series.contains {
+            !$0.isResolved && $0.members.count >= minimumSize && $0.isPlayable(in: library)
+        }
+    }
 
     @Environment(\.modelContext) private var context
     @Environment(\.dismiss) private var dismiss
