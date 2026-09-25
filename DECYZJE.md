@@ -1386,6 +1386,39 @@ Ryzyko do obserwacji: zapis synchronizacji w tle i ocena tego samego zdjęcia
 w tej samej chwili mogą dać konflikt — przepada wtedy ten przebieg
 synchronizacji (następny go powtórzy), nie ocena.
 
+## Szybkie ocenianie: czego widok główny nie może obserwować
+
+Po wyczyszczeniu kilkuset ocen okno stało minutami, a szybkie ocenianie
+w pełnym ekranie szarpało po 0,5–1 s co kilka klawiszy. Pomiar w kolejności,
+która zadziałała: `Trace` (etapy i `STALL` w logu) → `sample` w trakcie
+(gdzie stoi wątek) → `Self._printChanges()` w ciałach głównych widoków,
+z aplikacją uruchomioną przez `open --stdout plik` (uruchomiona wprost
+z terminala dziedziczy jego brak zgody na Zdjęcia). Dopiero trzecie
+pokazało przyczynę; próbki pokazywały tylko rozmyte „SwiftUI układa okno".
+
+Zasady, które z tego wyszły:
+
+- **Widok główny nie zależy od niczego, co zmienia się przy klawiszu.**
+  Wskaźnik i zaznaczenie mieszkają w `Focus`, obserwowanym tylko przez
+  widoki, które ich używają. `@State` w `RootView` zmieniane przy każdej
+  ocenie (tak było z `focusID` i odłożonym zapisem) przebudowuje
+  `NavigationSplitView`, pasek narzędzi i obie kolumny.
+- **`@StateObject` obserwuje.** Obiekt, który widok tylko przekazuje dalej
+  (`PerfMonitor`, `MetadataIndex`), trzymamy w `@State` — żyje tyle samo,
+  ale nie budzi widoku przy każdej publikacji.
+- **Zapis do `UserDefaults.standard` budzi każdy widok z `@AppStorage`.**
+  Nic, co zmienia się przy ocenie, nie idzie do `UserDefaults` — stan
+  odczytu z Photos (`NativeMemory`) ma własny plik.
+- **`PHAsset.localIdentifier` nie jest polem** — składa napis z UUID przy
+  każdym odczycie. W pętli po bibliotece czytamy zapamiętane identyfikatory
+  (`Filters.cachedIDs`, `baseIDs`).
+- **Właściwość obliczana czytana kilka razy na odrysowanie** liczy się
+  kilka razy — `CullView.workingSet` ma pamięć na jeden obieg (`TurnMemo`).
+- Przyciski w panelach obok oceniania mają `.focusable(false)`, a pełny
+  ekran odzyskuje utracony fokus sam. Fokus nadal na moment znika na
+  niektórych zdjęciach (np. z odczytanym tekstem) — przyczyna nieznana,
+  skutek usunięty.
+
 ## isHidden nie nadaje się do cichej emisji — Apple pyta za każdym razem
 
 Pomysł wyglądał dobrze na papierze: skoro `markedForDeletion` i tak jedzie
