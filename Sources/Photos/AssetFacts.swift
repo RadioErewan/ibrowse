@@ -45,15 +45,18 @@ extension AssetFacts {
 
     /// Dociąga technikę zdjęcia z **lokalnego** pliku.
     ///
-    /// `isNetworkAccessAllowed = false` jest tu decyzją o miejscu na dysku,
-    /// nie o szybkości: pobranie oryginału z iCloud zostawiłoby go na telefonie
-    /// na stałe, a PhotoKit nie daje sposobu, żeby go potem usunąć. Lepiej
-    /// przyznać się do braku danych, niż po cichu zapełniać pamięć.
-    static func detailed(for asset: PHAsset) async -> AssetFacts {
+    /// Domyślnie bez sieci — to decyzja o miejscu na dysku, nie o szybkości:
+    /// pobrany oryginał zostaje na urządzeniu, dopóki system nie zwolni miejsca,
+    /// a PhotoKit nie daje sposobu, żeby go usunąć samemu. Lepiej przyznać się
+    /// do braku danych, niż po cichu zapełniać pamięć; pobieramy tylko wtedy,
+    /// gdy człowiek o to poprosi.
+    /// `allowNetwork` tylko na wyraźne życzenie człowieka („Download original”):
+    /// pobrana kopia zostaje na urządzeniu, dopóki system nie zwolni miejsca.
+    static func detailed(for asset: PHAsset, allowNetwork: Bool = false) async -> AssetFacts {
         var facts = quick(for: asset)
 
         let options = PHImageRequestOptions()
-        options.isNetworkAccessAllowed = false
+        options.isNetworkAccessAllowed = allowNetwork
         options.deliveryMode = .highQualityFormat
         options.isSynchronous = false
 

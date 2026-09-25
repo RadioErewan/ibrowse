@@ -129,6 +129,14 @@ struct CullView: View {
         current.flatMap { byID[$0.localIdentifier] }
     }
 
+    /// Panel od eksportera prosto z bazy. `reviews` widzi tylko zdjęcia
+    /// ocenione albo oznaczone, a panel mają wszystkie.
+    private func exportedPanel(for asset: PHAsset) -> String {
+        let id = asset.localIdentifier
+        let descriptor = FetchDescriptor<Review>(predicate: #Predicate { $0.assetID == id })
+        return (try? context.fetch(descriptor))?.first?.panel ?? ""
+    }
+
     /// Sąsiad w zbiorze roboczym, albo `nil` na końcach.
     private func neighbour(_ delta: Int) -> PHAsset? {
         let set = workingSet
@@ -331,7 +339,7 @@ struct CullView: View {
         #if os(iOS)
         .sheet(isPresented: $showingMetadata) {
             if let current {
-                MetadataSheet(asset: current)
+                MetadataSheet(asset: current, panel: exportedPanel(for: current))
             }
         }
         #endif

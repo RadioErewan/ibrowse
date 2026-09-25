@@ -43,13 +43,16 @@ struct Loupe: View {
 
     /// Na Macu wolno dociągnąć z iCloud: miejsca jest więcej, a systemowa
     /// polityka „Optymalizuj pamięć" i tak eksmituje najstarsze oryginały.
-    /// Na telefonie **nigdy** — tam pobrany oryginał zostaje na stałe,
-    /// a PhotoKit nie daje sposobu, żeby go usunąć.
+    /// Na telefonie **tylko na życzenie** („Download original"): kopia zostaje
+    /// na urządzeniu, dopóki system nie będzie potrzebował miejsca, więc to ma
+    /// być decyzja człowieka przy konkretnym zdjęciu, nie odruch aplikacji.
+    @State private var userAskedForOriginal = false
+
     private var allowNetwork: Bool {
         #if os(macOS)
         true
         #else
-        false
+        userAskedForOriginal
         #endif
     }
 
@@ -219,7 +222,14 @@ struct Loupe: View {
         ContentUnavailableView {
             Label("Original not on this device", systemImage: "icloud.slash")
         } description: {
-            Text("The preview you see is downscaled — you can't judge sharpness from it. I don't fetch the original, because it would stay here for good.")
+            Text("The preview you see is downscaled — you can't judge sharpness from it. "
+                 + "Downloading the original keeps a copy on this device until the system needs the space.")
+        } actions: {
+            Button("Download original") {
+                userAskedForOriginal = true
+                load()
+            }
+            .buttonStyle(.borderedProminent)
         }
     }
 

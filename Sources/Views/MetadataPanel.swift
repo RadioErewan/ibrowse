@@ -36,6 +36,16 @@ struct MetadataPanel: View {
                         .font(.caption)
                         .foregroundStyle(.secondary)
                         .fixedSize(horizontal: false, vertical: true)
+                    // Bez eksportera i bez oryginału na dysku techniki nie ma
+                    // skąd wziąć — chyba że człowiek zgodzi się na pobranie.
+                    if let asset, data.iso == nil, data.aperture == nil, data.camera == nil {
+                        Button("Download original for camera details") {
+                            Task { await index.loadOriginal(asset) }
+                        }
+                        .controlSize(.small)
+                        .focusable(false)
+                        .help("Keeps a copy on this Mac until the system needs the space")
+                    }
                 }
             }
             .padding(14)

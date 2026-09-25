@@ -49,6 +49,21 @@ final class MetadataIndex: ObservableObject {
         }
     }
 
+    /// Na życzenie: pobiera oryginał z iCloud i czyta z niego technikę.
+    func loadOriginal(_ asset: PHAsset) async {
+        let identifier = asset.localIdentifier
+        loading = identifier
+        let facts = await AssetFacts.detailed(for: asset, allowNetwork: true)
+        guard loading == identifier, var result = current else { return }
+        result.camera = facts.camera
+        result.lens = facts.lens
+        result.iso = facts.iso
+        result.aperture = facts.aperture
+        result.shutter = facts.shutter
+        result.focalLength = facts.focalLength
+        current = result
+    }
+
     private static func exported(for identifier: String, in context: ModelContext) -> AssetMetadata? {
         let descriptor = FetchDescriptor<Review>(predicate: #Predicate { $0.assetID == identifier })
         guard let panel = (try? context.fetch(descriptor))?.first?.panel else { return nil }
