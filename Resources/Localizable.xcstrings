@@ -3072,6 +3072,17 @@
         }
       },
       "extractionState": "manual"
+    },
+    "Full resolution": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pełna rozdzielczość"
+          }
+        }
+      },
+      "extractionState": "manual"
     }
   },
   "version": "1.0"

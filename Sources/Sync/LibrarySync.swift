@@ -496,8 +496,14 @@ final class LibrarySync: ObservableObject {
     ) -> Finished {
         context.autosaveEnabled = false
         var result = Finished()
+        var toLocal: [String: String] = [:]
+        toLocal.reserveCapacity(toCloud.count)
+        for (local, cloud) in toCloud { toLocal[cloud] = local }
+        repairChampions(translating: toLocal, in: context)
         for payload in incoming {
-            result.verdicts += mergeVerdicts(payload.verdicts, translating: toCloud, into: context)
+            result.verdicts += mergeVerdicts(
+                payload.verdicts, translating: toCloud, back: toLocal, into: context
+            )
         }
         if context.hasChanges { try? context.save() }
 
@@ -640,6 +646,28 @@ final class LibrarySync: ObservableObject {
         return added
     }
 
+    nonisolated private static func repairChampions(
+        translating toLocal: [String: String], in context: ModelContext
+    ) {
+        // Naprawa po starym błędzie: zwycięzca przychodził z pliku jako
+        // identyfikator chmurowy i był wpisywany bez tłumaczenia. Seria
+        // wskazywała wtedy zdjęcie, którego biblioteka nie zna — i na telefonie
+        // nie dało się jej rozegrać. Tłumaczymy wstecz, a gdy się nie da,
+        // turniej zaczyna się od nowa zamiast wisieć.
+        let series = (try? context.fetch(FetchDescriptor<Series>())) ?? []
+        for item in series {
+            guard let champion = item.championID, !item.members.contains(champion) else { continue }
+            if let local = toLocal[champion], item.members.contains(local) {
+                item.championID = local
+            } else if item.resolvedAt == nil {
+                item.championID = nil
+                item.challengerIndex = 1
+            } else {
+                item.championID = nil
+            }
+        }
+    }
+
     /// Werdykty też muszą przejść przez identyfikatory chmurowe.
     ///
     /// Kluczem werdyktu jest skład serii, a skład to identyfikatory zdjęć —
@@ -647,9 +675,17 @@ final class LibrarySync: ObservableObject {
     /// liczony z identyfikatorów lokalnych nigdy nie trafiłby w cudzy.
     nonisolated private static func mergeVerdicts(
         _ remote: [SyncFile.Verdict], translating toCloud: [String: String],
-        into context: ModelContext
+        back toLocal: [String: String], into context: ModelContext
     ) -> Int {
         let series = (try? context.fetch(FetchDescriptor<Series>())) ?? []
+
+        /// Zwycięzca z pliku w lokalnym identyfikatorze — albo `nil`, gdy
+        /// zdjęcia tu nie ma albo nie należy do tej serii.
+        func champion(_ entry: SyncFile.Verdict, in local: Series) -> String? {
+            guard let cloud = entry.championID, let id = toLocal[cloud],
+                  local.members.contains(id) else { return nil }
+            return id
+        }
         let byKey = Dictionary(
             series.compactMap { item -> (String, Series)? in
                 guard let key = Self.cloudKey(for: item.members, using: toCloud) else { return nil }
@@ -669,14 +705,15 @@ final class LibrarySync: ObservableObject {
                 if local.resolvedAt == nil || local.resolvedAt! < remoteAt {
                     local.resolvedAt = remoteAt
                     local.wasRejected = entry.wasRejected
-                    local.championID = entry.championID
+                    local.championID = champion(entry, in: local)
                     local.challengerIndex = entry.challengerIndex
                     applied += 1
                 }
             } else if local.resolvedAt == nil,
                       local.challengerIndex <= 1,
-                      entry.challengerIndex > 1 {
-                local.championID = entry.championID
+                      entry.challengerIndex > 1,
+                      let id = champion(entry, in: local) {
+                local.championID = id
                 local.challengerIndex = entry.challengerIndex
                 applied += 1
             }

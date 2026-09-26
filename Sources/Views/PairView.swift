@@ -45,6 +45,14 @@ struct PairView: View {
     private static var initialAppearHandled = false
     @State private var showThresholdControl = PairView.initialAppearHandled
 
+    #if os(iOS)
+    /// Wspólne powiększenie obu stron. Obiekt, a nie `@State` w tym widoku:
+    /// każdy ruch palca przebudowywałby wtedy całe parowanie razem z
+    /// filtrowaniem kilku tysięcy serii — przesuwanie ciągnęło się jak guma.
+    /// Obserwują go tylko same dwa zdjęcia (`ZoomedSide`).
+    @State private var zoom = PairZoom()
+    #endif
+
     /// Od ilu zdjęć seria trafia do parowania.
     ///
     /// Serie dwuelementowe to jedna decyzja i znikomy zysk, a jest ich kilka
@@ -121,6 +129,9 @@ struct PairView: View {
         .onKeyPress(.rightArrow) { pick(left: false); return .handled }
         .onKeyPress(.space) { resolveCurrent(); return .handled }
         .onKeyPress(KeyEquivalent("n")) { reject(); return .handled }
+        #if os(iOS)
+        .onChange(of: current?.persistentModelID) { _, _ in zoom.reset() }
+        #endif
         .task(id: "\(current?.persistentModelID.hashValue ?? 0)-\(current?.challengerIndex ?? 0)") {
             prefetchAhead()
             focusID = current?.championID ?? current?.members.first
@@ -248,8 +259,12 @@ struct PairView: View {
 
     private func side(_ asset: PHAsset, isChampion: Bool) -> some View {
         ZStack(alignment: .top) {
+            #if os(iOS)
+            ZoomedSide(asset: asset, library: library, zoom: zoom, size: Self.imageSize)
+            #else
             AssetImage(asset: asset, library: library, targetSize: Self.imageSize)
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
+            #endif
 
             if isChampion {
                 Text("current leader")
@@ -263,6 +278,18 @@ struct PairView: View {
         }
         .contentShape(Rectangle())
         .onTapGesture { pick(left: isChampion) }
+        #if os(iOS)
+        .simultaneousGesture(
+            MagnifyGesture()
+                .onChanged { zoom.magnify($0.magnification) }
+                .onEnded { _ in zoom.endMagnify() }
+        )
+        .simultaneousGesture(
+            DragGesture(minimumDistance: 10)
+                .onChanged { zoom.drag($0.translation) }
+                .onEnded { _ in zoom.endDrag() }
+        )
+        #endif
     }
 
     /// Każda strona zajmuje połowę okna — 1400 px wystarczy, a jest wyraźnie
@@ -399,3 +426,82 @@ extension Series {
         return true
     }
 }
+
+#if os(iOS)
+/// Stan wspólnego powiększenia w parowaniu na telefonie.
+@MainActor
+final class PairZoom: ObservableObject {
+    @Published private(set) var scale: Double = 1
+    @Published private(set) var offset: CGSize = .zero
+    /// Czy doczytać ostrzejsze wersje obu stron. Z palca, nie samo: pełna
+    /// rozdzielczość to często pobranie z iCloud, dwa razy na pojedynek.
+    @Published var sharp = false
+    private var base: Double = 1
+    private var settled: CGSize = .zero
+
+    var isZoomed: Bool { scale > 1.01 }
+
+    func magnify(_ factor: Double) { scale = min(max(base * factor, 1), 8) }
+
+    func endMagnify() {
+        base = scale
+        if !isZoomed { reset() }
+    }
+
+    func drag(_ translation: CGSize) {
+        guard isZoomed else { return }
+        offset = CGSize(width: settled.width + translation.width,
+                        height: settled.height + translation.height)
+    }
+
+    func endDrag() { settled = offset }
+
+    func reset() {
+        scale = 1; base = 1
+        offset = .zero; settled = .zero
+        sharp = false
+    }
+}
+
+/// Jedna strona pojedynku z powiększeniem. Osobny widok, żeby zmiana
+/// powiększenia przerysowywała tylko zdjęcie, a nie całe parowanie.
+private struct ZoomedSide: View {
+    let asset: PHAsset
+    let library: PhotoLibrary
+    @ObservedObject var zoom: PairZoom
+    let size: CGSize
+
+    var body: some View {
+        ZStack {
+            AssetImage(asset: asset, library: library, targetSize: size)
+            // Ostrzejsza wersja **na** podglądzie, nie zamiast niego: dopóki
+            // się dociąga, widać dotychczasowy obraz i kręciołek nad nim.
+            if zoom.sharp {
+                AssetImage(asset: asset, library: library,
+                           targetSize: CGSize(width: 4096, height: 4096), chrome: false)
+            }
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .scaleEffect(zoom.scale)
+        .offset(zoom.offset)
+        .clipped()
+        .overlay(alignment: .bottomTrailing) {
+            if zoom.isZoomed {
+                HStack(spacing: 6) {
+                    if !zoom.sharp {
+                        Button("Full resolution") { zoom.sharp = true }
+                    }
+                    Button(String(format: "%.0f%%", zoom.scale * 100)) { zoom.reset() }
+                }
+                .font(.caption.monospacedDigit())
+                .foregroundStyle(.white)
+                .buttonStyle(.plain)
+                .padding(.horizontal, 8)
+                .padding(.vertical, 4)
+                .background(.black.opacity(0.66), in: RoundedRectangle(cornerRadius: 6))
+                .padding(8)
+            }
+        }
+    }
+}
+#endif
