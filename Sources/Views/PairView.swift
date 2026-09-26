@@ -279,22 +279,13 @@ struct PairView: View {
         .contentShape(Rectangle())
         .onTapGesture { pick(left: isChampion) }
         #if os(iOS)
-        .simultaneousGesture(
-            MagnifyGesture()
-                .onChanged { zoom.magnify($0.magnification) }
-                .onEnded { _ in zoom.endMagnify() }
-        )
-        .simultaneousGesture(
-            DragGesture(minimumDistance: 10)
-                .onChanged { zoom.drag($0.translation) }
-                .onEnded { _ in zoom.endDrag() }
-        )
+        .modifier(PairZoomGestures(zoom: zoom))
         #endif
     }
 
     /// Każda strona zajmuje połowę okna — 1400 px wystarczy, a jest wyraźnie
     /// tańsze do dociągnięcia z iCloud niż pełne 2048.
-    private static let imageSize = CGSize(width: 1400, height: 1400)
+    static let imageSize = CGSize(width: 1400, height: 1400)
 
     /// Dobiera układ tak, żeby zdjęcia wypełniły okno jak najpełniej.
     ///
@@ -302,7 +293,7 @@ struct PairView: View {
     /// siebie) albo `2A` (jedno nad drugim), gdzie `A` to proporcja okna.
     /// Wypełnienie to `min(a/A', A'/a)`, więc układ pionowy wygrywa dokładnie
     /// wtedy, gdy zdjęcia są szersze niż okno.
-    private static func shouldStack(
+    static func shouldStack(
         _ left: PHAsset, _ right: PHAsset, in size: CGSize
     ) -> Bool {
         guard size.height > 0 else { return false }
@@ -502,6 +493,115 @@ private struct ZoomedSide: View {
                 .padding(8)
             }
         }
+    }
+}
+/// Szczypanie i przeciąganie, które sterują wspólnym powiększeniem.
+struct PairZoomGestures: ViewModifier {
+    let zoom: PairZoom
+
+    func body(content: Content) -> some View {
+        content
+            .simultaneousGesture(
+                MagnifyGesture()
+                    .onChanged { zoom.magnify($0.magnification) }
+                    .onEnded { _ in zoom.endMagnify() }
+            )
+            .simultaneousGesture(
+                DragGesture(minimumDistance: 10)
+                    .onChanged { zoom.drag($0.translation) }
+                    .onEnded { _ in zoom.endDrag() }
+            )
+    }
+}
+
+/// Turniej na zdjęciach wybranych w siatce — porównywanie na telefonie.
+///
+/// Ten sam pojedynek co w parowaniu, tylko na dowolnym zbiorze zamiast serii
+/// znalezionej przez odciski: pięć ujęć tego samego widoku z różnych dni,
+/// trzy portrety do wyboru na profil. Nic nie zostaje zapisane jako seria —
+/// po zamknięciu zostają tylko przesunięte wagi i gwiazdki.
+struct QuickDuel: View {
+    let ids: [String]
+    let library: PhotoLibrary
+    let onClose: () -> Void
+
+    @Environment(\.modelContext) private var context
+    @State private var championID: String?
+    @State private var challengerIndex = 1
+    @State private var zoom = PairZoom()
+
+    private var finished: Bool { challengerIndex >= ids.count }
+
+    var body: some View {
+        NavigationStack {
+            content
+                .navigationTitle(finished ? "Winner"
+                                 : "duel \(challengerIndex) of \(ids.count - 1)")
+                .navigationBarTitleDisplayMode(.inline)
+                .toolbar {
+                    ToolbarItem(placement: .topBarTrailing) { Button("Done", action: onClose) }
+                }
+        }
+    }
+
+    @ViewBuilder
+    private var content: some View {
+        let championID = self.championID ?? ids.first
+        if !finished,
+           let championID, let left = library.asset(id: championID),
+           let right = library.asset(id: ids[challengerIndex]) {
+            GeometryReader { geometry in
+                let layout = PairView.shouldStack(left, right, in: geometry.size)
+                    ? AnyLayout(VStackLayout(spacing: 3))
+                    : AnyLayout(HStackLayout(spacing: 3))
+                layout {
+                    side(left, isChampion: true)
+                    side(right, isChampion: false)
+                }
+            }
+        } else if let championID, let winner = library.asset(id: championID) {
+            AssetImage(asset: winner, library: library, targetSize: CGSize(width: 2048, height: 2048))
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+        }
+    }
+
+    private func side(_ asset: PHAsset, isChampion: Bool) -> some View {
+        ZStack(alignment: .top) {
+            ZoomedSide(asset: asset, library: library, zoom: zoom, size: PairView.imageSize)
+            if isChampion {
+                Text("current leader")
+                    .font(.caption2.weight(.semibold))
+                    .padding(.horizontal, 8)
+                    .padding(.vertical, 3)
+                    .background(.yellow.opacity(0.85), in: Capsule())
+                    .foregroundStyle(.black)
+                    .padding(8)
+            }
+        }
+        .contentShape(Rectangle())
+        .onTapGesture { pick(left: isChampion) }
+        .modifier(PairZoomGestures(zoom: zoom))
+    }
+
+    /// Jak `PairView.pick`, bez serii: wagi przez `settleDuel`, gwiazdka
+    /// natywnie tylko wtedy, gdy zaokrąglenie naprawdę przeskoczyło.
+    private func pick(left: Bool) {
+        guard !finished, let championID = championID ?? ids.first else { return }
+        let challengerID = ids[challengerIndex]
+        let winnerID = left ? championID : challengerID
+        let loserID = left ? challengerID : championID
+
+        let winner = Review.upsert(assetID: winnerID, in: context) { _ in }
+        let loser = Review.upsert(assetID: loserID, in: context) { _ in }
+        let winnerStarsBefore = winner.stars
+        let loserStarsBefore = loser.stars
+        Review.settleDuel(winner: winner, loser: loser)
+        if winner.stars != winnerStarsBefore { library.setRating(winner.stars, for: winnerID) }
+        if loser.stars != loserStarsBefore { library.setRating(loser.stars, for: loserID) }
+        try? context.save()
+
+        self.championID = winnerID
+        challengerIndex += 1
     }
 }
 #endif

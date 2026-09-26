@@ -73,6 +73,13 @@ struct GridView: View {
     /// Ocena całego filtru czeka na potwierdzenie — patrz `requestRating`.
     @State private var pendingRating: (value: Double?, targets: [String])?
     @State private var showingDeletions = false
+    #if os(iOS)
+    /// Tryb zaznaczania na telefonie: stuknięcie przełącza kafelek zamiast
+    /// otwierać zdjęcie. Jak w aplikacji Zdjęcia — przycisk „Select".
+    @State private var selecting = false
+    /// Zdjęcia w turnieju porównawczym (`QuickDuel`).
+    @State private var duelIDs: [String]?
+    #endif
     @State private var hoveredDay: Date?
 
     #if os(macOS)
@@ -247,6 +254,48 @@ struct GridView: View {
                 #endif
             }
         }
+        #if os(iOS)
+        .toolbar {
+            ToolbarItem(placement: .topBarTrailing) {
+                Button(selecting ? "Done" : "Select") {
+                    if selecting { selection = [] }
+                    selecting.toggle()
+                }
+            }
+        }
+        // Własny pasek na dole w trybie zaznaczania. Pasek grupy nad siatką
+        // na szerokości telefonu się nie mieści — przycisk porównania
+        // wypadał poza ekran.
+        .safeAreaInset(edge: .bottom) {
+            if selecting {
+                HStack {
+                    Text(selection.isEmpty ? "Tap photos to select" : "\(selection.count) selected")
+                        .foregroundStyle(.secondary)
+                    Spacer()
+                    Button {
+                        // Kolejność siatki, nie kolejność zaznaczania — zbiór
+                        // jest nieuporządkowany, a turniej ma iść przewidywalnie.
+                        duelIDs = shown.map(\.localIdentifier).filter(selection.contains)
+                    } label: {
+                        Label("Compare", systemImage: "rectangle.on.rectangle")
+                    }
+                    .buttonStyle(.borderedProminent)
+                    .disabled(selection.count < 2)
+                }
+                .padding(.horizontal, 16)
+                .padding(.vertical, 10)
+                .background(.bar)
+            }
+        }
+        .fullScreenCover(isPresented: Binding(
+            get: { duelIDs != nil },
+            set: { if !$0 { duelIDs = nil } }
+        )) {
+            if let ids = duelIDs {
+                QuickDuel(ids: ids, library: library) { duelIDs = nil }
+            }
+        }
+        #endif
     }
 
     #if os(macOS)
@@ -346,7 +395,11 @@ struct GridView: View {
         // galeria i nie ma tu czego zaznaczać. Przewijaniu to nie przeszkadza:
         // gest dotknięcia nie odpala się, gdy palec wędruje.
         #if os(iOS)
-        .onTapGesture { onOpen(asset) }
+        .onTapGesture {
+            guard selecting else { onOpen(asset); return }
+            let id = asset.localIdentifier
+            if selection.contains(id) { selection.remove(id) } else { selection.insert(id) }
+        }
         #else
         // Kolejność ma znaczenie: dwuklik musi być wpięty **przed**
         // pojedynczym, inaczej pierwszy klik zjada gest.
@@ -559,6 +612,7 @@ struct GridView: View {
             .disabled(shown.count < 2)
             .help("C")
             #endif
+
 
             if !selection.isEmpty {
                 // Ostatnie ogniwo łańcucha `esc`: lupa, pełny ekran,

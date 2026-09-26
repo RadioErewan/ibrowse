@@ -3083,6 +3083,61 @@
         }
       },
       "extractionState": "manual"
+    },
+    "Select": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Zaznacz"
+          }
+        }
+      },
+      "extractionState": "manual"
+    },
+    "Winner": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Zwycięzca"
+          }
+        }
+      },
+      "extractionState": "manual"
+    },
+    "Tap photos to select": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Stuknij zdjęcia, by je zaznaczyć"
+          }
+        }
+      },
+      "extractionState": "manual"
+    },
+    "%lld selected": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "zaznaczono %lld"
+          }
+        }
+      },
+      "extractionState": "manual"
+    },
+    "Compare": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Porównaj"
+          }
+        }
+      },
+      "extractionState": "manual"
     }
   },
   "version": "1.0"
