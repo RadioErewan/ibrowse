@@ -79,6 +79,13 @@ struct GridView: View {
     @State private var selecting = false
     /// Zdjęcia w turnieju porównawczym (`QuickDuel`).
     @State private var duelIDs: [String]?
+    /// Ramki kafelków w przestrzeni siatki — do trafienia palcem przy
+    /// zaznaczaniu przeciąganiem. Klasa, nie `@State` ze słownikiem: zapis
+    /// przy każdym ułożeniu kafelka nie może przebudowywać siatki.
+    @State private var tileFrames = TileFrames()
+    /// Stan jednego przeciągnięcia: od którego kafelka, czy zaznacza czy
+    /// odznacza, i zaznaczenie sprzed gestu.
+    @State private var sweep: (anchor: Int, adding: Bool, before: Set<String>)?
     #endif
     @State private var hoveredDay: Date?
 
@@ -175,6 +182,14 @@ struct GridView: View {
                         }
                     }
                     .padding(3)
+                    #if os(iOS)
+                    .coordinateSpace(.named("grid"))
+                    .gesture(SweepSelect(
+                        isActive: selecting,
+                        onChange: { point in sweep(to: point, in: shown) },
+                        onEnd: { sweep = nil }
+                    ))
+                    #endif
                 }
                 #if os(iOS)
                 .refreshable { library.reload() }
@@ -391,6 +406,11 @@ struct GridView: View {
             isMarkedForDeletion: index[asset.localIdentifier]?.markedForDeletion ?? false,
             fillsColumn: true
         )
+        #if os(iOS)
+        .onGeometryChange(for: CGRect.self) { $0.frame(in: .named("grid")) } action: { frame in
+            tileFrames.frames[asset.localIdentifier] = frame
+        }
+        #endif
         // Na telefonie otwiera pojedyncze stuknięcie, bo tak działa każda
         // galeria i nie ma tu czego zaznaczać. Przewijaniu to nie przeszkadza:
         // gest dotknięcia nie odpala się, gdy palec wędruje.
@@ -554,6 +574,24 @@ struct GridView: View {
 
         let range = from <= to ? from...to : to...from
         selection.formUnion(shown[range].map(\.localIdentifier))
+    }
+    #endif
+
+    #if os(iOS)
+    /// Zaznaczanie przeciąganiem, jak w Zdjęciach: zakres w kolejności siatki
+    /// od kafelka, na którym zaczął się ruch, do tego pod palcem. Start na
+    /// zaznaczonym odznacza, na niezaznaczonym — zaznacza.
+    private func sweep(to point: CGPoint, in shown: [PHAsset]) {
+        guard let id = tileFrames.frames.first(where: { $0.value.contains(point) })?.key,
+              let index = shown.firstIndex(where: { $0.localIdentifier == id })
+        else { return }
+        if sweep == nil {
+            sweep = (index, !selection.contains(id), selection)
+        }
+        guard let sweep else { return }
+        let range = shown[min(sweep.anchor, index)...max(sweep.anchor, index)]
+        let ids = Set(range.map(\.localIdentifier))
+        selection = sweep.adding ? sweep.before.union(ids) : sweep.before.subtracting(ids)
     }
     #endif
 
@@ -970,3 +1008,120 @@ struct Thumbnail: View {
         monitor.didFinishLoad()
     }
 }
+
+#if os(iOS)
+import UIKit
+
+final class TileFrames {
+    var frames: [String: CGRect] = [:]
+}
+
+/// Przeciągnięcie, które zaczyna się tylko ruchem **bardziej poziomym niż
+/// pionowym** — pionowy zostaje przewijaniu. W czystym SwiftUI tego
+/// rozstrzygnięcia nie da się zrobić: `DragGesture` na zawartości listy albo
+/// blokuje przewijanie, albo przez nie przepada. Stąd rozpoznawanie z UIKit.
+struct SweepSelect: UIGestureRecognizerRepresentable {
+    var isActive: Bool
+    var onChange: (CGPoint) -> Void
+    var onEnd: () -> Void
+
+    final class Coordinator: NSObject, UIGestureRecognizerDelegate {
+        var isActive = false
+        var onChange: ((CGPoint) -> Void)?
+
+        private weak var pan: UIPanGestureRecognizer?
+        private weak var scroll: UIScrollView?
+        private var link: CADisplayLink?
+        /// Ostatni punkt w przestrzeni siatki i przesunięcie listy w tej samej
+        /// chwili. Przy stojącym palcu punkt w siatce zmienia się dokładnie
+        /// o tyle, o ile przewinęła się lista.
+        private var lastGrid = CGPoint.zero
+        private var lastOffset: CGFloat = 0
+
+        func remember(_ grid: CGPoint) {
+            lastGrid = grid
+            lastOffset = scroll?.contentOffset.y ?? 0
+        }
+
+        func gestureRecognizerShouldBegin(_ recognizer: UIGestureRecognizer) -> Bool {
+            guard isActive, let pan = recognizer as? UIPanGestureRecognizer else { return false }
+            let velocity = pan.velocity(in: pan.view)
+            return abs(velocity.x) > abs(velocity.y)
+        }
+
+        /// Przewijanie przy krawędzi, jak w Zdjęciach. Palec stojący w miejscu
+        /// nie generuje zdarzeń gestu, więc tempo daje ekran (`CADisplayLink`),
+        /// a przesuwany jest wprost `UIScrollView` — bez stanu SwiftUI, który
+        /// przebudowywałby siatkę sześćdziesiąt razy na sekundę.
+        func start(_ pan: UIPanGestureRecognizer) {
+            self.pan = pan
+            // Rozpoznawanie SwiftUI wisi na widoku **nad** listą, nie w niej —
+            // lista jest pod palcem, więc szukamy jej od punktu dotknięcia.
+            if let window = pan.view?.window {
+                var view = window.hitTest(pan.location(in: window), with: nil)
+                while let current = view, !(current is UIScrollView) { view = current.superview }
+                scroll = view as? UIScrollView
+            }
+            link?.invalidate()
+            let link = CADisplayLink(target: self, selector: #selector(tick))
+            link.add(to: .main, forMode: .common)
+            self.link = link
+        }
+
+        func stop() {
+            link?.invalidate()
+            link = nil
+        }
+
+        @objc private func tick() {
+            guard let pan, let scroll else { return }
+            let edge: CGFloat = 70
+            let top = scroll.adjustedContentInset.top
+            let visible = pan.location(in: scroll).y - scroll.contentOffset.y
+            let height = scroll.bounds.height - scroll.adjustedContentInset.bottom
+            var step: CGFloat = 0
+            if visible < top + edge {
+                step = -(top + edge - visible) / 5
+            } else if visible > height - edge {
+                step = (visible - (height - edge)) / 5
+            }
+            guard step != 0 else { return }
+            let minY = -top
+            let maxY = max(minY, scroll.contentSize.height - scroll.bounds.height
+                           + scroll.adjustedContentInset.bottom)
+            let next = min(max(scroll.contentOffset.y + step, minY), maxY)
+            guard next != scroll.contentOffset.y else { return }
+            scroll.contentOffset.y = next
+            onChange?(CGPoint(x: lastGrid.x, y: lastGrid.y + next - lastOffset))
+        }
+    }
+
+    func makeCoordinator(converter: CoordinateSpaceConverter) -> Coordinator { Coordinator() }
+
+    func makeUIGestureRecognizer(context: Context) -> UIPanGestureRecognizer {
+        let pan = UIPanGestureRecognizer()
+        pan.delegate = context.coordinator
+        context.coordinator.isActive = isActive
+        context.coordinator.onChange = onChange
+        return pan
+    }
+
+    func updateUIGestureRecognizer(_ recognizer: UIPanGestureRecognizer, context: Context) {
+        context.coordinator.isActive = isActive
+        context.coordinator.onChange = onChange
+    }
+
+    func handleUIGestureRecognizerAction(_ recognizer: UIPanGestureRecognizer, context: Context) {
+        switch recognizer.state {
+        case .began, .changed:
+            let grid = context.converter.location(in: .named("grid"))
+            if recognizer.state == .began { context.coordinator.start(recognizer) }
+            context.coordinator.remember(grid)
+            onChange(grid)
+        default:
+            context.coordinator.stop()
+            onEnd()
+        }
+    }
+}
+#endif
