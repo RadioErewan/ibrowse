@@ -5,6 +5,11 @@
 #
 # Podpis automatyczny z kluczem API (`-allowProvisioningUpdates` + klucz):
 # xcodebuild sam dociąga profil dystrybucyjny, bez logowania do Xcode.
+#
+# `APP_STORE`, jak w wersji na Maca ze sklepu: wyszukiwanie, miary i uwagi
+# o eksporterze pokazują się dopiero, gdy dane od niego faktycznie są.
+# Aplikacja ze sklepu nie odsyła do programu spoza sklepu (DECYZJE.md,
+# „Piaskownica i sklep na Macu").
 set -euo pipefail
 
 export DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer
@@ -37,7 +42,9 @@ PLIST
 
 rm -rf "$ARCHIVE"
 xcodebuild -project lightbrary.xcodeproj -scheme lightbrary-ios -configuration Release \
-    -destination "generic/platform=iOS" -archivePath "$ARCHIVE" "${AUTH[@]}" archive \
+    -destination "generic/platform=iOS" -archivePath "$ARCHIVE" "${AUTH[@]}" \
+    SWIFT_ACTIVE_COMPILATION_CONDITIONS='$(inherited) APP_STORE' \
+    archive \
     | grep -E "ARCHIVE (SUCCEEDED|FAILED)|error:"
 
 echo "== wysyłka =="
