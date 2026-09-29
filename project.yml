@@ -56,6 +56,10 @@ targets:
       path: Generated/Info-mac.plist
       properties:
         CFBundleDisplayName: lightbrary
+        # Nazwa w pasku menu obok jabłka. Domyślnie to nazwa celu, więc każde
+        # wydanie pokazywało tam „lightbrary-mac" — wypatrzone dopiero na
+        # zrzutach ekranu do sklepu.
+        CFBundleName: lightbrary
         # Bez tych dwóch xcodegen wpisuje własne domyślne "1.0"/"1" jako
         # zwykły tekst, a Xcode podmienia w Info.plist tylko to, co wygląda
         # jak $(ZMIENNA) — dosłowny napis zostaje nietknięty. Efekt: każde
