@@ -29,7 +29,7 @@ settings:
     MARKETING_VERSION: "1.0"
     # Każde wgranie do App Store Connect musi mieć **inny** numer buildu.
     # Podnieś przed wysyłką; wersja marketingowa zmienia się rzadziej.
-    CURRENT_PROJECT_VERSION: "25"
+    CURRENT_PROJECT_VERSION: "26"
 
 targets:
   lightbrary-mac:
@@ -139,7 +139,10 @@ targets:
         # Identyfikator musi być unikalny w skali Apple — przy darmowym koncie
         # kolizja z cudzą aplikacją objawia się odmową rejestracji App ID.
         PRODUCT_BUNDLE_IDENTIFIER: pl.3210.lightbrary
-        TARGETED_DEVICE_FAMILY: "1,2"
+        # Tylko iPhone. Aplikacja nigdy nie była sprawdzana na iPadzie,
+        # a sklep nie pozwala później usunąć iPada z opublikowanej aplikacji —
+        # dodać go można zawsze. Uniwersalna wymagała też zrzutów z iPada 13".
+        TARGETED_DEVICE_FAMILY: "1"
         # Podpisywanie automatyczne: Xcode sam wyrobi profil dla Personal Team.
         CODE_SIGN_STYLE: Automatic
         DEVELOPMENT_TEAM: $(LIGHTBRARY_TEAM_ID)
