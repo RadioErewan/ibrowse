@@ -301,7 +301,18 @@ struct CullView: View {
         // na początek — inaczej po zawężeniu lądujesz w przypadkowym miejscu
         // albo poza zakresem.
         .onChange(of: filters.grades) { _, _ in index = 0; anchorID = nil }
-        .onChange(of: filters.base.count) { _, _ in index = 0; anchorID = nil }
+        // Baza zmienia liczność także bez udziału człowieka — zrzut ekranu to
+        // nowe zdjęcie w bibliotece. Wtedy zostajemy na tym samym zdjęciu;
+        // na początek wracamy tylko, gdy go w nowym zbiorze nie ma.
+        .onChange(of: filters.base.count) { _, _ in
+            if let anchorID,
+               let position = workingSet.firstIndex(where: { $0.localIdentifier == anchorID }) {
+                index = position
+            } else {
+                index = 0
+                anchorID = nil
+            }
+        }
         .onChange(of: filters.feature) { _, _ in index = 0; anchorID = nil }
         .onChange(of: filters.order) { _, _ in index = 0; anchorID = nil }
         // Zbiór zmienił się pod nogami (ocena wyjęła zdjęcie z filtra, doszło
