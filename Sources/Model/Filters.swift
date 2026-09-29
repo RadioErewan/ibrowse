@@ -220,11 +220,45 @@ final class Filters: ObservableObject {
         didSet { UserDefaults.standard.set(threshold, forKey: "library.threshold") }
     }
 
-    @Published var fromYear: Int = UserDefaults.standard.object(forKey: "library.fromYear") as? Int ?? 0 {
-        didSet { UserDefaults.standard.set(fromYear, forKey: "library.fromYear"); rebuild() }
+    /// Zapisany zakres, już we właściwej kolejności. Starsze wersje umiały
+    /// zapisać „od 2026 do 2007" — wczytany wprost dawał pustą siatkę od
+    /// samego startu, bo przy wczytaniu `didSet` nie działa.
+    private static let storedYears: (from: Int, to: Int) = {
+        let defaults = UserDefaults.standard
+        let from = defaults.object(forKey: "library.fromYear") as? Int ?? 0
+        let to = defaults.object(forKey: "library.toYear") as? Int ?? 9999
+        return from <= to ? (from, to) : (to, from)
+    }()
+
+    @Published var fromYear: Int = Filters.storedYears.from {
+        didSet {
+            UserDefaults.standard.set(fromYear, forKey: "library.fromYear")
+            // Odwrócony zakres („od 2025 do 2007") odwracamy, zamiast dawać
+            // pustą siatkę — człowiek chciał tych lat, tylko w innej kolejności.
+            // Przypisanie we własnym `didSet` nie woła obserwatora ponownie,
+            // więc zapis ręcznie; `toYear` woła swój i przebudowuje zbiór.
+            if fromYear > toYear {
+                let high = fromYear
+                fromYear = toYear
+                UserDefaults.standard.set(fromYear, forKey: "library.fromYear")
+                toYear = high
+                return
+            }
+            rebuild()
+        }
     }
-    @Published var toYear: Int = UserDefaults.standard.object(forKey: "library.toYear") as? Int ?? 9999 {
-        didSet { UserDefaults.standard.set(toYear, forKey: "library.toYear"); rebuild() }
+    @Published var toYear: Int = Filters.storedYears.to {
+        didSet {
+            UserDefaults.standard.set(toYear, forKey: "library.toYear")
+            if toYear < fromYear {
+                let low = toYear
+                toYear = fromYear
+                UserDefaults.standard.set(toYear, forKey: "library.toYear")
+                fromYear = low
+                return
+            }
+            rebuild()
+        }
     }
 
     /// Szukanie po tym, co widzi system: etykiety scen, imiona, nazwy miejsc
