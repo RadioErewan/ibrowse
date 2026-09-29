@@ -464,6 +464,20 @@ struct RootView: View {
         // minuty. Czyta tylko pliki, których data się zmieniła — sprawdzenie
         // nic nie kosztuje, a ręczne „sync now" dalej czyta wszystko.
         .onChange(of: scenePhase) { _, phase in
+            #if os(iOS)
+            // Schowanie do kieszeni: decyzje zapisujemy od razu, a nie po
+            // 20 s — zamrożona aplikacja nie dokończyłaby odliczania i Mac
+            // nie widziałby ocen z autobusu aż do następnego otwarcia.
+            if phase == .background {
+                pendingWrite.cancel()
+                let token = UIApplication.shared.beginBackgroundTask()
+                Task {
+                    await sync.writeOwnDecisions(context: context, library: library)
+                    UIApplication.shared.endBackgroundTask(token)
+                }
+                return
+            }
+            #endif
             guard phase == .active else { return }
             Task { await Trace.measure("sync.auto") { await sync.autoSync(context: context, similarity: similarity, library: library) } }
         }
@@ -476,6 +490,12 @@ struct RootView: View {
         // Własne decyzje wypisujemy 20 s po ostatnim zapisie do bazy, żeby
         // drugie urządzenie miało co przeczytać bez ręcznej synchronizacji.
         // Seria ocen to jeden zapis pliku, nie jeden na klawisz.
+        // Po policzeniu odcisków — od razu do folderu, żeby drugie urządzenie
+        // miało nowe serie bez ręcznej synchronizacji.
+        .onChange(of: similarity.isWorking) { was, now in
+            guard was, !now else { return }
+            Task { await sync.writeFingerprints(context: context, library: library) }
+        }
         .onReceive(NotificationCenter.default.publisher(for: ModelContext.didSave)) { _ in
             pendingWrite.replace {
                 try? await Task.sleep(for: .seconds(20))
@@ -1056,6 +1076,11 @@ final class PendingTask {
     func replace(_ work: @escaping @MainActor () async -> Void) {
         task?.cancel()
         task = Task { await work() }
+    }
+
+    func cancel() {
+        task?.cancel()
+        task = nil
     }
 }
 

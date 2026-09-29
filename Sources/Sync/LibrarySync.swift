@@ -162,6 +162,23 @@ final class LibrarySync: ObservableObject {
         }.value
     }
 
+    /// Zapisuje odciski po ich policzeniu — bez tego drugie urządzenie
+    /// dostawało nowe serie dopiero po ręcznym „sync now". Sam zapis pomija
+    /// plik, gdy liczba odcisków się nie zmieniła.
+    func writeFingerprints(context: ModelContext, library: PhotoLibrary) async {
+        guard !isWorking, !isWriting, !library.assets.isEmpty,
+              let folder = SyncFolder.resolve() else { return }
+        defer { folder.release() }
+        isWriting = true
+        defer { isWriting = false }
+        let toCloud = await cloudIDs(for: library)
+        let container = context.container
+        let destination = folder.url
+        try? await Task.detached(priority: .utility) {
+            try Self.exportFingerprints(context: ModelContext(container), to: destination, translating: toCloud)
+        }.value
+    }
+
     /// Kolejność ma znaczenie i jest tu jedyną nieoczywistą rzeczą.
     ///
     /// Odciski muszą wejść **przed** przeliczeniem serii, a werdykty **po** —
