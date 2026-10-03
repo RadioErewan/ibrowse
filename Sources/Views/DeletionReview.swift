@@ -174,6 +174,9 @@ struct DeletionReview: View {
             for review in reviews { context.delete(review) }
             try? context.save()
             dismiss()
+        } catch let failure as PHPhotosError where failure.code == .userCancelled {
+            // „Anuluj" w oknie systemowym to decyzja człowieka, nie awaria —
+            // zostajemy na przeglądzie, bez czerwonego komunikatu.
         } catch {
             self.error = "Couldn't delete: \(error.localizedDescription)"
         }

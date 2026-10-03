@@ -152,7 +152,55 @@ actor MetadataStore {
     /// Potem jedno zapytanie na całą bibliotekę, nie jedno na miarę. Przy
     /// czterdziestu miarach różnica to czterdzieści przebiegów po 26 tysiącach
     /// wierszy kontra jeden.
+    /// Wyrażenia SQL nad aliasami `a` (ZASSET), `c` (ZCOMPUTEDASSETATTRIBUTES),
+    /// `m` (ZMEDIAANALYSISASSETATTRIBUTES) i `x` (ZADDITIONALASSETATTRIBUTES),
+    /// po kodzie miary ze spisu `Measure.all`. Tu, a nie przy samej mierze,
+    /// bo `Measure` jedzie też do przeglądarek, które tych baz nie czytają.
+    private static let measureExpressions: [UInt8: String] = [
+        1: "a.ZOVERALLAESTHETICSCORE",
+        2: "a.ZCURATIONSCORE",
+        3: "a.ZICONICSCORE",
+        4: "c.ZPLEASANTCOMPOSITIONSCORE",
+        5: "c.ZPLEASANTLIGHTINGSCORE",
+        6: "c.ZINTERESTINGSUBJECTSCORE",
+        7: "c.ZWELLCHOSENSUBJECTSCORE",
+        8: "c.ZWELLFRAMEDSUBJECTSCORE",
+        9: "c.ZWELLTIMEDSHOTSCORE",
+        10: "c.ZSHARPLYFOCUSEDSUBJECTSCORE",
+        11: "c.ZLIVELYCOLORSCORE",
+        12: "c.ZHARMONIOUSCOLORSCORE",
+        13: "c.ZTASTEFULLYBLURREDSCORE",
+        14: "c.ZPLEASANTPERSPECTIVESCORE",
+        15: "c.ZPLEASANTSYMMETRYSCORE",
+        16: "c.ZPLEASANTPATTERNSCORE",
+        17: "c.ZPLEASANTREFLECTIONSSCORE",
+        18: "c.ZPLEASANTPOSTPROCESSINGSCORE",
+        19: "c.ZPLEASANTCAMERATILTSCORE",
+        20: "c.ZNOISESCORE",
+        21: "c.ZFAILURESCORE",
+        22: "c.ZINTRUSIVEOBJECTPRESENCESCORE",
+        23: "c.ZLOWLIGHT",
+        24: "c.ZIMMERSIVENESSSCORE",
+        25: "m.ZACTIVITYSCORE",
+        26: "m.ZWALLPAPERSCORE",
+        40: "CASE WHEN x.ZVIEWCOUNT = 0 THEN 1 END",
+        41: "CASE WHEN x.ZSHARECOUNT > 0 THEN 1 END",
+        42: "CASE WHEN a.ZFAVORITE = 1 THEN 1 END",
+        43: "CASE WHEN a.ZAVALANCHEUUID IS NOT NULL THEN 1 END",
+        44: "CASE WHEN a.ZDUPLICATEASSETVISIBILITYSTATE > 0 THEN 1 END",
+        60: "CASE WHEN m.ZFACECOUNT = 0 THEN 1 END",
+        61: "CASE WHEN x.ZHASPEOPLESCENEMIDORGREATERCONFIDENCE = 1 THEN 1 END",
+        62: "CASE WHEN a.ZHDRTYPE > 0 THEN 1 END",
+        63: "CASE WHEN a.ZDEPTHTYPE > 0 THEN 1 END",
+        64: "CASE WHEN a.ZKIND = 1 THEN 1 END",
+        65: "CASE WHEN (a.ZLATITUDE IS NULL OR a.ZLATITUDE <= -180) THEN 1 END",
+        66: "CASE WHEN a.ZWIDTH * a.ZHEIGHT < 2000000 THEN 1 END",
+    ]
+
     func measures() -> [String: Data] {
+        // Nowa miara w spisie bez wyrażenia po cichu wypadałaby z eksportu.
+        assert(Self.measureExpressions.count == Measure.all.count,
+               "Every measure in Measure.all needs an expression in measureExpressions")
         openIfNeeded()
         guard let library else { return [:] }
 
@@ -163,12 +211,13 @@ actor MetadataStore {
             LEFT JOIN ZADDITIONALASSETATTRIBUTES x ON x.ZASSET = a.Z_PK
             """
 
-        var present: [Measure] = []
+        var present: [(measure: Measure, expression: String)] = []
         for measure in Measure.all {
+            guard let expression = Self.measureExpressions[measure.code] else { continue }
             var probe: OpaquePointer?
-            let sql = "SELECT \(measure.expression) \(from) LIMIT 0"
+            let sql = "SELECT \(expression) \(from) LIMIT 0"
             if sqlite3_prepare_v2(library, sql, -1, &probe, nil) == SQLITE_OK {
-                present.append(measure)
+                present.append((measure, expression))
             }
             sqlite3_finalize(probe)
         }
@@ -183,7 +232,8 @@ actor MetadataStore {
             while sqlite3_step(statement) == SQLITE_ROW {
                 guard let uuid = Self.text(statement, 0) else { continue }
                 var values: [UInt8: Float] = [:]
-                for (offset, measure) in present.enumerated() {
+                for (offset, entry) in present.enumerated() {
+                    let measure = entry.measure
                     let column = Int32(offset + 1)
                     guard sqlite3_column_type(statement, column) != SQLITE_NULL else { continue }
                     values[measure.code] = Float(sqlite3_column_double(statement, column))

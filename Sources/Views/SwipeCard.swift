@@ -248,8 +248,10 @@ struct SwipeCard<Content: View>: View {
         }
     }
 
-    /// Przecinek, nie kropka — to jest liczba czytana po polsku.
+    /// Separator dziesiętny z języka systemu: przecinek po polsku, kropka po
+    /// angielsku. Na sztywno wstawiony przecinek wychodził też w angielskim
+    /// interfejsie.
     private static func number(_ value: Double) -> String {
-        String(format: "%.2f", value).replacingOccurrences(of: ".", with: ",")
+        value.formatted(.number.precision(.fractionLength(2)))
     }
 }

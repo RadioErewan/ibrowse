@@ -84,9 +84,15 @@ final class Similarity: ObservableObject {
             return
         }
 
+        var done = 0
         for asset in todo {
             if let image = await thumbnail(for: asset, library: library),
-               let values = Self.featurePrint(image) {
+               let cgImage = image.asCGImage,
+               // Vision poza głównym wątkiem: jedno liczenie to kilkadziesiąt
+               // milisekund, a przy 25 tysiącach okno dławiło się między nimi.
+               let values = await Task.detached(priority: .userInitiated, operation: {
+                   Self.featurePrint(cgImage)
+               }).value {
                 context.insert(
                     Fingerprint(
                         assetID: asset.localIdentifier,
@@ -95,11 +101,14 @@ final class Similarity: ObservableObject {
                     )
                 )
             }
-            progress += 1
+            done += 1
+            // Licznik co dziesiąte zdjęcie: każda zmiana `progress` budzi
+            // widoki, a dwadzieścia pięć tysięcy takich zmian to bez sensu.
+            if done % 10 == 0 || done == todo.count { progress = done }
 
             // Zapis partiami — przy 25 tysiącach zapis co rekord kosztuje
             // więcej niż samo liczenie odcisku.
-            if progress % 200 == 0 { try? context.save() }
+            if done % 200 == 0 { try? context.save() }
         }
         try? context.save()
 
@@ -126,18 +135,27 @@ final class Similarity: ObservableObject {
     private func thumbnail(for asset: PHAsset, library: PhotoLibrary) async -> PlatformImage? {
         await withCheckedContinuation { continuation in
             var resumed = false
-            _ = library.thumbnail(for: asset, side: 320) { image, degraded in
-                // `opportunistic` woła handler dwa razy; interesuje nas wersja
-                // pełna, ale gdy jej nie ma, bierzemy co jest.
-                guard !resumed, !degraded || image == nil else { return }
+            var best: PlatformImage?
+            func finish(_ image: PlatformImage?) {
+                guard !resumed else { return }
                 resumed = true
                 continuation.resume(returning: image)
             }
+            _ = library.thumbnail(for: asset, side: 320) { image, degraded in
+                if let image { best = image }
+                // `opportunistic` woła handler dwa razy; interesuje nas wersja
+                // pełna, ale gdy jej nie ma, bierzemy co jest.
+                guard !degraded || image == nil else { return }
+                finish(image)
+            }
+            // Gdy system oddał tylko wersję „zdegradowaną" i nic więcej nie
+            // zawoła, czekanie bez końca zawiesiłoby całe liczenie. Po
+            // dziesięciu sekundach bierzemy najlepsze, co przyszło.
+            DispatchQueue.main.asyncAfter(deadline: .now() + 10) { finish(best) }
         }
     }
 
-    private static func featurePrint(_ image: PlatformImage) -> [Float]? {
-        guard let cgImage = image.asCGImage else { return nil }
+    nonisolated private static func featurePrint(_ cgImage: CGImage) -> [Float]? {
         let request = VNGenerateImageFeaturePrintRequest()
         let handler = VNImageRequestHandler(cgImage: cgImage, options: [:])
         try? handler.perform([request])
@@ -154,7 +172,7 @@ final class Similarity: ObservableObject {
     /// interfejs stoi zamrożony przez kilkanaście sekund przy każdym starcie.
     func loadGroups(context: ModelContext) async {
         let count = (try? context.fetchCount(FetchDescriptor<Fingerprint>())) ?? 0
-        guard count > 1 else { groups = []; return }
+        guard count > 1 else { groups = []; seriesIDs = []; return }
 
         let stamp = try? context.fetch(FetchDescriptor<SeriesStamp>()).first
         if stamp?.matches(count: count, threshold: Double(threshold),
@@ -183,7 +201,7 @@ final class Similarity: ObservableObject {
         let prints = (try? context.fetch(
             FetchDescriptor<Fingerprint>(sortBy: [SortDescriptor(\.takenAt)])
         )) ?? []
-        guard prints.count > 1 else { groups = []; return }
+        guard prints.count > 1 else { groups = []; seriesIDs = []; return }
 
         // Przenosimy do zwykłych struktur, bo obiekty SwiftData nie przechodzą
         // przez granicę wątku.
