@@ -1126,6 +1126,36 @@ Co z tego wynika, zanim cokolwiek powstanie:
   i zapisu przy tysiącach plików, zachowanie przy wysuniętej płycie
   w połowie pracy.
 
+## Pomysł: najlepsze zdjęcia do folderu — ramki i telewizory (październik 2026)
+
+Pytanie Radka: pokaz slajdów z Apple Photos na Echo Show albo telewizorze
+z Fire TV. Bezpośrednio się nie da — Alexa nie ma integracji z Apple Photos,
+a Apple nie wpuszcza nikogo do Zdjęć iCloud. Echo Show i Fire TV jako ramka
+albo wygaszacz pokazują albumy z **Amazon Photos**, a Amazon Photos na Macu
+umie sam wysyłać wskazany folder.
+
+Opcja dla eksportera, **domyślnie wyłączona**: „kopiuj zdjęcia z co najmniej
+N gwiazdkami do folderu", w JPEG około 2048 px. Folder podpina użytkownik
+w Amazon Photos (albo w czymkolwiek innym, co pokazuje folder: ramka cyfrowa,
+Plex, wygaszacz). Ramka sama się aktualizuje: wysoka ocena w autobusie —
+po kilku minutach zdjęcie w kuchni. Domyka obietnicę „przeglądaj, oceniaj,
+ciesz się najlepszymi".
+
+Do pilnowania:
+- **Zdjęcia opuszczają Apple** — świadomy wybór człowieka, nigdy domyślnie;
+  opis opcji ma to mówić wprost.
+- Spadek oceny poniżej progu **usuwa kopię z folderu**, a skasowanie zdjęcia
+  w bibliotece też — inaczej ramka pokazuje to, co człowiek odrzucił.
+- Biblioteka tylko do odczytu, jak zawsze: eksporter pisze wyłącznie do
+  wskazanego folderu.
+- Nie sprawdzone: jak dziś zachowuje się aplikacja Amazon Photos na
+  macOS 27 i jak Echo wybiera album. Sprawdzić u Radka, zanim cokolwiek
+  obiecamy w aplikacji.
+
+Odrzucone: własna umiejętność Alexy z pokazem slajdów (uruchamia się głosem
+i po chwili gaśnie — to nie ramka) i udostępniony album iCloud w przeglądarce
+Echo (toporne). Apple TV pokazuje albumy z Apple Photos sama, bez mostów.
+
 ## Konkurencja: co robią inni, wrzesień 2026
 
 Pierwszy konkretny punkt odniesienia w tej kategorii — `cullibrate.com`, a przez
