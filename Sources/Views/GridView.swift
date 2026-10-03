@@ -410,6 +410,10 @@ struct GridView: View {
         .onGeometryChange(for: CGRect.self) { $0.frame(in: .named("grid")) } action: { frame in
             tileFrames.frames[asset.localIdentifier] = frame
         }
+        // Kafelek, którego już nie ma na ekranie, zabiera swoje położenie ze
+        // sobą. Zostawione, po zmianie filtra albo kolejności pokrywałyby się
+        // z nowymi kafelkami i zaznaczanie palcem trafiałoby w złe zdjęcie.
+        .onDisappear { tileFrames.frames[asset.localIdentifier] = nil }
         #endif
         // Na telefonie otwiera pojedyncze stuknięcie, bo tak działa każda
         // galeria i nie ma tu czego zaznaczać. Przewijaniu to nie przeszkadza:
