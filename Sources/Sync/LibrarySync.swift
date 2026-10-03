@@ -146,10 +146,25 @@ final class LibrarySync: ObservableObject {
         await synchronise(context: context, similarity: similarity, library: library, onlyChanged: true)
     }
 
+    /// Czeka, aż skończy się synchronizacja albo inny zapis. Zapis, który trafił
+    /// w ich trakcie, **nie może po prostu zniknąć**: nikt by go nie ponowił,
+    /// a decyzje leżałyby w bazie, dopóki coś innego ich nie wypchnie.
+    /// `false` — nie doczekał się albo go anulowano (wtedy zastąpił go nowszy).
+    private func waitUntilIdle(patience: Duration) async -> Bool {
+        let deadline = ContinuousClock.now + patience
+        while isWorking || isWriting {
+            guard !Task.isCancelled, ContinuousClock.now < deadline else { return false }
+            try? await Task.sleep(for: .milliseconds(400))
+        }
+        return true
+    }
+
     /// Zapisuje sam plik decyzji — mały, więc można to robić po każdej serii
     /// zmian. Bez raportu i bez kręciołka: to się dzieje w tle.
-    func writeOwnDecisions(context: ModelContext, library: PhotoLibrary) async {
-        guard !isWorking, !isWriting, !library.assets.isEmpty,
+    func writeOwnDecisions(
+        context: ModelContext, library: PhotoLibrary, patience: Duration = .seconds(30)
+    ) async {
+        guard !library.assets.isEmpty, await waitUntilIdle(patience: patience),
               let folder = SyncFolder.resolve() else { return }
         defer { folder.release() }
         isWriting = true
@@ -166,7 +181,7 @@ final class LibrarySync: ObservableObject {
     /// dostawało nowe serie dopiero po ręcznym „sync now". Sam zapis pomija
     /// plik, gdy liczba odcisków się nie zmieniła.
     func writeFingerprints(context: ModelContext, library: PhotoLibrary) async {
-        guard !isWorking, !isWriting, !library.assets.isEmpty,
+        guard !library.assets.isEmpty, await waitUntilIdle(patience: .seconds(30)),
               let folder = SyncFolder.resolve() else { return }
         defer { folder.release() }
         isWriting = true
@@ -834,7 +849,12 @@ final class LibrarySync: ObservableObject {
     ) throws {
         let fingerprints = (try? context.fetch(FetchDescriptor<Fingerprint>())) ?? []
         let defaults = UserDefaults.standard
-        guard fingerprints.count != defaults.integer(forKey: Self.lastFingerprintCountKey)
+        // Liczymy te, które **da się wyeksportować**. Odcisk zdjęcia bez
+        // identyfikatora iCloud (świeżo zrobione, jeszcze niewysłane) nie
+        // trafia do pliku — a gdyby liczyła się łączna liczba, po nadaniu
+        // identyfikatora nic by się nie zmieniło i odcisk nie pojechałby nigdy.
+        let exportable = fingerprints.filter { toCloud[$0.assetID] != nil }.count
+        guard exportable != defaults.integer(forKey: Self.lastFingerprintCountKey)
                 || !SyncFolder.contains(SyncFolder.fingerprintsFileName, in: folder) else {
             return
         }
@@ -851,6 +871,6 @@ final class LibrarySync: ObservableObject {
         // Zapis poza głównym wątkiem — 50 MB przez SQLite to nie jest czas,
         // przez który okno ma stać.
         try SyncFile.write(outgoing, to: destination)
-        defaults.set(fingerprints.count, forKey: Self.lastFingerprintCountKey)
+        defaults.set(exportable, forKey: Self.lastFingerprintCountKey)
     }
 }

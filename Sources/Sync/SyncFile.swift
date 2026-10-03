@@ -152,7 +152,7 @@ struct SyncFile {
         ) == SQLITE_OK else { throw SyncError.cannotWrite }
         defer { sqlite3_close(db) }
 
-        exec(db, """
+        guard sqlite3_exec(db, """
             PRAGMA journal_mode=OFF;
             CREATE TABLE meta(key TEXT PRIMARY KEY, value TEXT);
             CREATE TABLE rating(assetID TEXT PRIMARY KEY, weight REAL, isRated INT,
@@ -163,8 +163,11 @@ struct SyncFile {
             CREATE TABLE print(assetID TEXT PRIMARY KEY, vector BLOB, takenAt REAL);
             CREATE TABLE verdict(key TEXT PRIMARY KEY, resolvedAt REAL, wasRejected INT,
                                  championID TEXT, challengerIndex INT);
-            """)
+            """, nil, nil, nil) == SQLITE_OK else { throw SyncError.cannotWrite }
 
+        // Każdy krok zapisu sprawdzamy: przy pełnym dysku niepełny plik nie ma
+        // prawa zastąpić dobrego.
+        var failed = false
         exec(db, "BEGIN")
         insertMeta(db, "schema", String(schema))
         insertMeta(db, "minReader", String(minReader))
@@ -175,7 +178,7 @@ struct SyncFile {
         // Pierwsza wersja przygotowywała je w pętli i zapis 25 tysięcy
         // odcisków trwał pół minuty — to nie dysk był wąskim gardłem, tylko
         // dwadzieścia pięć tysięcy kompilacji tego samego SQL-a.
-        repeating(db, "INSERT OR REPLACE INTO rating VALUES(?,?,?,?,?)", payload.ratings) {
+        repeating(db, "INSERT OR REPLACE INTO rating VALUES(?,?,?,?,?)", payload.ratings, &failed) {
             statement, rating in
             bind(statement, 1, rating.assetID)
             sqlite3_bind_double(statement, 2, rating.weight)
@@ -184,7 +187,7 @@ struct SyncFile {
             sqlite3_bind_double(statement, 5, rating.updatedAt.timeIntervalSince1970)
         }
 
-        repeating(db, "INSERT OR REPLACE INTO feature VALUES(?,?,?,?,?,?,?,?,?,?)", payload.features) {
+        repeating(db, "INSERT OR REPLACE INTO feature VALUES(?,?,?,?,?,?,?,?,?,?)", payload.features, &failed) {
             statement, features in
             bind(statement, 1, features.assetID)
             sqlite3_bind_double(statement, 2, features.sharpness)
@@ -203,7 +206,7 @@ struct SyncFile {
             bind(statement, 10, features.panel)
         }
 
-        repeating(db, "INSERT OR REPLACE INTO print VALUES(?,?,?)", payload.prints) {
+        repeating(db, "INSERT OR REPLACE INTO print VALUES(?,?,?)", payload.prints, &failed) {
             statement, print in
             bind(statement, 1, print.assetID)
             _ = print.vector.withUnsafeBytes { raw in
@@ -215,7 +218,7 @@ struct SyncFile {
             sqlite3_bind_double(statement, 3, print.takenAt.timeIntervalSince1970)
         }
 
-        repeating(db, "INSERT OR REPLACE INTO verdict VALUES(?,?,?,?,?)", payload.verdicts) {
+        repeating(db, "INSERT OR REPLACE INTO verdict VALUES(?,?,?,?,?)", payload.verdicts, &failed) {
             statement, verdict in
             bind(statement, 1, verdict.key)
             if let resolved = verdict.resolvedAt {
@@ -231,12 +234,23 @@ struct SyncFile {
             }
             sqlite3_bind_int(statement, 5, Int32(verdict.challengerIndex))
         }
-        exec(db, "COMMIT")
+        let committed = sqlite3_exec(db, "COMMIT", nil, nil, nil) == SQLITE_OK
         sqlite3_close(db)
         db = nil
 
-        try? FileManager.default.removeItem(at: url)
-        try FileManager.default.moveItem(at: temporary, to: url)
+        guard committed, !failed else {
+            try? FileManager.default.removeItem(at: temporary)
+            throw SyncError.cannotWrite
+        }
+
+        // Podmiana w jednym kroku: stary plik znika dopiero razem z pojawieniem
+        // się nowego. Kasowanie i przenoszenie osobno zostawiało okno, w którym
+        // pliku nie było wcale — także dla drugiego urządzenia.
+        if FileManager.default.fileExists(atPath: url.path) {
+            _ = try FileManager.default.replaceItemAt(url, withItemAt: temporary)
+        } else {
+            try FileManager.default.moveItem(at: temporary, to: url)
+        }
     }
 
     // MARK: - Odczyt
@@ -371,17 +385,23 @@ struct SyncFile {
     /// Jedna kompilacja zapytania, wiele wykonań. `sqlite3_reset` czyści stan
     /// po kroku, a powiązania i tak nadpisujemy przy następnym wierszu.
     private static func repeating<Row>(
-        _ db: OpaquePointer?, _ sql: String, _ rows: [Row],
+        _ db: OpaquePointer?, _ sql: String, _ rows: [Row], _ failed: inout Bool,
         _ bindRow: (OpaquePointer?, Row) -> Void
     ) {
         guard !rows.isEmpty else { return }
         var statement: OpaquePointer?
-        guard sqlite3_prepare_v2(db, sql, -1, &statement, nil) == SQLITE_OK else { return }
+        guard sqlite3_prepare_v2(db, sql, -1, &statement, nil) == SQLITE_OK else {
+            failed = true
+            return
+        }
         defer { sqlite3_finalize(statement) }
 
         for row in rows {
             bindRow(statement, row)
-            sqlite3_step(statement)
+            if sqlite3_step(statement) != SQLITE_DONE {
+                failed = true
+                return
+            }
             sqlite3_reset(statement)
         }
     }

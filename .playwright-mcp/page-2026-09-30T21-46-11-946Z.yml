@@ -1,0 +1,56 @@
+- generic [ref=e2]:
+  - banner [ref=e3]:
+    - generic [ref=e4]:
+      - heading "Lightbrary" [level=1] [ref=e5]
+      - generic [ref=e6]: a browser for your own photo archive
+  - paragraph [ref=e7]: An archive nobody ever walks through is not an archive. It is a backup of something that stopped existing the moment it was saved.
+  - paragraph [ref=e8]:
+    - text: Lightbrary is a tool for going through your photo library
+    - strong [ref=e9]: again and again
+    - text: ": finding, comparing, rating and deleting. Not a catalogue, not a tagger. It works on the photo library already on your Mac and iPhone, and it reads what the system has quietly measured about every picture — sharpness, exposure, closed eyes, screenshots — and turns those into ways of cutting across the archive."
+  - paragraph [ref=e10]:
+    - link "Download for macOS" [ref=e11] [cursor=pointer]:
+      - /url: /download
+    - generic [ref=e12]: Free · macOS 27 or later · 2.6 MB · notarised
+  - figure "Two frames of the same moment, side by side, zoomed together at the same spot." [ref=e13]:
+    - img "Lightbrary on macOS comparing two nearly identical photos side by side, zoomed together." [ref=e14]
+  - heading "What it does" [level=2] [ref=e16]
+  - list [ref=e17]:
+    - listitem [ref=e18]:
+      - strong [ref=e19]: One working set.
+      - text: Filters decide what is in it, order decides what “next” means, and every view agrees.
+    - listitem [ref=e20]:
+      - strong [ref=e21]: Counts before you choose.
+      - text: Every condition says how many photos it would give you, before you click it.
+    - listitem [ref=e22]:
+      - strong [ref=e23]: Rating on a single continuous scale.
+      - text: No flags, no colour labels.
+    - listitem [ref=e24]:
+      - strong [ref=e25]: Side-by-side comparison
+      - text: and a pairwise tournament for near-identical frames.
+    - listitem [ref=e26]:
+      - strong [ref=e27]: 1:1 preview
+      - text: ", because that is the only place sharpness can be judged."
+  - 'figure "On the iPhone: settle a burst two photos at a time, compare your own picks, rate with a swipe." [ref=e28]':
+    - 'img "Pair up on iPhone: the current leader against the next challenger." [ref=e29]'
+    - img "Comparing chosen photos on iPhone." [ref=e30]
+    - img "Rating on iPhone with a swipe." [ref=e31]
+  - heading "Everything stays on your devices" [level=2] [ref=e33]
+  - paragraph [ref=e35]:
+    - text: There is no account, no server and no analytics. Photos never leave your Mac or iPhone. Syncing between your own devices happens through a single file in a folder
+    - strong [ref=e36]: you choose
+    - text: — usually iCloud Drive, but any folder works.
+  - heading "Where it’s heading" [level=2] [ref=e37]
+  - paragraph [ref=e38]: "Lightbrary starts with the library you already have: finding the repeats, keeping the best shot, freeing the space. The next step reaches further back."
+  - paragraph [ref=e39]: "Most of us have photos that never made it into Photos: shoots on old drives, CDs and DVDs, folders copied from a camera years ago and never opened since. They are safe there, and also forgotten. Lightbrary will bring them in. You point it at an old archive and go through it with the same tools you use today: groups of repeats, the better of two, side-by-side comparison. Only the photos worth keeping go into your Photos library, converted to HEIC so they take a fraction of the space. The originals stay exactly where they were, untouched."
+  - paragraph [ref=e40]: "Your old sessions end up where you actually look at photos: on your Mac, on your iPhone, searchable and next to everything else."
+  - contentinfo [ref=e41]:
+    - link "Download for macOS" [ref=e42] [cursor=pointer]:
+      - /url: /download
+    - link "Manual" [ref=e43] [cursor=pointer]:
+      - /url: /manual
+    - link "Privacy" [ref=e44] [cursor=pointer]:
+      - /url: /privacy
+    - link "Support" [ref=e45] [cursor=pointer]:
+      - /url: /support
+    - generic [ref=e46]: macOS and iOS

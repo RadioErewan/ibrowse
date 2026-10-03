@@ -470,10 +470,19 @@ struct RootView: View {
             // nie widziałby ocen z autobusu aż do następnego otwarcia.
             if phase == .background {
                 pendingWrite.cancel()
-                let token = UIApplication.shared.beginBackgroundTask()
-                Task {
-                    await sync.writeOwnDecisions(context: context, library: library)
+                // Z procedurą awaryjną: gdy system zabiera czas, zadanie trzeba
+                // zakończyć samemu, inaczej zabija aplikację. Zakończenie jest
+                // idempotentne (`.invalid` po pierwszym razie).
+                var token = UIBackgroundTaskIdentifier.invalid
+                let finish = {
+                    guard token != .invalid else { return }
                     UIApplication.shared.endBackgroundTask(token)
+                    token = .invalid
+                }
+                token = UIApplication.shared.beginBackgroundTask(withName: "flush-decisions", expirationHandler: finish)
+                Task {
+                    await sync.writeOwnDecisions(context: context, library: library, patience: .seconds(10))
+                    finish()
                 }
                 return
             }

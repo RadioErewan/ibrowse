@@ -1,0 +1,447 @@
+- generic [ref=f1e2]:
+  - banner [ref=f1e3]:
+    - generic [ref=f1e4]:
+      - heading "Manual" [level=1] [ref=f1e5]
+      - generic [ref=f1e6]: Lightbrary for Mac and iPhone · Lightbrary Exporter
+  - paragraph [ref=f1e7]: "Lightbrary is a fast way to go through a big Photos library: rate, compare, pick the best of each burst and mark the rest for deletion. It works on your own library, on your own devices — nothing goes through a server."
+  - list [ref=f1e8]:
+    - listitem [ref=f1e9]:
+      - link "The three pieces" [ref=f1e10] [cursor=pointer]:
+        - /url: "#pieces"
+    - listitem [ref=f1e11]:
+      - link "Setting up" [ref=f1e12] [cursor=pointer]:
+        - /url: "#setup"
+    - listitem [ref=f1e13]:
+      - link "The Mac window" [ref=f1e14] [cursor=pointer]:
+        - /url: "#mac"
+    - listitem [ref=f1e15]:
+      - link "Rating" [ref=f1e16] [cursor=pointer]:
+        - /url: "#rating"
+    - listitem [ref=f1e17]:
+      - link "Keyboard" [ref=f1e18] [cursor=pointer]:
+        - /url: "#keys"
+    - listitem [ref=f1e19]:
+      - link "On the iPhone" [ref=f1e20] [cursor=pointer]:
+        - /url: "#iphone"
+    - listitem [ref=f1e21]:
+      - link "Marking and deleting" [ref=f1e22] [cursor=pointer]:
+        - /url: "#deleting"
+    - listitem [ref=f1e23]:
+      - link "Filters, search and order" [ref=f1e24] [cursor=pointer]:
+        - /url: "#filters"
+    - listitem [ref=f1e25]:
+      - 'link "Pair up: the best of each burst" [ref=f1e26] [cursor=pointer]':
+        - /url: "#pairup"
+    - listitem [ref=f1e27]:
+      - link "Comparing side by side" [ref=f1e28] [cursor=pointer]:
+        - /url: "#compare"
+    - listitem [ref=f1e29]:
+      - link "How sync works" [ref=f1e30] [cursor=pointer]:
+        - /url: "#sync"
+    - listitem [ref=f1e31]:
+      - link "Lightbrary Exporter" [ref=f1e32] [cursor=pointer]:
+        - /url: "#exporter"
+    - listitem [ref=f1e33]:
+      - link "If something looks off" [ref=f1e34] [cursor=pointer]:
+        - /url: "#trouble"
+  - heading "The three pieces" [level=2] [ref=f1e35]
+  - list [ref=f1e36]:
+    - listitem [ref=f1e37]:
+      - strong [ref=f1e38]: Lightbrary for Mac
+      - text: "— the full workspace: filters, grid, preview and metadata side by side."
+      - link "Download" [ref=f1e39] [cursor=pointer]:
+        - /url: /download
+      - text: .
+    - listitem [ref=f1e40]:
+      - strong [ref=f1e41]: Lightbrary for iPhone
+      - text: "— the same library in your pocket: rate with a swipe, pair up bursts, clear out what you marked."
+      - link "Install through TestFlight" [ref=f1e42] [cursor=pointer]:
+        - /url: https://testflight.apple.com/join/8tNNanJ3
+      - text: .
+    - listitem [ref=f1e43]:
+      - strong [ref=f1e44]: Lightbrary Exporter
+      - text: — a small menu-bar helper for the Mac that holds your photo library. It hands both apps the measures, search words and metadata Photos has worked out.
+      - link "Download" [ref=f1e45] [cursor=pointer]:
+        - /url: /download#exporter
+      - text: .
+  - paragraph [ref=f1e46]: You do not need all three. Each app works on its own for browsing, rating and pairing up; measures and search arrive once the Exporter runs on the Mac that holds your library.
+  - heading "Setting up" [level=2] [ref=f1e47]
+  - list [ref=f1e48]:
+    - listitem [ref=f1e49]:
+      - strong [ref=f1e50]: Allow photo access
+      - text: on each device when the app asks. Choose full access — with limited access the app only sees the photos you picked.
+    - listitem [ref=f1e51]:
+      - strong [ref=f1e52]: Choose a shared folder
+      - text: "on each device: the sync button ("
+      - emphasis [ref=f1e53]: circular arrows
+      - text: ) →
+      - emphasis [ref=f1e54]: choose shared folder…
+      - text: on the Mac,
+      - emphasis [ref=f1e55]: ••• → Sync
+      - text: on the iPhone. Make a folder in iCloud Drive and pick
+      - strong [ref=f1e56]: the same one
+      - text: everywhere, including in the Exporter.
+    - listitem [ref=f1e57]:
+      - strong [ref=f1e58]: For measures and search, install the Exporter
+      - text: on the Mac that holds your library — see
+      - link "below" [ref=f1e59] [cursor=pointer]:
+        - /url: "#exporter"
+      - text: . Both apps take them from the shared folder.
+  - heading "The Mac window" [level=2] [ref=f1e60]
+  - paragraph [ref=f1e61]:
+    - text: "Three columns:"
+    - strong [ref=f1e62]: filters
+    - text: on the left, the
+    - strong [ref=f1e63]: grid
+    - text: in the middle, the
+    - strong [ref=f1e64]: preview
+    - text: of the selected photo with its metadata on the right. The grid and the full-screen view walk the same list in the same order, so whatever you filter and sort is exactly what you rate. Click a person, place or scene in the metadata to show every photo with it.
+  - figure "Filters on the left, the grid in the middle, the selected photo on the right." [ref=f1e65]:
+    - 'img "The Mac window: filters, grid and preview." [ref=f1e66]'
+  - list [ref=f1e68]:
+    - listitem [ref=f1e69]:
+      - strong [ref=f1e70]: Double-click
+      - text: a photo, or press return / space, to open it full screen. esc brings you back to the same place in the grid.
+    - listitem [ref=f1e71]:
+      - text: The toolbar holds the modes (
+      - emphasis [ref=f1e72]: grid
+      - text: ","
+      - emphasis [ref=f1e73]: pair up
+      - text: ), the filter summary, sync,
+      - emphasis [ref=f1e74]: compute fingerprints
+      - text: and the
+      - emphasis [ref=f1e75]: to delete
+      - text: counter.
+    - listitem [ref=f1e76]:
+      - strong [ref=f1e77]: Reload Library
+      - text: (⌘R) picks up photos that arrived from iCloud if the list looks stale. Normally the list follows your library by itself.
+    - listitem [ref=f1e78]:
+      - strong [ref=f1e79]: Check for Updates…
+      - text: in the app menu tells you when a new version is on the site.
+  - heading "Rating" [level=2] [ref=f1e80]
+  - paragraph [ref=f1e81]:
+    - text: Every photo has one
+    - strong [ref=f1e82]: weight
+    - text: "from 0 to 5. Stars are just that weight rounded. Everything writes to the same number:"
+  - 'figure "Full screen: the photo, the strip of neighbours below, the metadata beside it." [ref=f1e83]':
+    - img "Full-screen rating on the Mac with metadata beside the photo." [ref=f1e84]
+  - figure "The 1:1 loupe follows the cursor; click to freeze it." [ref=f1e86]:
+    - img "The 1:1 loupe over a photo on the Mac." [ref=f1e87]
+  - list [ref=f1e89]:
+    - listitem [ref=f1e90]:
+      - strong [ref=f1e91]: Digits
+      - text: "set it directly: 1–5, and 0 for “looked at, no good”. The view moves on to the next photo."
+    - listitem [ref=f1e92]:
+      - strong [ref=f1e93]: Nudging
+      - text: "moves it by a quarter of a star and stays put: +/− on the Mac, swipe up/down on the iPhone. Four nudges are one star, so a doubtful call is easy to take back."
+    - listitem [ref=f1e94]:
+      - strong [ref=f1e95]: Pair up
+      - text: moves the winner up and the loser down — more when the result is a surprise, less when it was expected.
+  - paragraph [ref=f1e96]:
+    - text: The stars also land
+    - strong [ref=f1e97]: in Photos itself
+    - text: ", and a star you change in Photos comes back into Lightbrary. Photos keeps the whole star; the quarter-star detail and how many times you judged a photo travel through the shared folder."
+  - heading "Keyboard (Mac)" [level=2] [ref=f1e98]
+  - heading "Grid" [level=3] [ref=f1e99]
+  - table [ref=f1e100]:
+    - rowgroup [ref=f1e101]:
+      - row [ref=f1e102]:
+        - cell "← → ↑ ↓" [ref=f1e103]
+        - cell "move the selection" [ref=f1e104]
+      - row [ref=f1e105]:
+        - cell "return space" [ref=f1e106]
+        - cell "open full screen" [ref=f1e107]
+      - row [ref=f1e108]:
+        - cell "0–5" [ref=f1e109]
+        - cell "rate and move to the next photo" [ref=f1e110]
+      - row [ref=f1e111]:
+        - cell "X" [ref=f1e112]
+        - cell "mark / unmark for deletion" [ref=f1e113]
+      - row [ref=f1e114]:
+        - cell "C" [ref=f1e115]
+        - cell "compare the selected photos side by side" [ref=f1e116]
+      - row [ref=f1e117]:
+        - cell "esc" [ref=f1e118]
+        - cell "clear the selection" [ref=f1e119]
+  - heading "Full screen" [level=3] [ref=f1e120]
+  - table [ref=f1e121]:
+    - rowgroup [ref=f1e122]:
+      - row [ref=f1e123]:
+        - cell "← → space" [ref=f1e124]
+        - cell "previous / next" [ref=f1e125]
+      - row [ref=f1e126]:
+        - cell "0–5" [ref=f1e127]
+        - cell "rate and move on" [ref=f1e128]
+      - row [ref=f1e129]:
+        - cell "− +" [ref=f1e130]
+        - cell "nudge by a quarter star, stay on the photo" [ref=f1e131]
+      - row [ref=f1e132]:
+        - cell "X" [ref=f1e133]
+        - cell "mark / unmark for deletion" [ref=f1e134]
+      - row [ref=f1e135]:
+        - cell "Z" [ref=f1e136]
+        - cell "1:1 view at the point under the pointer — the only honest way to judge sharpness" [ref=f1e137]
+      - row [ref=f1e138]:
+        - cell "T" [ref=f1e139]
+        - cell "show / hide the film strip" [ref=f1e140]
+      - row [ref=f1e141]:
+        - cell "I" [ref=f1e142]
+        - cell "metadata panel" [ref=f1e143]
+      - row [ref=f1e144]:
+        - cell "esc" [ref=f1e145]
+        - cell "back to the grid" [ref=f1e146]
+  - heading "Pair up and comparison" [level=3] [ref=f1e147]
+  - table [ref=f1e148]:
+    - rowgroup [ref=f1e149]:
+      - row [ref=f1e150]:
+        - cell "← →" [ref=f1e151]
+        - 'cell "pair up: pick the better photo" [ref=f1e152]'
+      - row [ref=f1e153]:
+        - cell "space" [ref=f1e154]
+        - 'cell "pair up: skip this burst for now" [ref=f1e155]'
+      - row [ref=f1e156]:
+        - cell "N" [ref=f1e157]
+        - 'cell "pair up: “not a burst” — these photos do not belong together" [ref=f1e158]'
+      - row [ref=f1e159]:
+        - cell "← → / ⇧+← →" [ref=f1e160]
+        - 'cell "comparison: step side B / side A" [ref=f1e161]'
+      - row [ref=f1e162]:
+        - cell "S" [ref=f1e163]
+        - 'cell "comparison: swap sides" [ref=f1e164]'
+      - row [ref=f1e165]:
+        - cell "+ − 0" [ref=f1e166]
+        - 'cell "comparison: zoom in / out, fit" [ref=f1e167]'
+  - heading "On the iPhone" [level=2] [ref=f1e168]
+  - paragraph [ref=f1e169]:
+    - text: "Modes sit in the tab bar at the bottom:"
+    - strong [ref=f1e170]: grid
+    - text: ","
+    - strong [ref=f1e171]: rate
+    - text: and
+    - strong [ref=f1e172]: pair up
+    - text: . Everything else is under
+    - strong [ref=f1e173]: •••
+    - text: .
+  - figure "The grid with Select, rating, and the metadata sheet." [ref=f1e174]:
+    - img "The grid on iPhone with Select." [ref=f1e175]
+    - img "Rating a photo on iPhone." [ref=f1e176]
+    - img "Photo metadata on iPhone." [ref=f1e177]
+  - list [ref=f1e179]:
+    - listitem [ref=f1e180]:
+      - strong [ref=f1e181]: "Rate:"
+      - text: swipe
+      - strong [ref=f1e182]: left/right
+      - text: for the next or previous photo,
+      - strong [ref=f1e183]: up
+      - text: for better,
+      - strong [ref=f1e184]: down
+      - text: for worse — a quarter star each time, and the new value shows while you drag. Double-tap for the 1:1 view.
+    - listitem [ref=f1e185]:
+      - text: The phone never downloads originals on its own. The preview is the best copy already on the device; to judge sharpness on a photo kept only in iCloud, open the 1:1 view and tap
+      - strong [ref=f1e186]: Download original
+      - text: . The copy stays on the phone until the system needs the space.
+    - listitem [ref=f1e187]:
+      - text: Tap
+      - strong [ref=f1e188]: (i)
+      - text: "for the metadata: camera settings, place, people and pets, scenes and text in the photo. With the Exporter running on your Mac these are there for every photo, without downloading anything."
+    - listitem [ref=f1e189]:
+      - strong [ref=f1e190]: "Compare your own picks:"
+      - text: tap
+      - strong [ref=f1e191]: Select
+      - text: in the grid, tap two or more photos, then
+      - strong [ref=f1e192]: Compare
+      - text: . They meet one on one, as in
+      - link "pair up" [ref=f1e193] [cursor=pointer]:
+        - /url: "#pairup"
+      - text: ": tap the better one until a single winner is left."
+    - listitem [ref=f1e194]:
+      - text: Search and measures on the phone come from a Mac — see
+      - link "Exporter" [ref=f1e195] [cursor=pointer]:
+        - /url: "#exporter"
+      - text: .
+  - heading "Marking and deleting" [level=2] [ref=f1e196]
+  - paragraph [ref=f1e197]:
+    - text: X (or
+    - emphasis [ref=f1e198]: mark for deletion
+    - text: ) only
+    - strong [ref=f1e199]: marks
+    - text: a photo. Nothing disappears. A marked photo gets a red bin on its tile and goes into the album
+    - strong [ref=f1e200]: lightbrary – to delete
+    - text: "in Photos — which is also how the mark reaches your other devices. You can mark and unmark straight in Photos too: add a photo to that album or take it out."
+  - paragraph [ref=f1e201]:
+    - text: When you are ready, open the
+    - strong [ref=f1e202]: to delete
+    - text: counter in the toolbar. The review shows everything marked; unmark anything you changed your mind about, then
+    - strong [ref=f1e203]: Delete
+    - text: . Photos asks for confirmation — that dialog is Apple’s and cannot be skipped — and deleted photos go to
+    - emphasis [ref=f1e204]: Recently Deleted
+    - text: for 30 days.
+  - paragraph [ref=f1e206]:
+    - strong [ref=f1e207]: Camera bursts.
+    - text: A burst taken by holding the shutter shows as one photo with a
+    - emphasis [ref=f1e208]: burst
+    - text: badge, but deleting it deletes
+    - emphasis [ref=f1e209]: every
+    - text: frame. The review counts frames, not tiles, so the number on the Delete button is what Photos will actually remove. To keep one frame, open the burst in Photos and use
+    - emphasis [ref=f1e210]: Keep only favourite
+    - text: there first.
+  - heading "Filters, search and order" [level=2] [ref=f1e211]
+  - list [ref=f1e212]:
+    - listitem [ref=f1e213]:
+      - strong [ref=f1e214]: "Stars:"
+      - text: any mix of
+      - emphasis [ref=f1e215]: to delete
+      - text: ","
+      - emphasis [ref=f1e216]: unrated
+      - text: and 0–5. Nothing ticked means no limit.
+    - listitem [ref=f1e217]:
+      - strong [ref=f1e218]: "Years:"
+      - text: from–to, with counts per year.
+    - listitem [ref=f1e219]:
+      - strong [ref=f1e220]: "Search:"
+      - text: words like
+      - emphasis [ref=f1e221]: forest
+      - text: ","
+      - emphasis [ref=f1e222]: sign
+      - text: ", a place or a person’s name. It searches the words the Exporter sent, on the Mac and on the iPhone alike."
+    - listitem [ref=f1e223]:
+      - strong [ref=f1e224]: "Condition:"
+      - text: blurry, badly exposed, closed eyes, screenshots.
+    - listitem [ref=f1e225]:
+      - strong [ref=f1e226]: "Measures:"
+      - text: some forty numbers Photos computes for every photo — sharpness, exposure, noise, aesthetic scores and more. Pick one, drag the range or use
+      - emphasis [ref=f1e227]: worst tenth
+      - text: /
+      - emphasis [ref=f1e228]: best tenth
+      - text: . Rarely used ones hide under
+      - emphasis [ref=f1e229]: less used
+      - text: ; right-click a row to pin it to the top.
+    - listitem [ref=f1e230]:
+      - strong [ref=f1e231]: "Order:"
+      - text: as in library, by day, blurriest / darkest / closed eyes first, best or worst first, or by the chosen measure.
+  - paragraph [ref=f1e232]: Measures appear once the Exporter has run. The system keeps analysing photos in the background, so fresh imports may have no values yet.
+  - 'heading "Pair up: the best of each burst" [level=2] [ref=f1e233]'
+  - paragraph [ref=f1e234]: "Pair up finds groups of near-identical photos taken close together — the ten tries at the same shot — and lets you settle each group in a short tournament: the current leader against the next challenger, ← or → for the better one, until one is left."
+  - figure "One burst, two frames at a time; the yellow tag marks the current leader." [ref=f1e235]:
+    - 'img "Pair up on the Mac: two frames from one burst, one above the other." [ref=f1e236]'
+  - list [ref=f1e238]:
+    - listitem [ref=f1e239]:
+      - text: It needs
+      - strong [ref=f1e240]: visual fingerprints
+      - text: ":"
+      - emphasis [ref=f1e241]: compute fingerprints
+      - text: in the toolbar. That is the heaviest job in the app — do it on the Mac and let the phone get the result through sync instead of computing its own.
+    - listitem [ref=f1e242]:
+      - strong [ref=f1e243]: from N photos
+      - text: sets the smallest group worth reviewing;
+      - strong [ref=f1e244]: sensitivity
+      - text: decides how alike photos must be to count as one group. Changing either regroups everything, and a verdict only sticks to the exact group it was made for — so regrouped bursts return to the queue.
+    - listitem [ref=f1e245]: Winners go up in weight, losers down. Mark the losers with X as you go, or filter by stars afterwards.
+    - listitem [ref=f1e246]:
+      - text: On the iPhone,
+      - strong [ref=f1e247]: pinch
+      - text: to zoom both photos at the same spot and
+      - strong [ref=f1e248]: drag
+      - text: to move them together. The zoom stays for the next challenger in the same burst; tap the percentage to see the whole frame again.
+      - strong [ref=f1e249]: Full resolution
+      - text: loads sharper versions, from iCloud if needed.
+  - heading "Comparing side by side" [level=2] [ref=f1e250]
+  - paragraph [ref=f1e251]:
+    - text: On the Mac, select two or more photos in the grid and press C. Side A is yellow, side B blue; step each with the arrow keys, swap with S. Zoom with + and − (or pinch on the trackpad), drag to move, 0 to fit. With
+    - emphasis [ref=f1e252]: shared zoom
+    - text: on, zooming one side zooms the other at the same spot. esc returns to the grid. On the iPhone, comparing works as a tournament — see
+    - link "On the iPhone" [ref=f1e253] [cursor=pointer]:
+      - /url: "#iphone"
+    - text: .
+  - figure "Side A in yellow, side B in blue, zoom shared between them." [ref=f1e254]:
+    - img "Comparison view on the Mac with sides A and B." [ref=f1e255]
+  - heading "How sync works" [level=2] [ref=f1e257]
+  - paragraph [ref=f1e258]: There are two roads between your devices, and neither goes through a server.
+  - table [ref=f1e259]:
+    - rowgroup [ref=f1e260]:
+      - row [ref=f1e261]:
+        - columnheader "Through Photos (iCloud Photos)" [ref=f1e262]
+        - columnheader "Through the shared folder" [ref=f1e263]
+      - row [ref=f1e264]:
+        - cell "stars marks for deletion (the album)" [ref=f1e265]: starsmarks for deletion (the album)
+        - cell "exact weight and how many times you judged a photo pair-up verdicts visual fingerprints measures and search words" [ref=f1e266]: exact weight and how many times you judged a photopair-up verdictsvisual fingerprintsmeasures and search words
+  - list [ref=f1e267]:
+    - listitem [ref=f1e268]:
+      - strong [ref=f1e269]: It is automatic.
+      - text: Each app checks the folder when it comes to the front and every two minutes, and only reads files that changed. Your own decisions are written about 20 seconds after you stop rating.
+    - listitem [ref=f1e270]:
+      - strong [ref=f1e271]: sync now
+      - text: reads and writes everything — a safety net, not a routine step. The sync menu shows what came in and what changed.
+    - listitem [ref=f1e272]:
+      - strong [ref=f1e273]: "Conflicts:"
+      - text: if two devices rated the same photo, the later rating wins. A star changed in Photos wins over an older weight.
+    - listitem [ref=f1e274]: Each device writes its own files into the folder, so they never overwrite each other. Measures and fingerprints are written only when they change — the phone does not re-send 50 MB after every session.
+  - paragraph [ref=f1e275]:
+    - strong [ref=f1e276]: Keep the versions together.
+    - text: An older app quietly skips files written in a newer format, so after updating one device, update the others too — otherwise nothing seems to arrive and nothing says why.
+  - heading "Lightbrary Exporter" [level=2] [ref=f1e277]
+  - paragraph [ref=f1e278]: The apps do not read the measures and search words Photos computes — they live in database files inside the library on the Mac. The Exporter is a small menu-bar helper that reads them there and puts them in the shared folder for both apps. It only reads your library; it never changes it.
+  - list [ref=f1e279]:
+    - listitem [ref=f1e280]:
+      - link "Download" [ref=f1e281] [cursor=pointer]:
+        - /url: /download#exporter
+      - text: it, drag it to Applications and open it
+      - strong [ref=f1e282]: from Applications
+      - text: . Its icon appears in the menu bar — a registration mark.
+    - listitem [ref=f1e283]:
+      - text: Allow photo access, click
+      - emphasis [ref=f1e284]: Choose folder…
+      - text: and pick the same shared folder as the apps.
+    - listitem [ref=f1e285]:
+      - text: Turn on
+      - strong [ref=f1e286]: Open at login
+      - text: . From then on it exports by itself about five minutes after your library stops changing.
+      - emphasis [ref=f1e287]: Export now
+      - text: does it straight away.
+    - listitem [ref=f1e288]:
+      - text: If it reports that it cannot read the library, use
+      - emphasis [ref=f1e289]: Open Full Disk Access settings…
+      - text: ", add the Exporter with +, then quit and reopen it."
+  - paragraph [ref=f1e290]: The quadrants in the menu-bar icon swap while it works. The menu shows when it last exported and how many photos it covered.
+  - heading "If something looks off" [level=2] [ref=f1e291]
+  - heading "The iPhone shows different stars than the Mac" [level=3] [ref=f1e292]
+  - paragraph [ref=f1e293]:
+    - text: Give iCloud Photos a moment, then bring both apps to the front. If it persists, press
+    - emphasis [ref=f1e294]: sync now
+    - text: on the device where you rated last, then on the other.
+  - heading "New photos from the phone do not show on the Mac" [level=3] [ref=f1e295]
+  - paragraph [ref=f1e296]: They arrive when iCloud Photos has them. ⌘R reloads the list if it looks stale.
+  - heading "Measures or search are empty" [level=3] [ref=f1e297]
+  - paragraph [ref=f1e298]: Check that the Exporter is running and uses the same shared folder — the folder name in its menu and in the apps must match. Then bring the app to the front.
+  - heading "Pair up says “All resolved”" [level=3] [ref=f1e299]
+  - paragraph [ref=f1e300]:
+    - text: Every burst at the current settings is already judged. Lower
+    - emphasis [ref=f1e301]: from N photos
+    - text: or move
+    - emphasis [ref=f1e302]: sensitivity
+    - text: to regroup.
+  - heading "The number to delete is bigger than the number of tiles" [level=3] [ref=f1e303]
+  - paragraph [ref=f1e304]:
+    - text: One of them is a camera burst — see
+    - link "Marking and deleting" [ref=f1e305] [cursor=pointer]:
+      - /url: "#deleting"
+    - text: .
+  - paragraph [ref=f1e306]:
+    - text: "Anything else:"
+    - link "[email protected]" [ref=f1e307] [cursor=pointer]:
+      - /url: /cdn-cgi/l/email-protection#37455653525c7704050607195e52
+    - text: . The
+    - link "download page" [ref=f1e308] [cursor=pointer]:
+      - /url: /download
+    - text: explains how to send a crash report.
+  - contentinfo [ref=f1e309]:
+    - link "Lightbrary" [ref=f1e310] [cursor=pointer]:
+      - /url: /
+    - link "Download" [ref=f1e311] [cursor=pointer]:
+      - /url: /download
+    - link "Manual" [ref=f1e312] [cursor=pointer]:
+      - /url: /manual
+    - link "Privacy" [ref=f1e313] [cursor=pointer]:
+      - /url: /privacy
+    - link "Support" [ref=f1e314] [cursor=pointer]:
+      - /url: /support

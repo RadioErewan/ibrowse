@@ -1,0 +1,3 @@
+[      79ms] [ERROR] Failed to load resource: the server responded with a status of 404 (File not found) @ http://localhost:8765/img/icon-192.png?v=2:0
+[     174ms] [ERROR] Failed to load resource: the server responded with a status of 404 (File not found) @ http://localhost:8765/img/favicon-64.png?v=3:0
+[     409ms] [ERROR] Failed to load resource: the server responded with a status of 404 (File not found) @ http://localhost:8765/img/favicon-192.png?v=3:0
