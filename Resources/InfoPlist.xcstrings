@@ -1,0 +1,18 @@
+{
+  "sourceLanguage": "en",
+  "strings": {
+    "NSPhotoLibraryUsageDescription": {
+      "comment": "Photo library permission prompt",
+      "extractionState": "manual",
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Lightbrary czyta bibliotekę zdjęć, żeby pozwolić Ci je przeglądać, oceniać i usuwać. Nic nie opuszcza tego urządzenia."
+          }
+        }
+      }
+    }
+  },
+  "version": "1.0"
+}

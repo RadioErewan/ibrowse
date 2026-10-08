@@ -49,6 +49,7 @@ targets:
         optional: true
       - path: Resources/PrivacyInfo.xcprivacy
       - path: Resources/Localizable.xcstrings
+      - path: Resources/InfoPlist.xcstrings
       # Przeniesienie danych do kontenera przy pierwszym starcie w piaskownicy.
       - path: Resources/container-migration.plist
         buildPhase: resources
@@ -77,9 +78,11 @@ targets:
         LSApplicationCategoryType: public.app-category.photography
         ITSAppUsesNonExemptEncryption: false
         # Bez tego klucza system nie pokaże pytania o dostęp do biblioteki.
+        # Po angielsku, jak cały interfejs; polski przekład w InfoPlist.xcstrings.
+        # Polski tekst w angielskiej aplikacji odrzuciła recenzja (4 — Design).
         NSPhotoLibraryUsageDescription: >-
-          lightbrary czyta bibliotekę zdjęć, żeby pozwolić Ci je przeglądać,
-          oceniać i usuwać. Nic nie jest wysyłane poza ten komputer.
+          Lightbrary reads your photo library so you can browse, rate and
+          delete your photos. Nothing leaves this Mac.
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: pl.3210.lightbrary
@@ -112,6 +115,7 @@ targets:
         optional: true
       - path: Resources/PrivacyInfo.xcprivacy
       - path: Resources/Localizable.xcstrings
+      - path: Resources/InfoPlist.xcstrings
     info:
       path: Generated/Info-ios.plist
       properties:
@@ -132,8 +136,8 @@ targets:
           - UIInterfaceOrientationLandscapeLeft
           - UIInterfaceOrientationLandscapeRight
         NSPhotoLibraryUsageDescription: >-
-          lightbrary czyta bibliotekę zdjęć, żeby pozwolić Ci je przeglądać,
-          oceniać i usuwać. Nic nie jest wysyłane poza to urządzenie.
+          Lightbrary reads your photo library so you can browse, rate and
+          delete your photos. Nothing leaves this device.
     settings:
       base:
         # Identyfikator musi być unikalny w skali Apple — przy darmowym koncie

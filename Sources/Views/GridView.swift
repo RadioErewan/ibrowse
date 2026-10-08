@@ -473,7 +473,7 @@ struct GridView: View {
         HStack(spacing: 8) {
             Text(day.key, format: .dateTime.day().month(.wide).year())
                 .font(.system(size: 12, weight: .semibold))
-            Text("\(day.assets.count) \(day.assets.count == 1 ? "zdjęcie" : "photos")")
+            Text("\(day.assets.count) photos")
                 .font(.caption.monospacedDigit())
                 .foregroundStyle(.secondary)
             Spacer(minLength: 8)
