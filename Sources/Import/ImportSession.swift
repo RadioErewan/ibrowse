@@ -4,6 +4,7 @@ import CryptoKit
 import Foundation
 import ImageIO
 import UniformTypeIdentifiers
+import Vision
 import os
 
 /// Jedno zdjęcie z folderu na dysku. Identyfikatorem jest ścieżka **względna**
@@ -46,6 +47,13 @@ struct ImportDecision: Codable, Equatable {
     var isEmpty: Bool { stars == 0 && !rejected && imported == nil }
 }
 
+/// Ocena estetyki z Vision. `overall` od −1 do 1; `utility` to zdjęcie
+/// „do czegoś" — paragon, tablica, zrzut — a nie wspomnienie.
+struct ImportScore: Codable, Equatable {
+    var overall: Float
+    var utility: Bool
+}
+
 /// Przegląd jednego folderu: skan, decyzje i ich zapis.
 ///
 /// Decyzje leżą w pliku JSON, nie w SwiftData. Skład przy niezgodnym
@@ -64,12 +72,19 @@ final class ImportSession: ObservableObject {
     @Published private(set) var isPrefetching = false
     @Published private(set) var thumbnailsReady = 0
 
+    /// Oceny estetyki, liczone raz i trzymane w osobnym pliku obok decyzji —
+    /// patrz `scoreAll`.
+    @Published private(set) var scores: [String: ImportScore] = [:]
+    @Published private(set) var isScoring = false
+    @Published private(set) var scored = 0
+
     private var pendingSave: Task<Void, Never>?
 
     private init(folder: URL, release: @escaping () -> Void) {
         self.folder = folder
         self.release = release
         decisions = Self.loadDecisions(for: folder)
+        scores = Self.load(Self.file(for: folder, suffix: "-scores")) ?? [:]
     }
 
     deinit {
@@ -278,6 +293,48 @@ final class ImportSession: ObservableObject {
         return formatter.date(from: stamp)
     }
 
+    // MARK: - Estetyka
+
+    /// Ocena estetyki każdego zdjęcia, po kolei, w tle.
+    ///
+    /// Liczona na miniaturze 512 px — Vision i tak pomniejsza obraz przed
+    /// oceną, a pełna klatka z dysku zewnętrznego kosztowałaby kilka razy
+    /// więcej czasu bez żadnego zysku. Wynik zapisany, więc przy powrocie do
+    /// folderu liczy się tylko to, czego jeszcze nie było.
+    func scoreAll() async {
+        let missing = items.filter { scores[$0.id] == nil }
+        guard !missing.isEmpty else { return }
+        isScoring = true
+        scored = items.count - missing.count
+        defer { isScoring = false }
+
+        for (index, item) in missing.enumerated() {
+            guard !Task.isCancelled else { break }
+            let url = item.url
+            if let score = await Task.detached(priority: .utility, operation: { Self.score(url) }).value {
+                scores[item.id] = score
+            }
+            if index % 10 == 9 || index == missing.count - 1 {
+                scored = items.count - missing.count + index + 1
+                Self.save(scores, to: Self.file(for: folder, suffix: "-scores"))
+            }
+        }
+    }
+
+    nonisolated private static func score(_ url: URL) -> ImportScore? {
+        guard let source = CGImageSourceCreateWithURL(url as CFURL, nil),
+              let image = CGImageSourceCreateThumbnailAtIndex(source, 0, [
+                  kCGImageSourceCreateThumbnailFromImageAlways: true,
+                  kCGImageSourceThumbnailMaxPixelSize: 512,
+                  kCGImageSourceCreateThumbnailWithTransform: true,
+              ] as CFDictionary)
+        else { return nil }
+        let request = VNCalculateImageAestheticsScoresRequest()
+        try? VNImageRequestHandler(cgImage: image).perform([request])
+        guard let result = request.results?.first else { return nil }
+        return ImportScore(overall: result.overallScore, utility: result.isUtility)
+    }
+
     // MARK: - Decyzje
 
     func decision(for item: ImportItem) -> ImportDecision {
@@ -359,11 +416,28 @@ final class ImportSession: ObservableObject {
     /// Plik w kontenerze aplikacji, nazwany skrótem ścieżki folderu —
     /// **nigdy** obok zdjęć, bo źródła nie wolno zmieniać.
     private static func decisionsFile(for folder: URL) -> URL {
+        file(for: folder, suffix: "")
+    }
+
+    private static func file(for folder: URL, suffix: String) -> URL {
         let digest = SHA256.hash(data: Data(folder.standardizedFileURL.path.utf8))
         let name = digest.prefix(8).map { String(format: "%02x", $0) }.joined()
         return URL.applicationSupportDirectory
             .appending(path: "pl.3210.lightbrary/imports", directoryHint: .isDirectory)
-            .appending(path: "\(name).json")
+            .appending(path: "\(name)\(suffix).json")
+    }
+
+    private static func load<T: Decodable>(_ file: URL) -> T? {
+        guard let data = try? Data(contentsOf: file) else { return nil }
+        return try? JSONDecoder().decode(T.self, from: data)
+    }
+
+    private static func save<T: Encodable>(_ value: T, to file: URL) {
+        try? FileManager.default.createDirectory(
+            at: file.deletingLastPathComponent(), withIntermediateDirectories: true
+        )
+        guard let data = try? JSONEncoder().encode(value) else { return }
+        try? data.write(to: file, options: .atomic)
     }
 }
 

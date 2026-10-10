@@ -77,12 +77,42 @@ private struct ImportBrowser: View {
     /// Liczba kolumn z ostatniego układu — strzałki w pionie skaczą o wiersz.
     @State private var columns = 1
 
+    enum Order: String, CaseIterable, Identifiable {
+        case date, weakest
+        var id: String { rawValue }
+        var label: String {
+            switch self {
+            case .date: String(localized: "by date")
+            case .weakest: String(localized: "weakest first")
+            }
+        }
+    }
+
+    /// Kolejność od najsłabszych: odsiew zaczyna się od tego, co najpewniej
+    /// wyleci. Zdjęcia „użytkowe" idą na sam początek, bo w albumie z wakacji
+    /// paragon czy tablica informacyjna to prawie zawsze kandydat do X.
+    /// Jeszcze nieocenione przez Vision czekają na końcu, w kolejności dat.
+    @AppStorage("import.order") private var order: Order = .date
+
     private var shown: [ImportItem] {
-        switch show {
+        let filtered: [ImportItem] = switch show {
         case .all: session.items
         case .keep: session.items.filter { session.decisions[$0.id]?.rejected != true }
         case .rejected: session.items.filter { session.decisions[$0.id]?.rejected == true }
         }
+        guard order == .weakest else { return filtered }
+        let scores = session.scores
+        return filtered.enumerated().sorted { a, b in
+            switch (scores[a.element.id], scores[b.element.id]) {
+            case let (x?, y?):
+                if x.utility != y.utility { return x.utility }
+                if x.overall != y.overall { return x.overall < y.overall }
+                return a.offset < b.offset
+            case (_?, nil): return true
+            case (nil, _?): return false
+            default: return a.offset < b.offset
+            }
+        }.map(\.element)
     }
 
     private var currentIndex: Int? {
@@ -118,8 +148,10 @@ private struct ImportBrowser: View {
                 await session.scan()
                 focused = true
                 await session.prefetchThumbnails()
+                await session.scoreAll()
             }
             .onAppear { focused = true }
+            .onChange(of: order) { _, _ in currentID = shown.first?.id }
             .onChange(of: show) { _, _ in
                 if current == nil { currentID = shown.first?.id }
             }
@@ -149,6 +181,12 @@ private struct ImportBrowser: View {
                     .labelsHidden()
                 }
                 ToolbarItemGroup(placement: .primaryAction) {
+                    Picker("order", selection: $order) {
+                        ForEach(Order.allCases) { Text($0.label).tag($0) }
+                    }
+                    .labelsHidden()
+                    .fixedSize()
+                    .help("Order")
                     if !fullScreen {
                         Slider(value: $thumbSize, in: 110...320) { Text("tile size") }
                             .labelsHidden()
@@ -260,6 +298,11 @@ private struct ImportBrowser: View {
                 }
                 Text("\(item.pixelWidth)×\(item.pixelHeight)")
                     .monospacedDigit()
+                if let score = session.scores[item.id] {
+                    Text("aesthetics \(score.overall.formatted(.number.precision(.fractionLength(2))))")
+                        .monospacedDigit()
+                    if score.utility { Text("utility") .foregroundStyle(.orange) }
+                }
             }
             Spacer()
             if session.isPrefetching {
@@ -270,6 +313,16 @@ private struct ImportBrowser: View {
                 .frame(width: 90)
                 .controlSize(.small)
                 Text("thumbnails \(session.thumbnailsReady)/\(total)")
+                    .monospacedDigit()
+                Divider().frame(height: 12)
+            } else if session.isScoring {
+                ProgressView(
+                    value: Double(session.scored),
+                    total: Double(max(total, 1))
+                )
+                .frame(width: 90)
+                .controlSize(.small)
+                Text("scoring \(session.scored)/\(total)")
                     .monospacedDigit()
                 Divider().frame(height: 12)
             }
