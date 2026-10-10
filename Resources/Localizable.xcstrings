@@ -3313,17 +3313,6 @@
       },
       "extractionState": "manual"
     },
-    "%lld to import · %lld left out": {
-      "localizations": {
-        "pl": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "do importu: %lld · pominięte: %lld"
-          }
-        }
-      },
-      "extractionState": "manual"
-    },
     "1–5 rate · 0 clear · X leave out · ←/→ navigate · return full screen": {
       "localizations": {
         "pl": {
@@ -3352,6 +3341,149 @@
           "stringUnit": {
             "state": "translated",
             "value": "miniatury %lld/%lld"
+          }
+        }
+      },
+      "extractionState": "manual"
+    },
+    "%lld to import · %lld left out · %lld in Photos": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "do importu: %lld · pominięte: %lld · w Zdjęciach: %lld"
+          }
+        }
+      },
+      "extractionState": "manual"
+    },
+    "Import…": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Importuj…"
+          }
+        }
+      },
+      "extractionState": "manual"
+    },
+    "Copy the photos you kept into Photos": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Skopiuj zachowane zdjęcia do Zdjęć"
+          }
+        }
+      },
+      "extractionState": "manual"
+    },
+    "Already in Photos": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Już w Zdjęciach"
+          }
+        }
+      },
+      "extractionState": "manual"
+    },
+    "Import %lld photos into Photos": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Import do Zdjęć: %lld"
+          }
+        }
+      },
+      "extractionState": "manual"
+    },
+    "Album": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Album"
+          }
+        }
+      },
+      "extractionState": "manual"
+    },
+    "Copies go into Photos with their stars. Files on the disk stay as they are; photos you left out aren't imported. Photos already imported are skipped.": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Do Zdjęć trafiają kopie razem z gwiazdkami. Pliki na dysku zostają bez zmian, pominięte nie są importowane, a już zaimportowane są pomijane."
+          }
+        }
+      },
+      "extractionState": "manual"
+    },
+    "Import": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Importuj"
+          }
+        }
+      },
+      "extractionState": "manual"
+    },
+    "Importing…": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Importuję…"
+          }
+        }
+      },
+      "extractionState": "manual"
+    },
+    "Imported %lld photos": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Zaimportowane: %lld"
+          }
+        }
+      },
+      "extractionState": "manual"
+    },
+    "Album: %@": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Album: %@"
+          }
+        }
+      },
+      "extractionState": "manual"
+    },
+    "%lld files couldn't be imported and stay marked as to import.": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nie udało się zaimportować plików: %lld. Zostają oznaczone do importu."
+          }
+        }
+      },
+      "extractionState": "manual"
+    },
+    "Import failed": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Import się nie udał"
           }
         }
       },

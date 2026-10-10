@@ -39,8 +39,11 @@ private struct Frame: Sendable {
 struct ImportDecision: Codable, Equatable {
     var stars = 0
     var rejected = false
+    /// Identyfikator zdjęcia w bibliotece po imporcie. Opcjonalne, więc
+    /// pliki decyzji sprzed etapu 2 czytają się bez zmian.
+    var imported: String?
 
-    var isEmpty: Bool { stars == 0 && !rejected }
+    var isEmpty: Bool { stars == 0 && !rejected && imported == nil }
 }
 
 /// Przegląd jednego folderu: skan, decyzje i ich zapis.
@@ -287,6 +290,23 @@ final class ImportSession: ObservableObject {
 
     func toggleRejected(_ item: ImportItem) {
         update(item) { $0.rejected.toggle() }
+    }
+
+    var importedCount: Int {
+        items.reduce(0) { $0 + (decisions[$1.id]?.imported != nil ? 1 : 0) }
+    }
+
+    /// Co pójdzie przy najbliższym imporcie: nie pominięte i jeszcze nie
+    /// w bibliotece.
+    var pending: [ImportItem] {
+        items.filter { decisions[$0.id]?.rejected != true && decisions[$0.id]?.imported == nil }
+    }
+
+    func markImported(_ id: String, as assetID: String?) {
+        var decision = decisions[id] ?? ImportDecision()
+        decision.imported = assetID
+        decisions[id] = decision.isEmpty ? nil : decision
+        scheduleSave()
     }
 
     var rejectedCount: Int {

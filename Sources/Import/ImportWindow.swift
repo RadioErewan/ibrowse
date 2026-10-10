@@ -68,6 +68,8 @@ private struct ImportBrowser: View {
     }
 
     @State private var show: Show = .all
+    @StateObject private var importer = PhotosImport()
+    @State private var showingImport = false
     @State private var currentID: String?
     @State private var fullScreen = false
     @FocusState private var focused: Bool
@@ -122,6 +124,12 @@ private struct ImportBrowser: View {
                 if current == nil { currentID = shown.first?.id }
             }
             .navigationTitle(session.folder.lastPathComponent)
+            .sheet(isPresented: $showingImport, onDismiss: {
+                importer.reset()
+                focused = true
+            }) {
+                ImportSheet(session: session, importer: importer)
+            }
             .toolbar {
                 ToolbarItem(placement: .navigation) {
                     if fullScreen {
@@ -151,6 +159,14 @@ private struct ImportBrowser: View {
                         Label("Choose Folder…", systemImage: "folder")
                     }
                     .help("Choose another folder")
+                    Button {
+                        showingImport = true
+                    } label: {
+                        Label("Import…", systemImage: "square.and.arrow.down")
+                            .labelStyle(.titleAndIcon)
+                    }
+                    .disabled(session.isScanning || session.pending.isEmpty)
+                    .help("Copy the photos you kept into Photos")
                 }
             }
     }
@@ -232,7 +248,8 @@ private struct ImportBrowser: View {
         HStack(spacing: 14) {
             let total = session.items.count
             let rejected = session.rejectedCount
-            Text("\(total - rejected) to import · \(rejected) left out")
+            let imported = session.importedCount
+            Text("\(session.pending.count) to import · \(rejected) left out · \(imported) in Photos")
                 .monospacedDigit()
             if let item = current {
                 Divider().frame(height: 12)
@@ -287,7 +304,12 @@ private struct ImportBrowser: View {
             move(1)
             return .handled
         case "x", "X":
+            // Dalej, jak przy gwiazdkach — decyzja Radka po pierwszym odsiewie
+            // całego folderu. Gdy filtr sam wyjął zdjęcie, na jego miejscu
+            // już stoi następne i drugi krok by je przeskoczył.
+            let id = item.id
             keepingPlace { session.toggleRejected(item) }
+            if currentID == id { move(1) }
             return .handled
         default:
             return .ignored
@@ -303,6 +325,71 @@ private struct ImportBrowser: View {
         guard let index, !list.contains(where: { $0.id == currentID }) else { return }
         currentID = list.isEmpty ? nil : list[min(index, list.count - 1)].id
         if list.isEmpty { fullScreen = false }
+    }
+}
+
+/// Arkusz importu: nazwa albumu, postęp i wynik.
+private struct ImportSheet: View {
+    @ObservedObject var session: ImportSession
+    @ObservedObject var importer: PhotosImport
+    @Environment(\.dismiss) private var dismiss
+    @State private var album = ""
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            switch importer.phase {
+            case .idle:
+                Text("Import \(session.pending.count) photos into Photos")
+                    .font(.headline)
+                TextField("Album", text: $album)
+                    .textFieldStyle(.roundedBorder)
+                Text("Copies go into Photos with their stars. Files on the disk stay as they are; photos you left out aren't imported. Photos already imported are skipped.")
+                    .font(.callout)
+                    .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+                HStack {
+                    Spacer()
+                    Button("Cancel") { dismiss() }
+                        .keyboardShortcut(.cancelAction)
+                    Button("Import") {
+                        Task { await importer.run(session, album: album) }
+                    }
+                    .keyboardShortcut(.defaultAction)
+                }
+            case .running(let done, let total):
+                Text("Importing…").font(.headline)
+                ProgressView(value: Double(done), total: Double(max(total, 1)))
+                Text("\(done) / \(total)")
+                    .font(.caption.monospacedDigit())
+                    .foregroundStyle(.secondary)
+            case .finished(let imported, let failed, let title):
+                Text("Imported \(imported) photos").font(.headline)
+                if !title.isEmpty {
+                    Text("Album: \(title)").foregroundStyle(.secondary)
+                }
+                if failed > 0 {
+                    Text("\(failed) files couldn't be imported and stay marked as to import.")
+                        .foregroundStyle(.orange)
+                }
+                HStack {
+                    Spacer()
+                    Button("Done") { dismiss() }
+                        .keyboardShortcut(.defaultAction)
+                }
+            case .failed(let message):
+                Text("Import failed").font(.headline)
+                Text(message).foregroundStyle(.secondary)
+                HStack {
+                    Spacer()
+                    Button("Close") { dismiss() }
+                        .keyboardShortcut(.defaultAction)
+                }
+            }
+        }
+        .padding(20)
+        .frame(width: 420)
+        .interactiveDismissDisabled(importer.isRunning)
+        .onAppear { album = session.folder.lastPathComponent }
     }
 }
 
@@ -365,6 +452,15 @@ private struct ImportTile: View {
                         .padding(.vertical, 2)
                         .background(.black.opacity(0.6), in: Capsule())
                         .padding(5)
+                }
+            }
+            .overlay(alignment: .bottomTrailing) {
+                if decision.imported != nil {
+                    Image(systemName: "checkmark.circle.fill")
+                        .font(.title3)
+                        .foregroundStyle(.white, .green)
+                        .padding(5)
+                        .help("Already in Photos")
                 }
             }
             .overlay(alignment: .topTrailing) {
