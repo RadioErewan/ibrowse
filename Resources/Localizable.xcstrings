@@ -3543,6 +3543,94 @@
         }
       },
       "extractionState": "manual"
+    },
+    "Convert to HEIC": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Konwertuj do HEIC"
+          }
+        }
+      },
+      "extractionState": "manual"
+    },
+    "JPEG → HEIC": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "JPEG → HEIC"
+          }
+        }
+      },
+      "extractionState": "manual"
+    },
+    "RAW → HEIC": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "RAW → HEIC"
+          }
+        }
+      },
+      "extractionState": "manual"
+    },
+    "RAW + HEIC": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "RAW + HEIC"
+          }
+        }
+      },
+      "extractionState": "manual"
+    },
+    "HEIC made from the camera JPEG. RAW files stay on the disk.": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "HEIC z JPEG-a z aparatu. Pliki RAW zostają na dysku."
+          }
+        }
+      },
+      "extractionState": "manual"
+    },
+    "HEIC developed from the RAW file. Camera JPEGs stay on the disk.": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "HEIC wywołany z pliku RAW. JPEG-i z aparatu zostają na dysku."
+          }
+        }
+      },
+      "extractionState": "manual"
+    },
+    "HEIC made from the camera JPEG, with the RAW file kept alongside it in Photos.": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "HEIC z JPEG-a z aparatu, a plik RAW trafia razem z nim do Zdjęć."
+          }
+        }
+      },
+      "extractionState": "manual"
+    },
+    "HEIC saved %@": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "HEIC zaoszczędził %@"
+          }
+        }
+      },
+      "extractionState": "manual"
     }
   },
   "version": "1.0"

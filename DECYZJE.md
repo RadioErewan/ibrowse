@@ -1131,7 +1131,12 @@ Co z tego wynika, zanim cokolwiek powstanie:
 Historia, od której to się zaczyna: 500 zdjęć z wakacji 2022, już
 przekonwertowanych do HEIC, leży w katalogu na dysku zewnętrznym. Zanim
 pójdą do Zdjęć, trzeba je przejrzeć i wyrzucić najbardziej nieudane.
-Konwersję do HEIC odkładamy — ta historia jej nie potrzebuje.
+Konwersja do HEIC weszła od razu przy imporcie (decyzja Radka): przełącznik
+w oknie importu, domyślnie wyłączony i zapamiętany, z trzema trybami —
+**JPEG → HEIC** (RAW zostaje na dysku), **RAW → HEIC** (wywołanie
+systemowe, 10 bitów; JPEG zostaje na dysku) i **RAW + HEIC** (HEIC
+z JPEG-a, RAW jako drugi plik w Zdjęciach). Samotny RAW jest zawsze
+wywoływany. HEIC powstaje w katalogu tymczasowym i znika po imporcie.
 
 RAW-y są od początku (decyzja Radka): ImageIO czyta ARW, CR2, NEF i DNG,
 więc nie było powodu ich pomijać. Para z jednej klatki (`DSC0001.ARW`
@@ -1179,7 +1184,11 @@ Etapy, każdy do przetestowania osobno:
    podejrzane oznaczamy „już w bibliotece".
 
 Wydanie 1.1 po etapach 1–3 (5 jeśli zdąży), najpierw TestFlight.
-Później: konwersja do HEIC, oceny z XMP.
+Decyzje folderu leżą pod kilkoma nazwami naraz (wolumin + numer pliku,
+wolumin + ścieżka od korzenia dysku, dawny skrót ścieżki) — przemianowanie
+folderu albo inna nazwa dysku nie gubią ocen.
+
+Później: oceny z XMP, oceny podfolderu widoczne z folderu nadrzędnego.
 
 ## Pomysł: najlepsze zdjęcia do folderu — ramki i telewizory (październik 2026)
 

@@ -146,11 +146,17 @@ private struct ImportBrowser: View {
             .onKeyPress { press in handle(press.characters) }
             .task {
                 await session.scan()
+                PhotosImport.forgetVanished(in: session)
                 focused = true
                 await session.prefetchThumbnails()
                 await session.scoreAll()
             }
             .onAppear { focused = true }
+            // Powrót ze Zdjęć, w których coś skasowano — patrz `forgetVanished`.
+            .onReceive(NotificationCenter.default.publisher(for: NSApplication.didBecomeActiveNotification)) { _ in
+                guard !session.isScanning else { return }
+                PhotosImport.forgetVanished(in: session)
+            }
             .onChange(of: order) { _, _ in currentID = shown.first?.id }
             .onChange(of: show) { _, _ in
                 if current == nil { currentID = shown.first?.id }
@@ -387,6 +393,9 @@ private struct ImportSheet: View {
     @ObservedObject var importer: PhotosImport
     @Environment(\.dismiss) private var dismiss
     @State private var album = ""
+    /// Wyłączone na start, potem zapamiętane — decyzja Radka.
+    @AppStorage("import.convertHEIC") private var convert = false
+    @AppStorage("import.heicMode") private var mode: HEICMode = .fromJPEG
 
     var body: some View {
         VStack(alignment: .leading, spacing: 14) {
@@ -396,6 +405,18 @@ private struct ImportSheet: View {
                     .font(.headline)
                 TextField("Album", text: $album)
                     .textFieldStyle(.roundedBorder)
+                Toggle("Convert to HEIC", isOn: $convert)
+                if convert {
+                    Picker("", selection: $mode) {
+                        ForEach(HEICMode.allCases) { Text($0.label).tag($0) }
+                    }
+                    .pickerStyle(.segmented)
+                    .labelsHidden()
+                    Text(mode.explanation)
+                        .font(.callout)
+                        .foregroundStyle(.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
                 Text("Copies go into Photos with their stars. Files on the disk stay as they are; photos you left out aren't imported. Photos already imported are skipped.")
                     .font(.callout)
                     .foregroundStyle(.secondary)
@@ -405,7 +426,7 @@ private struct ImportSheet: View {
                     Button("Cancel") { dismiss() }
                         .keyboardShortcut(.cancelAction)
                     Button("Import") {
-                        Task { await importer.run(session, album: album) }
+                        Task { await importer.run(session, album: album, convert: convert ? mode : nil) }
                     }
                     .keyboardShortcut(.defaultAction)
                 }
@@ -415,8 +436,12 @@ private struct ImportSheet: View {
                 Text("\(done) / \(total)")
                     .font(.caption.monospacedDigit())
                     .foregroundStyle(.secondary)
-            case .finished(let imported, let failed, let title):
+            case .finished(let imported, let failed, let title, let saved):
                 Text("Imported \(imported) photos").font(.headline)
+                if saved > 0 {
+                    Text("HEIC saved \(saved.formatted(.byteCount(style: .file)))")
+                        .foregroundStyle(.secondary)
+                }
                 if !title.isEmpty {
                     Text("Album: \(title)").foregroundStyle(.secondary)
                 }

@@ -79,12 +79,15 @@ final class ImportSession: ObservableObject {
     @Published private(set) var scored = 0
 
     private var pendingSave: Task<Void, Never>?
+    /// Nazwa plików tego folderu w kontenerze — patrz `storeName(for:)`.
+    private let storeName: String
 
     private init(folder: URL, release: @escaping () -> Void) {
         self.folder = folder
         self.release = release
-        decisions = Self.loadDecisions(for: folder)
-        scores = Self.load(Self.file(for: folder, suffix: "-scores")) ?? [:]
+        storeName = Self.storeName(for: folder)
+        decisions = Self.load(Self.file(storeName, suffix: "")) ?? [:]
+        scores = Self.load(Self.file(storeName, suffix: "-scores")) ?? [:]
     }
 
     deinit {
@@ -96,7 +99,7 @@ final class ImportSession: ObservableObject {
 
     private static let bookmarkKey = "import.folderBookmark"
 
-    static let log = Logger(subsystem: "pl.3210.lightbrary", category: "import")
+    nonisolated static let log = Logger(subsystem: "pl.3210.lightbrary", category: "import")
 
     /// Zakładka **tylko do odczytu**. To nie ozdobnik: system odmówi zapisu
     /// i kasowania w tym folderze nawet wtedy, gdyby kod kiedyś spróbował.
@@ -316,7 +319,7 @@ final class ImportSession: ObservableObject {
             }
             if index % 10 == 9 || index == missing.count - 1 {
                 scored = items.count - missing.count + index + 1
-                Self.save(scores, to: Self.file(for: folder, suffix: "-scores"))
+                Self.save(scores, to: Self.file(storeName, suffix: "-scores"))
             }
         }
     }
@@ -382,7 +385,7 @@ final class ImportSession: ObservableObject {
     private func scheduleSave() {
         pendingSave?.cancel()
         let snapshot = decisions
-        let file = Self.decisionsFile(for: folder)
+        let file = Self.file(storeName, suffix: "")
         pendingSave = Task {
             try? await Task.sleep(for: .milliseconds(600))
             guard !Task.isCancelled else { return }
@@ -395,7 +398,7 @@ final class ImportSession: ObservableObject {
         guard let pending = pendingSave else { return }
         pending.cancel()
         pendingSave = nil
-        Self.write(decisions, to: Self.decisionsFile(for: folder))
+        Self.write(decisions, to: Self.file(storeName, suffix: ""))
     }
 
     private static func write(_ decisions: [String: ImportDecision], to file: URL) {
@@ -406,25 +409,62 @@ final class ImportSession: ObservableObject {
         try? data.write(to: file, options: .atomic)
     }
 
-    private static func loadDecisions(for folder: URL) -> [String: ImportDecision] {
-        guard let data = try? Data(contentsOf: decisionsFile(for: folder)),
-              let decoded = try? JSONDecoder().decode([String: ImportDecision].self, from: data)
-        else { return [:] }
-        return decoded
-    }
-
-    /// Plik w kontenerze aplikacji, nazwany skrótem ścieżki folderu —
-    /// **nigdy** obok zdjęć, bo źródła nie wolno zmieniać.
-    private static func decisionsFile(for folder: URL) -> URL {
-        file(for: folder, suffix: "")
-    }
-
-    private static func file(for folder: URL, suffix: String) -> URL {
-        let digest = SHA256.hash(data: Data(folder.standardizedFileURL.path.utf8))
-        let name = digest.prefix(8).map { String(format: "%02x", $0) }.joined()
-        return URL.applicationSupportDirectory
+    /// Pliki w kontenerze aplikacji — **nigdy** obok zdjęć, bo źródła nie
+    /// wolno zmieniać.
+    private static var directory: URL {
+        URL.applicationSupportDirectory
             .appending(path: "pl.3210.lightbrary/imports", directoryHint: .isDirectory)
-            .appending(path: "\(name)\(suffix).json")
+    }
+
+    private static func file(_ name: String, suffix: String) -> URL {
+        directory.appending(path: "\(name)\(suffix).json")
+    }
+
+    /// Który zestaw plików należy do tego folderu.
+    ///
+    /// Sama ścieżka nie wystarcza: dysk zewnętrzny potrafi zamontować się
+    /// jako „Untitled 1" zamiast „Untitled", a folder bywa przemianowany —
+    /// i oceny przestawały się znajdować, choć leżały na miejscu. Folder ma
+    /// więc kilka nazw naraz, zapisanych w spisie:
+    ///
+    /// - wolumin i numer pliku folderu — przeżywa zmianę nazwy i przeniesienie
+    ///   w obrębie dysku;
+    /// - wolumin i ścieżka od korzenia dysku — przeżywa inną nazwę dysku,
+    ///   także tam, gdzie numer pliku nie jest trwały (exFAT);
+    /// - skrót pełnej ścieżki — tak nazywały się pliki przed tą zmianą.
+    ///
+    /// Pierwsza pasująca wskazuje zestaw, a wszystkie bieżące nazwy są
+    /// dopisywane do spisu, więc kolejna zmiana trafia już w którąś z nich.
+    private static func storeName(for folder: URL) -> String {
+        let legacy = SHA256.hash(data: Data(folder.standardizedFileURL.path.utf8))
+            .prefix(8).map { String(format: "%02x", $0) }.joined()
+
+        var keys: [String] = []
+        let values = try? folder.resourceValues(forKeys: [
+            .volumeUUIDStringKey, .fileResourceIdentifierKey, .volumeURLKey,
+        ])
+        if let volume = values?.volumeUUIDString {
+            // Identyfikator to zwykle `NSData`; opis tekstowy obiektu nie jest
+            // obietnicą formatu, więc zapisujemy same bajty.
+            if let identifier = values?.fileResourceIdentifier as? Data {
+                keys.append("\(volume)|id|\(identifier.map { String(format: "%02x", $0) }.joined())")
+            }
+            if let root = values?.volume?.standardizedFileURL.path {
+                let relative = folder.standardizedFileURL.path.dropFirst(root.count)
+                keys.append("\(volume)|path|\(relative)")
+            }
+        }
+        keys.append("legacy|\(legacy)")
+
+        let indexFile = file("index", suffix: "")
+        var index: [String: String] = load(indexFile) ?? [:]
+        let name = keys.lazy.compactMap { index[$0] }.first
+            ?? (FileManager.default.fileExists(atPath: file(legacy, suffix: "").path)
+                ? legacy : UUID().uuidString.prefix(16).lowercased())
+        let before = index
+        for key in keys { index[key] = name }
+        if index != before { save(index, to: indexFile) }
+        return name
     }
 
     private static func load<T: Decodable>(_ file: URL) -> T? {
