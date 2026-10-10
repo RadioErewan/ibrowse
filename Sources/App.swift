@@ -96,6 +96,15 @@ struct LightbraryApp: App {
         // wylądowałoby we własnym pasku pod spodem.
         .windowToolbarStyle(.unified(showsTitle: false))
         #endif
+
+        #if os(macOS)
+        // Przegląd folderu z dysku przed importem — własne okno, patrz
+        // `ImportWindow`.
+        Window("Import from Folder", id: "import") {
+            ImportWindow()
+        }
+        .defaultSize(width: 1100, height: 760)
+        #endif
     }
 
     /// Skład trzymamy pod własnym identyfikatorem pakietu, nigdy pod domyślną
@@ -294,8 +303,13 @@ extension FocusedValues {
 struct LibraryCommands: Commands {
     @FocusedValue(\.reloadLibrary) private var reload
     @FocusedValue(\.selectAllPhotos) private var selectAllPhotos
+    @Environment(\.openWindow) private var openWindow
 
     var body: some Commands {
+        CommandGroup(after: .newItem) {
+            Button("Import from Folder…") { openWindow(id: "import") }
+                .keyboardShortcut("i", modifiers: [.command, .shift])
+        }
         // ⌘A w siatce zaznacza zdjęcia, w polu tekstowym — tekst. Standardowe
         // „Select All" idzie tylko do pierwszego respondera, a siatka SwiftUI
         // nim nie jest, więc dotąd klawisz nie robił nic. Grupę zastępujemy

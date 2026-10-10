@@ -3180,6 +3180,182 @@
         }
       },
       "extractionState": "manual"
+    },
+    "Import from Folder…": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Importuj z folderu…"
+          }
+        }
+      },
+      "extractionState": "manual"
+    },
+    "Import from Folder": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Import z folderu"
+          }
+        }
+      },
+      "extractionState": "manual"
+    },
+    "Review a folder before importing": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Przejrzyj folder przed importem"
+          }
+        }
+      },
+      "extractionState": "manual"
+    },
+    "The last folder isn't reachable — is the drive connected?": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ostatni folder jest niedostępny — czy dysk jest podłączony?"
+          }
+        }
+      },
+      "extractionState": "manual"
+    },
+    "Pick a folder of photos, for example on an external drive. Rate them and mark the ones to leave out. Files on the disk are never changed.": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Wskaż folder ze zdjęciami, na przykład na dysku zewnętrznym. Oceń je i zaznacz te, które mają zostać pominięte. Pliki na dysku nigdy nie są zmieniane."
+          }
+        }
+      },
+      "extractionState": "manual"
+    },
+    "Choose Folder…": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Wybierz folder…"
+          }
+        }
+      },
+      "extractionState": "manual"
+    },
+    "Choose another folder": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Wybierz inny folder"
+          }
+        }
+      },
+      "extractionState": "manual"
+    },
+    "all": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "wszystkie"
+          }
+        }
+      },
+      "extractionState": "manual"
+    },
+    "to import": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "do importu"
+          }
+        }
+      },
+      "extractionState": "manual"
+    },
+    "left out": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "pominięte"
+          }
+        }
+      },
+      "extractionState": "manual"
+    },
+    "Reading folder… %lld": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Czytam folder… %lld"
+          }
+        }
+      },
+      "extractionState": "manual"
+    },
+    "No photos in this folder": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "W tym folderze nie ma zdjęć"
+          }
+        }
+      },
+      "extractionState": "manual"
+    },
+    "%lld to import · %lld left out": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "do importu: %lld · pominięte: %lld"
+          }
+        }
+      },
+      "extractionState": "manual"
+    },
+    "1–5 rate · 0 clear · X leave out · ←/→ navigate · return full screen": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "1–5 ocena · 0 wyczyść · X pomiń · ←/→ przejście · return pełny ekran"
+          }
+        }
+      },
+      "extractionState": "manual"
+    },
+    "Subfolders are included.": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Podfoldery też się liczą."
+          }
+        }
+      },
+      "extractionState": "manual"
+    },
+    "thumbnails %lld/%lld": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "miniatury %lld/%lld"
+          }
+        }
+      },
+      "extractionState": "manual"
     }
   },
   "version": "1.0"

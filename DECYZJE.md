@@ -1126,6 +1126,61 @@ Co z tego wynika, zanim cokolwiek powstanie:
   i zapisu przy tysiącach plików, zachowanie przy wysuniętej płycie
   w połowie pracy.
 
+### Importer: plan na etapy (10 października 2026)
+
+Historia, od której to się zaczyna: 500 zdjęć z wakacji 2022, już
+przekonwertowanych do HEIC, leży w katalogu na dysku zewnętrznym. Zanim
+pójdą do Zdjęć, trzeba je przejrzeć i wyrzucić najbardziej nieudane.
+Konwersję do HEIC odkładamy — ta historia jej nie potrzebuje.
+
+RAW-y są od początku (decyzja Radka): ImageIO czyta ARW, CR2, NEF i DNG,
+więc nie było powodu ich pomijać. Para z jednej klatki (`DSC0001.ARW`
+i `DSC0001.JPG`) to **jedna pozycja** — oglądamy JPEG albo HEIC, bo
+dekoduje się szybciej, a przy imporcie RAW idzie razem z nim jako drugi
+plik tego samego zdjęcia, tak jak przy imporcie z karty.
+
+Zasady wspólne dla wszystkich etapów:
+
+- **Osobne okno, nie tryb głównego okna.** Główne okno żyje na `PHAsset`
+  i ma za sobą historię awarii układu (rozdziały wyżej). Importer pracuje na
+  plikach, więc dostaje własne okno (`Window`, menu File → Import from
+  Folder…, ⇧⌘I) i nie dotyka podziału kolumn ani inspektora.
+- **Źródło tylko do odczytu — wymuszone przez system.** Zakładka do folderu
+  powstaje z `securityScopeAllowOnlyReadAccess`, więc nawet błąd w kodzie
+  nie da rady zapisać ani skasować pliku na dysku. „Odrzuć" znaczy „nie
+  importuj", nigdy „skasuj".
+- **Decyzje w pliku JSON, nie w SwiftData.** Przy niezgodnym schemacie
+  skład jest odsuwany na bok (`makeContainer`), więc nowy model kosztowałby
+  oceny z biblioteki. Plik na folder w kontenerze aplikacji, klucz to
+  ścieżka względna — przeżywa zamknięcie okna i przerwę w pracy.
+- **Klawisze jak w bibliotece:** 0–5 gwiazdki (z przejściem dalej),
+  X odrzuć, ←/→ i spacja, Return wejście w pełny ekran, Esc wyjście.
+
+Etapy, każdy do przetestowania osobno:
+
+1. **Przegląd folderu.** Wybór folderu (także na dysku zewnętrznym),
+   skan rekursywny przez ImageIO (data wykonania, wymiary), siatka
+   miniatur, pełny ekran, gwiazdki i X, licznik „do importu / odrzucone",
+   filtr „wszystkie / do importu / odrzucone". Folder pamiętany między
+   uruchomieniami.
+2. **Import.** `PHAssetCreationRequest` z kopią pliku (`shouldMoveFile =
+   false`), album nazwany jak folder, gwiazdki przechodzą do `rating`.
+   Para RAW+JPEG: JPEG jako `.photo`, RAW jako `.alternatePhoto`.
+   Zapisujemy, co już poszło, więc drugi import tego samego folderu nie
+   dubluje zdjęć. Odrzucone zostają na dysku nietknięte.
+3. **Najgorsze na początku.** `VNCalculateImageAestheticsScoresRequest`
+   na miniaturze: wynik estetyki i flaga zdjęcia „użytkowego" (paragon,
+   tablica, zrzut). Sortowanie od najgorszych — odsiew zaczyna się od tego,
+   co najpewniej wyleci.
+4. **Serie.** Odciski Vision na plikach, ta sama logika co `Similarity`;
+   porównanie dwóch klatek obok siebie.
+5. **Duplikaty względem biblioteki.** Odciski biblioteki już są; plik
+   z dysku porównujemy z odciskami zdjęć z tego samego dnia (±1 dzień),
+   podejrzane oznaczamy „już w bibliotece".
+
+Wydanie 1.1 po etapach 1–3 (5 jeśli zdąży), najpierw TestFlight.
+Później: konwersja do HEIC, oceny z XMP.
+
 ## Pomysł: najlepsze zdjęcia do folderu — ramki i telewizory (październik 2026)
 
 Pytanie Radka: pokaz slajdów z Apple Photos na Echo Show albo telewizorze
