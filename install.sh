@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
-# Budowa i instalacja lightbrary. Bez argumentu: macOS. Z "ios": na telefon.
+# Budowa i instalacja lightbrary. Bez argumentu: macOS. Z "release": macOS
+# z optymalizacją. Z "ios": na telefon.
 # Z "exporter": eksporter w pasku menu.
 #
 # Telefon musi być podpięty kablem i odblokowany. Podpis wygasa po 7 dniach
@@ -29,13 +30,20 @@ elif [ "${1:-mac}" = "exporter" ]; then
     open "build/Build/Products/Debug/lightbrary-exporter.app"
     echo "Eksporter działa w pasku menu (znak pasowania)."
 else
+    # `./install.sh release` — ta sama aplikacja, ale skompilowana
+    # z optymalizacją. Debug bywa w siatce kilka–kilkanaście razy wolniejszy,
+    # więc płynność ocenia się tylko na tym. Podpis zostaje deweloperski,
+    # czyli zakładki do folderów i zgoda na Zdjęcia się nie gubią.
+    CONFIG=Debug
+    [ "${1:-mac}" = "release" ] && CONFIG=Release
     xcodebuild -project lightbrary.xcodeproj -scheme lightbrary-mac \
-        -configuration Debug -derivedDataPath build build
+        -configuration "$CONFIG" -derivedDataPath build build \
+        CODE_SIGN_IDENTITY="Apple Development"
     pkill -f lightbrary-mac 2>/dev/null || true
 
     # Dock i Finder trzymają ikonę w pamięci podręcznej i nie zauważają, że
     # pakiet się zmienił — po zmianie ikony w Docku siedziałaby stara.
-    APP="build/Build/Products/Debug/lightbrary-mac.app"
+    APP="build/Build/Products/$CONFIG/lightbrary-mac.app"
     touch "$APP"
     /System/Library/Frameworks/CoreServices.framework/Frameworks/\
 LaunchServices.framework/Support/lsregister -f "$APP"

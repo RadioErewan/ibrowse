@@ -1921,6 +1921,18 @@ Pasek miniatur w `CullView` używa tego samego kafelka.
 
 ## Co czeka
 
+### Nazwa wielką literą: „Lightbrary" (pomysł Radka, 11 października 2026)
+
+Dziś jest niespójnie: plik `lightbrary.app`, menu i Dock małą literą,
+a tekst uprawnień i zdania na stronie zaczynają się od „Lightbrary".
+Kierunek: **wielka litera wszędzie, gdzie to nazwa** — plik aplikacji,
+`CFBundleName`/`CFBundleDisplayName`, nazwa w sklepie, napisy w interfejsie;
+logo może zostać stylizowane. Identyfikator pakietu zostaje, więc kontener,
+zgoda na Zdjęcia i ustawienia się nie zmieniają. Na dysku bez rozróżniania
+wielkości liter nowy `Lightbrary.app` zastępuje stary przy przeciągnięciu.
+Nazwę w sklepie zmienia się razem z nową wersją. Do zrobienia przy
+najbliższym wydaniu, razem z porządkiem w lokalizacjach.
+
 ### Strona a recenzja w sklepie
 
 Recenzent wchodzi na lightbrary.app przez adresy z App Store Connect (dziś
