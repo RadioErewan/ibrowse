@@ -1190,6 +1190,10 @@ folderu albo inna nazwa dysku nie gubią ocen.
 
 Później: oceny z XMP, oceny podfolderu widoczne z folderu nadrzędnego.
 
+**Tylko Mac, celowo.** Na telefonie wszystko, co użytkownik Apple ma,
+i tak jest w Zdjęciach — archiwa na dyskach żyją przy komputerze. Import
+z karty iPhone już ma w samych Zdjęciach (Radek, 10 października 2026).
+
 ## Pomysł: najlepsze zdjęcia do folderu — ramki i telewizory (październik 2026)
 
 Pytanie Radka: pokaz slajdów z Apple Photos na Echo Show albo telewizorze

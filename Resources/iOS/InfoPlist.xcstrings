@@ -5,6 +5,12 @@
       "comment": "Photo library permission prompt",
       "extractionState": "manual",
       "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Lightbrary reads your photo library so you can browse, rate and delete your photos. Nothing leaves this device."
+          }
+        },
         "pl": {
           "stringUnit": {
             "state": "translated",
