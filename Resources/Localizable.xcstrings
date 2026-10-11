@@ -3631,6 +3631,28 @@
         }
       },
       "extractionState": "manual"
+    },
+    "Lightbrary reads photos straight from your library. Nothing leaves this device.": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Lightbrary czyta zdjęcia prosto z biblioteki. Nic nie opuszcza tego urządzenia."
+          }
+        }
+      },
+      "extractionState": "manual"
+    },
+    "Photo library access was denied. Turn it on in System Settings → Privacy & Security → Photos.": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dostęp do biblioteki zdjęć został odrzucony. Włącz go w Ustawieniach systemowych → Prywatność i ochrona → Zdjęcia."
+          }
+        }
+      },
+      "extractionState": "manual"
     }
   },
   "version": "1.0"

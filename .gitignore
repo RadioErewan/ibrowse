@@ -12,3 +12,5 @@ Generated/
 # do konta deweloperskiego — pobiera się go dokładnie raz i nie da się odzyskać.
 *.p8
 AuthKey_*.p8
+build
+build.noindex/

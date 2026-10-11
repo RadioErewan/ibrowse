@@ -453,7 +453,7 @@ struct RootView: View {
             case .notDetermined:
                 Permission(
                     title: "Photo library access",
-                    message: "lightbrary reads photos straight from your library. Nothing leaves this device.",
+                    message: "Lightbrary reads photos straight from your library. Nothing leaves this device.",
                     action: ("Request access", { Task { await library.requestAccess() } })
                 )
             default:
@@ -1063,10 +1063,13 @@ extension RootView {
 }
 
 
+/// Napisy jako `LocalizedStringKey`, nie `String`: `Text(String)` pokazuje
+/// tekst dosłownie, więc ten ekran — pierwszy, jaki widzi nowy użytkownik —
+/// był po angielsku także w polskim systemie, choć przekłady leżały w katalogu.
 private struct Permission: View {
-    let title: String
-    let message: String
-    let action: (String, () -> Void)?
+    let title: LocalizedStringKey
+    let message: LocalizedStringKey
+    let action: (LocalizedStringKey, () -> Void)?
 
     var body: some View {
         VStack(spacing: 14) {
